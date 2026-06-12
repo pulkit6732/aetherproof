@@ -1,0 +1,26 @@
+target/
+**/__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+demo/output/
+*.receipt
+*.bin
+
+# Internal launch/ops docs — keep OUT of the public repo
+AetherProof_*.html
+
+# Internal security tooling + audit output (local only, not for publication)
+run_audit.py
+review/
+BUILD_SUMMARY.md
+NEXT_WORK.md
+.venv/
+receipts/
+*.pem
+*.pub
+demo_receipt.json
+demo_log.db
