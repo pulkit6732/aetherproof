@@ -52,8 +52,9 @@ def issue_receipt(
     *,
     model_weight_root: str,
     output_hash: str,
+    model_root_type: str = "artifact_hash",
     input_commitment: str = "",
-    receipts_dir: Path = Path("./receipts"),
+    receipts_dir: Path = KEY_DIR / "receipts",
 ) -> Tuple[Receipt, Path]:
     """Build, sign, persist, and log a receipt.
 
@@ -65,8 +66,9 @@ def issue_receipt(
     receipts_dir.mkdir(parents=True, exist_ok=True)
     seq = log.max_sequence() + 1
     receipt = Receipt(
-        receipt_version="1.0",
+        receipt_version="1.1",
         model_weight_root=model_weight_root,
+        model_root_type=model_root_type,
         input_commitment=input_commitment,
         output_hash=output_hash,
         timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000),

@@ -16,9 +16,9 @@ from .display import console
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Verifier
 from aetherproof.core.verifier import verify_receipt
-from aetherproof.core.hash import hash_output
+from aetherproof.core.hash import hash_output, sha256_file as hash_bytes_file
 
-RECEIPTS_DIR = Path("./receipts")
+RECEIPTS_DIR = Path.home() / ".aetherproof" / "receipts"
 MODEL_CHOICES = ["GPT-4o", "Gemini", "Llama 3", "Mistral", "Custom…"]
 
 
@@ -36,12 +36,13 @@ def run_easy_mode(signer, log) -> None:
         console.print("Cancelled.")
         return
 
-    output_text = _collect_output()
-    if output_text is None:
+    collected = _collect_output()
+    if collected is None:
         console.print("Cancelled.")
         return
+    output_hash, _source = collected
 
-    result = _sign_and_log(signer, log, model, output_text)
+    result = _sign_and_log(signer, log, model, output_hash)
     if result is None:
         return  # failure panel already shown
     receipt, path = result
@@ -67,12 +68,37 @@ def _select_model():
 
 
 def _collect_output():
+    """Return (output_hash, source_label).
+
+    Two paths so ANY output can be proven, not just small pasteable text:
+      - Paste: convenient for short text answers.
+      - File:  for large outputs, code, or binaries. The file's RAW BYTES are
+               hashed (never round-tripped through paste), so the hash is exact
+               regardless of size, encoding, blank lines, or file type.
+    """
+    choice = _ask(questionary.select(
+        "Where is the output?",
+        choices=[
+            "Paste it here (short text)",
+            "Point to a file (any size / code / binary)",
+        ],
+    ))
+    if choice is None:
+        return None
+    if choice.startswith("Point to a file"):
+        return _hash_output_file()
+    return _paste_output()
+
+
+def _paste_output():
     console.print("Paste the AI output below. Press Enter twice when done.")
+    console.print("[dim](If the output has blank lines, use the file option instead — "
+                  "a blank line ends the paste.)[/dim]")
     while True:
         lines = []
         try:
             while True:
-                line = input()
+                line = input().rstrip("\r\n")  # strip CRLF; Windows/piped safe
                 if line == "":  # blank line ends input
                     break
                 lines.append(line)
@@ -82,11 +108,25 @@ def _collect_output():
             return None
         text = "\n".join(lines)
         if text.strip():
-            return text
+            return hash_output(text), "pasted text"
         console.print("[red]Output cannot be empty. Try again.[/red]")
 
 
-def _sign_and_log(signer, log, model, output_text):
+def _hash_output_file():
+    path_str = _ask(questionary.path(
+        "Path to the output file:", validate=PathValidator(is_file=True)))
+    if path_str is None:
+        return None
+    p = Path(path_str).expanduser()
+    # hash the raw bytes — exact for any size / encoding / binary, streamed so
+    # a multi-GB file never loads into memory.
+    digest = hash_bytes_file(p)
+    size = p.stat().st_size
+    console.print(f"[dim]Hashed {size:,} bytes from {p.name}[/dim]")
+    return digest, f"file: {p.name} ({size:,} bytes)"
+
+
+def _sign_and_log(signer, log, model, output_hash):
     steps = [
         "[1/4] Hashing output",
         "[2/4] Computing model root",
@@ -107,18 +147,23 @@ def _sign_and_log(signer, log, model, output_text):
             tasks = [progress.add_task(s, total=100, start=False) for s in steps]
 
             progress.start_task(tasks[0])
-            output_hash = hash_output(output_text)
+            # output_hash already computed by _collect_output (paste -> text hash,
+            # file -> streamed raw-byte hash). step shown for UX continuity.
             _finish(progress, tasks[0])
 
             progress.start_task(tasks[1])
+            # interactive easy-mode binds to the model NAME the user typed.
+            # this proves the claim "I said it was <name>" — NOT the weights.
+            # the receipt is honest about that via model_root_type="name_only".
             model_weight_root = hash_output(model)
             _finish(progress, tasks[1])
 
             progress.start_task(tasks[2])
             seq = log.max_sequence() + 1  # single-writer; drift checked at append
             receipt = Receipt(
-                receipt_version="1.0",
+                receipt_version="1.1",
                 model_weight_root=model_weight_root,
+                model_root_type="name_only",
                 input_commitment="",
                 output_hash=output_hash,
                 timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000),
@@ -194,6 +239,10 @@ def _show_success(receipt, model, path):
     inner.add_column()
     inner.add_row("Receipt ID", receipt.receipt_id)
     inner.add_row("Model", model)
+    trust = ("name only — proves the claimed name, NOT the weights"
+             if receipt.model_root_type == "name_only"
+             else "artifact hash — bound to the weights file")
+    inner.add_row("Model root", trust)
     inner.add_row("Output hash", f"sha256:{receipt.output_hash[:16]}...")
     signed_at = datetime.fromtimestamp(receipt.timestamp_ms / 1000, timezone.utc).isoformat()
     inner.add_row("Signed at", signed_at)

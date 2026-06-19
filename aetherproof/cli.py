@@ -104,6 +104,16 @@ def _run(argv):
             sys.exit(1)
         return
 
+    # the bare command launches the interactive menu, which needs a real
+    # terminal. in a pipe / CI / redirected context, fail clearly instead of
+    # with a confusing prompt_toolkit traceback.
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        console.print("AetherProof needs an interactive terminal for the menu.")
+        console.print("Run a direct command instead, e.g. "
+                      "[cyan]aetherproof --help[/cyan] or "
+                      "[cyan]aetherproof sign <model> <output>[/cyan].")
+        sys.exit(2)
+
     signer, log = _app_state()
     print_logo()
     routes = {

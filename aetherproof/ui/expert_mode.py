@@ -19,7 +19,7 @@ from aetherproof.core.verifier import (
     verify_output_unmodified,
     tamper_detect,
 )
-from aetherproof.core.hash import hash_output, compute_model_weight_root
+from aetherproof.core.hash import hash_output, sha256_file, compute_model_weight_root
 
 
 def _ok(msg: str) -> None:
@@ -87,7 +87,7 @@ def run_expert_mode(args: List[str]) -> bool:
 
     try:
         if command == "sign":
-            cmd_sign(rest)
+            return cmd_sign(rest)
         elif command == "verify":
             return cmd_verify(rest)
         elif command == "inspect":
@@ -154,19 +154,21 @@ def cmd_sign(args: List[str]) -> None:
     args, quiet = _pop_quiet(args)
     if len(args) < 2:
         _emit_err("usage: sign <model_path> <output_file> [--quiet]", quiet)
-        return
+        return False
 
     model_path = Path(args[0])
     output_file = Path(args[1])
     if not model_path.exists():
         _emit_err(f"Model not found: {model_path}", quiet)
-        return
+        return False
     if not output_file.exists():
         _emit_err(f"Output file not found: {output_file}", quiet)
-        return
+        return False
 
     model_weight_root = compute_model_weight_root(model_path)
-    output_hash = hash_output(output_file.read_text(encoding="utf-8"))
+    # raw-byte hash (streamed) — exact for any size / encoding / binary, and
+    # symmetric with `verify --output`, which recomputes the same way.
+    output_hash = sha256_file(output_file)
 
     # persistent app key + transparency log, same as the interactive wizard
     signer = load_or_create_signer()
@@ -179,14 +181,15 @@ def cmd_sign(args: List[str]) -> None:
         )
     except Exception as e:
         _emit_err(f"Signing failed: {e}", quiet)
-        return
+        return False
 
     if quiet:
         print(receipt.to_json())
-        return
+        return True
     _ok(f"Receipt signed → {path}  (logged at #{receipt.log_sequence:06d})")
     _receipt_panel(receipt, title="RECEIPT SIGNED")
     console.print(f"[dim]Verify with:[/dim] aetherproof verify {path}")
+    return True
 
 
 def cmd_verify(args: List[str]) -> bool:
@@ -229,9 +232,11 @@ def cmd_verify(args: List[str]) -> bool:
         if not out_file.exists():
             verr(f"Output file not found: {out_file}")
             return False
-        # recompute the output's hash and compare to what the receipt bound
+        # recompute the output's hash and compare to what the receipt bound.
+        # raw-byte hash (streamed) so it matches a file signed by easy-mode's
+        # file path and works for any size / encoding / binary.
         output_unmodified = verify_output_unmodified(
-            receipt, hash_output(out_file.read_text(encoding="utf-8"))
+            receipt, sha256_file(out_file)
         )
 
     overall = sig_valid and (output_unmodified if output_unmodified is not None else True)

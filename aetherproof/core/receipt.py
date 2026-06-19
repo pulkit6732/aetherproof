@@ -14,8 +14,12 @@ class Receipt:
     Verify(receipt, public_key, log) = TRUE with only those three inputs, forever.
     """
 
-    receipt_version: str = "1.0"
+    receipt_version: str = "1.1"  # 1.1 = injective length-prefixed preimage
     model_weight_root: str = ""  # SHA-256 Merkle root of model weights
+    model_root_type: str = "name_only"  # what model_weight_root actually is:
+    #   "artifact_hash" = SHA-256 of a real weights file/dir (binds to the weights)
+    #   "name_only"     = SHA-256 of a model-name string only (proves the CLAIM of
+    #                     that name at that time; does NOT prove the weights)
     input_commitment: str = ""  # SHA-256 of input prompt (may be hidden)
     output_hash: str = ""  # SHA-256 of model output
     timestamp_ms: int = 0  # Unix milliseconds
@@ -44,16 +48,30 @@ class Receipt:
     def canonical_message(self) -> str:
         # signing preimage — single source of truth; sign and verify must
         # both use this. byte-identical output is the only contract.
-        return "|".join([
+        #
+        # INJECTIVE encoding: each field is length-prefixed as "<len>:<field>".
+        # A plain "|".join was non-injective — a "|" inside any field shifted the
+        # boundaries so two different receipts could share one preimage (and thus
+        # one signature). Length-prefixing makes the field boundaries unambiguous,
+        # so distinct field-tuples always produce distinct preimages.
+        fields = [
             self.receipt_version,
             self.model_weight_root,
+            self.model_root_type,
             self.input_commitment,
             self.output_hash,
             str(self.timestamp_ms),
             str(self.log_sequence),
-            str(self.hw_evidence),
+            self._canonical_hw_evidence(),
             self.log_anchor,
-        ])
+        ]
+        return "".join(f"{len(f)}:{f}" for f in fields)
+
+    def _canonical_hw_evidence(self) -> str:
+        # canonical, key-sorted JSON so semantically-equal evidence (any key
+        # order / whitespace) yields one preimage. [] for AetherProof; typed
+        # objects for Signet R1+.
+        return json.dumps(self.hw_evidence, sort_keys=True, separators=(",", ":"))
 
     def signing_bytes(self) -> bytes:
         return self.canonical_message().encode("utf-8")
@@ -63,6 +81,7 @@ class Receipt:
         return {
             "v": self.receipt_version,
             "mr": self.model_weight_root,
+            "mrt": self.model_root_type,
             "ic": self.input_commitment,
             "oh": self.output_hash,
             "ts": self.timestamp_ms,
@@ -74,8 +93,20 @@ class Receipt:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Receipt":
-        """Reconstruct from dictionary."""
-        return cls(**data)
+        """Reconstruct from dictionary, coercing numeric fields to int.
+
+        JSON or hand-built dicts may carry timestamp_ms / log_sequence as
+        strings; the preimage str()-es them, so "1" and 1 would otherwise be
+        treated as equal in one path and unequal in another. Coerce here so the
+        in-memory type is canonical. Unknown keys are ignored rather than raising
+        (forward-compatibility with newer receipt versions).
+        """
+        known = {f for f in cls.__dataclass_fields__}
+        clean = {k: v for k, v in data.items() if k in known}
+        for num in ("timestamp_ms", "log_sequence"):
+            if num in clean and clean[num] is not None:
+                clean[num] = int(clean[num])
+        return cls(**clean)
 
     @classmethod
     def from_json(cls, json_str: str) -> "Receipt":
