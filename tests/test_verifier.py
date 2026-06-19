@@ -21,10 +21,9 @@ def test_basic_receipt_signing_and_verification():
         timestamp_ms=1700000000000,
     )
 
-    # Sign it
+    # Sign it — signing_bytes() is the single source of truth for the preimage
     signer = Signer.generate()
-    message = f"{receipt.receipt_version}|{receipt.model_weight_root}|{receipt.input_commitment}|{receipt.output_hash}|{receipt.timestamp_ms}|{receipt.log_sequence}|{receipt.hw_evidence}|{receipt.log_anchor}"
-    receipt.signature = signer.sign(message.encode("utf-8"))
+    receipt.signature = signer.sign(receipt.signing_bytes())
 
     # Verify with public key
     verifier = signer.get_public_key()
@@ -40,8 +39,7 @@ def test_tampered_receipt_fails_verification():
     )
 
     signer = Signer.generate()
-    message = f"{receipt.receipt_version}|{receipt.model_weight_root}|{receipt.input_commitment}|{receipt.output_hash}|{receipt.timestamp_ms}|{receipt.log_sequence}|{receipt.hw_evidence}|{receipt.log_anchor}"
-    receipt.signature = signer.sign(message.encode("utf-8"))
+    receipt.signature = signer.sign(receipt.signing_bytes())
     verifier = signer.get_public_key()
 
     # Verify it's valid
@@ -71,8 +69,7 @@ def test_wrong_public_key_fails_verification():
 
     # Sign with key 1
     signer1 = Signer.generate()
-    message = f"{receipt.receipt_version}|{receipt.model_weight_root}|{receipt.input_commitment}|{receipt.output_hash}|{receipt.timestamp_ms}|{receipt.log_sequence}|{receipt.hw_evidence}|{receipt.log_anchor}"
-    receipt.signature = signer1.sign(message.encode("utf-8"))
+    receipt.signature = signer1.sign(receipt.signing_bytes())
 
     # Try to verify with key 2
     signer2 = Signer.generate()
@@ -105,8 +102,7 @@ def test_tamper_detection_probe():
     )
 
     signer = Signer.generate()
-    message = f"{receipt.receipt_version}|{receipt.model_weight_root}|{receipt.input_commitment}|{receipt.output_hash}|{receipt.timestamp_ms}|{receipt.log_sequence}|{receipt.hw_evidence}|{receipt.log_anchor}"
-    receipt.signature = signer.sign(message.encode("utf-8"))
+    receipt.signature = signer.sign(receipt.signing_bytes())
     verifier = signer.get_public_key()
 
     # Tamper probe should pass (original valid, tampered invalid)
@@ -122,3 +118,31 @@ def test_empty_receipt_fails_verification():
 
     # Empty receipt with no signature should fail
     assert verify_receipt(receipt, verifier) is False
+
+
+def test_relabeling_model_root_type_breaks_signature():
+    """A signed name_only receipt cannot be silently relabeled artifact_hash."""
+    receipt = Receipt(model_weight_root="abc", model_root_type="name_only",
+                      output_hash="def", timestamp_ms=1, log_sequence=1)
+    signer = Signer.generate()
+    receipt.signature = signer.sign(receipt.signing_bytes())
+    verifier = signer.get_public_key()
+    assert verify_receipt(receipt, verifier) is True
+    receipt.model_root_type = "artifact_hash"  # attacker upgrades the claim
+    assert verify_receipt(receipt, verifier) is False
+
+
+def test_large_binary_output_byte_hash_symmetry(tmp_path):
+    """Signing hashes raw bytes so any size/encoding/binary verifies, and a
+    single changed byte is detected."""
+    from aetherproof.core.hash import sha256_file
+    out = tmp_path / "out.bin"
+    out.write_bytes(b"def foo():\n\n    return 42  # caf\xc3\xa9\n\n" * 10000)
+    bound = sha256_file(out)
+    receipt = Receipt(model_weight_root="m", model_root_type="artifact_hash",
+                      output_hash=bound, timestamp_ms=1, log_sequence=1)
+    # unmodified file verifies
+    assert verify_output_unmodified(receipt, sha256_file(out)) is True
+    # one appended byte is caught
+    out.write_bytes(out.read_bytes() + b"X")
+    assert verify_output_unmodified(receipt, sha256_file(out)) is False

@@ -65,3 +65,25 @@ def test_receipt_round_trip():
     reconstructed = Receipt.from_dict(data)
     assert reconstructed.model_weight_root == original.model_weight_root
     assert reconstructed.input_commitment == original.input_commitment
+
+
+def test_model_root_type_default_is_name_only():
+    """A bare receipt declares the weakest honest trust level."""
+    receipt = Receipt(model_weight_root="abc", output_hash="def")
+    assert receipt.model_root_type == "name_only"
+
+
+def test_model_root_type_is_in_signing_preimage():
+    """model_root_type must be signed — otherwise a name_only receipt could be
+    relabeled artifact_hash without breaking the signature."""
+    name_only = Receipt(model_weight_root="abc", model_root_type="name_only",
+                        output_hash="def", timestamp_ms=1, log_sequence=1)
+    artifact = Receipt(model_weight_root="abc", model_root_type="artifact_hash",
+                       output_hash="def", timestamp_ms=1, log_sequence=1)
+    assert name_only.signing_bytes() != artifact.signing_bytes()
+
+
+def test_model_root_type_survives_json_round_trip():
+    original = Receipt(model_weight_root="abc", model_root_type="artifact_hash",
+                       output_hash="def")
+    assert Receipt.from_json(original.to_json()).model_root_type == "artifact_hash"
