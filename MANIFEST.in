@@ -1,0 +1,26 @@
+# What ships in the source distribution. Explicit allow-list + hard prunes so no
+# local data, keys, internal docs, or build junk can leak into a published build.
+
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include aetherproof *.py
+recursive-include tests *.py *.md
+
+# Hard prunes (defense in depth — setuptools does NOT read .gitignore)
+prune receipts
+prune build
+prune dist
+prune target
+prune docs
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]
+recursive-exclude * *.pem
+recursive-exclude * *.pub
+recursive-exclude * *.key
+recursive-exclude * *.db
+recursive-exclude * *.receipt
+recursive-exclude * *.bin
+global-exclude AetherProof_*.html
+global-exclude .env
+global-exclude *.log

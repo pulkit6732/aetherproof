@@ -1,6 +1,6 @@
 """AetherProof — the open-source receipt engine. Prototype of Signet."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Pulkit Srivastava"
 
 from aetherproof.core.receipt import Receipt

@@ -167,7 +167,9 @@ AetherProof is **Layer 2** of the **Signet** stack. Signet adds hardware roots, 
 
 ## License
 
-MIT. Use it. Deploy it. Fork it. Verify it.
+AGPL-3.0-or-later. Use it, deploy it, fork it, verify it — but if you run a
+modified version as a network service, you must release your changes under the
+same license. (Need a permissive/commercial license? That's what Signet is for.)
 
 ---
 
