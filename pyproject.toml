@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aetherproof"
-version = "0.2.1"
+version = "0.2.2"
 description = "AetherProof — the open-source receipt engine. Prototype of Signet."
 readme = "README.md"
 license = {text = "AGPL-3.0-or-later"}
