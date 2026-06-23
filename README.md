@@ -16,7 +16,7 @@ Run `aetherproof` with no arguments for the interactive menu:
 
 ```
       .+######+.        AETHERPROOF
-    ##          ##      v0.2.0
+    ##          ##      v0.2.1
    #      /\      #     Cryptographic receipt engine
   #      /  \      #    Prototype of Signet · R0/L2
   #     / /\ \     #
@@ -34,12 +34,17 @@ Run `aetherproof` with no arguments for the interactive menu:
 Every time an AI model produces output, AetherProof issues a tamper-proof signed receipt:
 
 ```
-Receipt ID        : receipt_1700000000000
+Receipt ID        : ap_8694dae2
 Model Root        : abcdef0123456789... (SHA-256 Merkle of model weights)
+Model Root Type   : artifact_hash (bound to the weights) | name_only (claim only)
 Output Hash       : fedcba9876543210... (SHA-256 of the output)
 Timestamp         : 2026-06-11T15:30:00Z
 Signature         : ✓ Ed25519 VALID
 ```
+
+The `Model Root Type` field is honest about what the root proves: `artifact_hash`
+when you signed a real weights file, `name_only` when it's just a model-name
+string. The receipt never pretends a name is the weights.
 
 **One bit changes → signature fails instantly.**
 
@@ -160,6 +165,42 @@ print("output unmodified:", digest == r["output_hash"])
 
 That is the whole trust model: **a public key and some SHA-256 + Ed25519 math you
 can run anywhere, forever.**
+
+## Agent-chain context (receipt v1.2)
+
+A receipt can optionally commit to **namespaced runtime context** — which agent
+action, run, or policy decision an output belongs to — *inside* the signature.
+This binds a receipt to the exact decision it was issued for, so a valid receipt
+can't be replayed in a different context.
+
+```python
+from aetherproof.core.receipt import Receipt
+
+r = Receipt(
+    model_weight_root="...",
+    output_hash="...",
+    signed_extensions={
+        "org.liminal.agent_chain/v0.1": {
+            "purpose": "generate",
+            "actor_id": "agent:planner",
+            "run_id": "run_42",
+            "policy_decision_id": "pol_7",
+        }
+    },
+)
+# r.receipt_version is now "1.2"; the SHA-256 commitment over the canonicalized
+# extensions is folded into the signing preimage — tampering any field breaks it.
+```
+
+- **Empty extensions → the receipt stays v1.1, byte-identical.** No impact on
+  existing receipts or verifiers.
+- **Non-empty → v1.2.** Per-extension SHA-256 commitments (RFC 8785 JCS
+  canonicalization) are aggregated and appended to the injective preimage, so a
+  namespace can be disclosed or omitted without breaking the others.
+
+This is the AetherProof side of the [agent-chain context spec](https://github.com/pulkit6732/aetherproof/issues/1).
+Multi-hop pipeline aggregation (signing each hop, identifying a tampered hop) is
+**Signet Layer 3** and builds on this primitive.
 
 ## Architecture (god file)
 
