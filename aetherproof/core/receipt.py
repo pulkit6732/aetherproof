@@ -17,9 +17,13 @@ class Receipt:
     receipt_version: str = "1.1"  # 1.1 = injective length-prefixed preimage
     model_weight_root: str = ""  # SHA-256 Merkle root of model weights
     model_root_type: str = "name_only"  # what model_weight_root actually is:
-    #   "artifact_hash" = SHA-256 of a real weights file/dir (binds to the weights)
-    #   "name_only"     = SHA-256 of a model-name string only (proves the CLAIM of
-    #                     that name at that time; does NOT prove the weights)
+    #   "artifact_hash" = SHA-256 of a real weights file/dir (binds the weights)
+    #   "api_attested"  = SHA-256 over the model id + provider metadata that the
+    #                     CLOUD API RETURNED (gpt-4o-2024-08-06, system_fingerprint).
+    #                     Proves input+output+claimed-model, NOT the weights — only
+    #                     the provider can attest those. Honest cloud tier.
+    #   "name_only"     = SHA-256 of a hand-typed model-name string only (proves the
+    #                     CLAIM of that name; weakest — the user could type anything)
     input_commitment: str = ""  # SHA-256 of input prompt (may be hidden)
     output_hash: str = ""  # SHA-256 of model output
     timestamp_ms: int = 0  # Unix milliseconds
@@ -134,6 +138,56 @@ class Receipt:
             "sig": self.signature,
             "la": self.log_anchor,
         }
+
+    @staticmethod
+    def api_attested_root(model_id: str, provider: str = "", **metadata: Any) -> str:
+        """Build a model root from what a CLOUD API RETURNED — never from a
+        hand-typed name.
+
+        `model_id` is the resolved id the API echoed back (e.g.
+        "gpt-4o-2024-08-06"), `provider` is "openai"/"anthropic"/"xai"/..., and
+        metadata holds provider fields that pin the backend
+        (system_fingerprint, response id, created). The order is fixed and the
+        keys sorted so the same response always yields the same root.
+        """
+        import hashlib
+
+        parts = [f"api:{provider}", f"model:{model_id}"]
+        for k in sorted(metadata):
+            if metadata[k] is not None:
+                parts.append(f"{k}:{metadata[k]}")
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+    @classmethod
+    def for_api_call(
+        cls,
+        *,
+        provider: str,
+        model_id: str,
+        prompt: str,
+        output_text: str,
+        response_metadata: Dict[str, Any] = None,
+        log_sequence: int = 0,
+        log_anchor: str = "",
+    ) -> "Receipt":
+        """Construct an honest cloud-API receipt (model_root_type='api_attested').
+
+        The model identity comes from `model_id` — which the caller reads off the
+        API RESPONSE (resp.model), not from a guess. Binds: input commitment,
+        output hash, and the provider-reported model + metadata. Does NOT prove
+        the weights ran (only the provider can attest that).
+        """
+        from .hash import hash_output
+
+        meta = response_metadata or {}
+        return cls(
+            model_weight_root=cls.api_attested_root(model_id, provider, **meta),
+            model_root_type="api_attested",
+            input_commitment=hash_output(prompt),
+            output_hash=hash_output(output_text),
+            log_sequence=log_sequence,
+            log_anchor=log_anchor,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Receipt":
