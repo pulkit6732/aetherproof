@@ -28,6 +28,12 @@ class Receipt:
     signature: str = ""  # Ed25519 (AetherProof) or Ed25519+ML-DSA-65 (Signet)
     log_anchor: str = ""  # "local://log/<log_sequence>" for open-source version
     receipt_id: str = ""  # Unique identifier (timestamp-based)
+    # Namespaced signed extensions (e.g. agent-chain causal context, issue #1).
+    # Each key is a namespace (e.g. "org.liminal.agent_chain/v0.1") mapping to a
+    # JSON object. When non-empty, a SHA-256 commitment over the canonicalized
+    # extensions is appended to the signing preimage and the receipt is v1.2.
+    # When empty, the receipt is byte-for-byte a v1.1 receipt (backward compatible).
+    signed_extensions: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Set receipt_id if not provided."""
@@ -35,6 +41,10 @@ class Receipt:
             self.receipt_id = f"receipt_{self.timestamp_ms}"
         if not self.timestamp_ms:
             self.timestamp_ms = int(datetime.now().timestamp() * 1000)
+        # v1.2 only when extensions are present; otherwise stay v1.1 so existing
+        # receipts and verifiers are unaffected.
+        if self.signed_extensions and self.receipt_version == "1.1":
+            self.receipt_version = "1.2"
 
     def to_dict(self) -> Dict[str, Any]:
         """Export as dictionary."""
@@ -65,6 +75,11 @@ class Receipt:
             self._canonical_hw_evidence(),
             self.log_anchor,
         ]
+        # v1.2: append the extensions commitment as one more length-prefixed
+        # field. The injective encoding makes this unambiguous; a v1.1 receipt
+        # never has this field, so the two can never collide.
+        if self.signed_extensions:
+            fields.append(self.signed_extensions_hash())
         return "".join(f"{len(f)}:{f}" for f in fields)
 
     def _canonical_hw_evidence(self) -> str:
@@ -72,6 +87,35 @@ class Receipt:
         # order / whitespace) yields one preimage. [] for AetherProof; typed
         # objects for Signet R1+.
         return json.dumps(self.hw_evidence, sort_keys=True, separators=(",", ":"))
+
+    @staticmethod
+    def _canonicalize(obj: Any) -> bytes:
+        # RFC 8785 JCS-equivalent for the string-valued extension objects this
+        # format uses: sorted keys, no insignificant whitespace, UTF-8. (Full
+        # RFC 8785 number formatting is not exercised because every extension
+        # field is a string id / ref / enum, never a float.)
+        return json.dumps(
+            obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+
+    def signed_extensions_hash(self) -> str:
+        """Aggregated commitment over the signed extensions.
+
+        Per-extension commitments (sha256 of each namespace's canonical bytes),
+        sorted, then hashed together. Per-extension (not whole-map) so a holder
+        can disclose or omit one namespace without breaking the others — the same
+        selective-disclosure property the base receipt respects. With a single
+        extension the two collapse to identical bytes, so this is forward-safe.
+        """
+        import hashlib
+
+        per = []
+        for ns in sorted(self.signed_extensions):
+            body = self._canonicalize(self.signed_extensions[ns])
+            leaf = hashlib.sha256(self._canonicalize(ns) + body).hexdigest()
+            per.append(leaf)
+        agg = hashlib.sha256("".join(per).encode("utf-8")).hexdigest()
+        return f"sha256:{agg}"
 
     def signing_bytes(self) -> bytes:
         return self.canonical_message().encode("utf-8")
