@@ -10,6 +10,10 @@ from rich.text import Text
 from typing import Dict, Any
 from datetime import datetime
 
+from aetherproof import __version__
+
+_V = f"v{__version__}"  # single source of truth — never hardcode the version
+
 # force utf-8 so box-drawing / · / ✓ encode under any Windows codepage
 for _stream in (sys.stdout, sys.stderr):
     try:
@@ -36,7 +40,7 @@ _LOGO_MARK = r"""      .+######+.
 
 _LOGO_LINES = [
     ("AETHERPROOF", f"bold {BRAND}"),
-    ("v0.2.0", "dim white"),
+    (_V, "dim white"),
     ("Cryptographic receipt engine", "white"),
     ("Prototype of Signet · R0/L2", "dim"),
     ("", None),
@@ -89,7 +93,7 @@ def run_about() -> None:
         Text(""),
         invariant,
         Text(""),
-        Text("Version:  v0.2.0"),
+        Text(f"Version:  {_V}"),
         Text("GitHub:   github.com/pulkit6732/aetherproof"),
     )
     console.print(Panel(body, title="About AetherProof", border_style="dim"))
@@ -101,7 +105,7 @@ def header() -> None:
     subtitle = Text("the open-source receipt engine", style="dim cyan")
     console.print(f"\n{title_text}")
     console.print(subtitle)
-    console.print("Prototype of Signet • v0.2.0\n", style="dim")
+    console.print(f"Prototype of Signet • {_V}\n", style="dim")
 
 
 def receipt_table(receipt: "Receipt") -> None:
