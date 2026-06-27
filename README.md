@@ -16,7 +16,7 @@ Run `aetherproof` with no arguments for the interactive menu:
 
 ```
       .+######+.        AETHERPROOF
-    ##          ##      v0.2.1
+    ##          ##      v0.2.2
    #      /\      #     Cryptographic receipt engine
   #      /  \      #    Prototype of Signet · R0/L2
   #     / /\ \     #
