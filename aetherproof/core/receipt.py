@@ -41,10 +41,10 @@ class Receipt:
 
     def __post_init__(self):
         """Set receipt_id if not provided."""
-        if not self.receipt_id:
-            self.receipt_id = f"receipt_{self.timestamp_ms}"
-        if not self.timestamp_ms:
-            self.timestamp_ms = int(datetime.now().timestamp() * 1000)
+       if not self.timestamp_ms:
+    self.timestamp_ms = int(datetime.now().timestamp() * 1000)
+if not self.receipt_id:
+    self.receipt_id = f"receipt_{self.timestamp_ms}"
         # v1.2 only when extensions are present; otherwise stay v1.1 so existing
         # receipts and verifiers are unaffected.
         if self.signed_extensions and self.receipt_version == "1.1":
