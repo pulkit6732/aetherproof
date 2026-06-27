@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aetherproof"
-version = "0.2.2"
+version = "0.2.3"
 description = "AetherProof — the open-source receipt engine. Prototype of Signet."
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -21,7 +21,7 @@ keywords = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+   "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
