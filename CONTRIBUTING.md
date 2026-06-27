@@ -62,5 +62,5 @@ on an issue first so the namespace and preimage delta are agreed.
 
 ## License
 
-AetherProof is **AGPL-3.0-or-later**. By contributing you agree your
+AetherProof is **Apache 2.0**. By contributing you agree your
 contributions are licensed under the same terms.
