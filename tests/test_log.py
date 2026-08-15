@@ -9,11 +9,21 @@ from aetherproof.core.log import ReceiptLog
 
 @pytest.fixture
 def temp_log():
-    """Create a temporary log for testing."""
+    """Create a temporary log for testing.
+
+    The log caches one sqlite connection per thread (a 10x throughput win over
+    reopening per call), which keeps a handle on the .db file. On Windows an
+    open handle blocks directory removal, so the log must be closed before the
+    TemporaryDirectory cleans up — the same discipline any long-running caller
+    needs.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         log = ReceiptLog(str(db_path))
-        yield log
+        try:
+            yield log
+        finally:
+            log.close()
 
 
 def test_log_creation(temp_log):

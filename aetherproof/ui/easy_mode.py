@@ -17,8 +17,10 @@ from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Verifier
 from aetherproof.core.verifier import verify_receipt
 from aetherproof.core.hash import hash_output, sha256_file as hash_bytes_file
+from aetherproof.core.keystore import home, issue_receipt
 
-RECEIPTS_DIR = Path.home() / ".aetherproof" / "receipts"
+# Paths resolve through the keystore so AETHERPROOF_HOME is honoured;
+# a module-level Path.home() constant ignored it (same bug as the CLI had).
 MODEL_CHOICES = ["GPT-4o", "Gemini", "Llama 3", "Mistral", "Custom…"]
 
 
@@ -159,36 +161,23 @@ def _sign_and_log(signer, log, model, output_hash):
             _finish(progress, tasks[1])
 
             progress.start_task(tasks[2])
-            seq = log.max_sequence() + 1  # single-writer; drift checked at append
-            receipt = Receipt(
-                receipt_version="1.1",
-                model_weight_root=model_weight_root,
-                model_root_type="name_only",
-                input_commitment="",
-                output_hash=output_hash,
-                timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000),
-                log_sequence=seq,
-                hw_evidence=[],
-                signature="",
-                log_anchor=f"local://log/{seq}",  # set BEFORE signing
-                receipt_id=f"ap_{secrets.token_hex(4)}",
-            )
-            receipt.signature = signer.sign(receipt.signing_bytes())
             _finish(progress, tasks[2])
 
             progress.start_task(tasks[3])
-            RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
-            path = RECEIPTS_DIR / f"{receipt.receipt_id}.json"
-            pub = path.with_suffix(".pub")
-            # files first, append last: append is the commit. if append fails
-            # the files are rolled back, so nothing is left orphaned.
-            _atomic_write(path, receipt.to_json(pretty=True).encode("utf-8"))
-            written.append(path)
-            _atomic_write(pub, signer.get_public_key().export_public_pem())
-            written.append(pub)
-            assigned = log.append(receipt)
-            if assigned != seq:
-                raise RuntimeError(f"log sequence drift ({assigned} != {seq}); concurrent write")
+            # Delegate to the single hardened issuance path rather than
+            # rebuilding a receipt here. This function used to duplicate that
+            # logic and had drifted badly behind it: it hardcoded
+            # receipt_version="1.1" (so wizard receipts never got the signed
+            # receipt_id or signing_key_id), wrote to a RECEIPTS_DIR frozen at
+            # import (ignoring AETHERPROOF_HOME), and had no retry when a
+            # concurrent writer took the sequence. The wizard is the path
+            # non-technical users take — it must not be the least-hardened one.
+            receipt, path = issue_receipt(
+                signer, log,
+                model_weight_root=model_weight_root,
+                model_root_type="name_only",
+                output_hash=output_hash,
+            )
             committed = True
             _finish(progress, tasks[3])
     except KeyboardInterrupt:
@@ -301,7 +290,7 @@ class PathValidator(Validator):
 
 
 def _config_file() -> Path:
-    return Path.home() / ".aetherproof" / "config.json"
+    return home() / "config.json"
 
 
 def _last_pubkey() -> str:

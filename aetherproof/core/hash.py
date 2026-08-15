@@ -39,38 +39,69 @@ def sha256_file(file_path: Union[str, Path]) -> str:
     return hasher.hexdigest()
 
 
+# RFC 6962 §2.1 domain-separation tags. Leaves and internal nodes MUST hash
+# under different prefixes: without them every node is a bare 64-hex string, so
+# an internal node can be replayed as a leaf and the root no longer identifies
+# one unique tree (second-preimage).
+LEAF_PREFIX = b"\x00"
+NODE_PREFIX = b"\x01"
+
+
+def merkle_leaf(leaf_hash: str) -> str:
+    """Hash a leaf under the leaf domain tag (RFC 6962 MTH of a 1-element list)."""
+    return hashlib.sha256(LEAF_PREFIX + leaf_hash.encode("utf-8")).hexdigest()
+
+
+def merkle_node(left: str, right: str) -> str:
+    """Hash an internal node under the node domain tag."""
+    return hashlib.sha256(NODE_PREFIX + (left + right).encode("utf-8")).hexdigest()
+
+
 def merkle_hash(left: str, right: str) -> str:
-    """Compute Merkle parent hash from two children."""
-    combined = (left + right).encode("utf-8")
-    return hashlib.sha256(combined).hexdigest()
+    """Compute Merkle parent hash from two children.
+
+    Deprecated alias for merkle_node, kept so external callers of the v0.2.x
+    helper keep working. New code should use merkle_node/merkle_leaf.
+    """
+    return merkle_node(left, right)
 
 
 def compute_merkle_root(hashes: List[str]) -> str:
-    """Compute Merkle root from a list of leaf hashes.
+    """Compute a Merkle root over leaf hashes, RFC 6962 style.
+
+    Two properties the v0.2.x construction did not have:
+
+    1. **No odd-leaf duplication.** The old code padded an odd level by hashing
+       the last node against itself, which is the Bitcoin CVE-2012-2459 pattern:
+       [A,B,C] and [A,B,C,C] produced an identical root, so a model directory's
+       root did not identify a unique file set. An unpaired node is now promoted
+       to the next level unchanged.
+    2. **Leaf/internal domain separation.** Leaves hash under LEAF_PREFIX and
+       internal nodes under NODE_PREFIX, so an internal node cannot be presented
+       as a leaf.
+
+    Empty list returns "". A single leaf returns its *tagged* hash, not the raw
+    input — returning the leaf unchanged would break property 2 for 1-file trees.
 
     Args:
-        hashes: list of hex-encoded hashes
+        hashes: list of hex-encoded leaf hashes
 
     Returns:
         Hex-encoded Merkle root
-
-    If list is empty, return empty string. If list has one item, return it.
     """
     if not hashes:
         return ""
-    if len(hashes) == 1:
-        return hashes[0]
 
-    # Build tree bottom-up, padding with last hash if odd count
-    current_level = hashes.copy()
+    current_level = [merkle_leaf(h) for h in hashes]
 
     while len(current_level) > 1:
         next_level = []
         for i in range(0, len(current_level), 2):
-            left = current_level[i]
-            right = current_level[i + 1] if i + 1 < len(current_level) else current_level[i]
-            parent = merkle_hash(left, right)
-            next_level.append(parent)
+            if i + 1 < len(current_level):
+                next_level.append(merkle_node(current_level[i], current_level[i + 1]))
+            else:
+                # odd node out: promote unchanged, never duplicate
+                next_level.append(current_level[i])
         current_level = next_level
 
     return current_level[0]
@@ -79,8 +110,14 @@ def compute_merkle_root(hashes: List[str]) -> str:
 def compute_model_weight_root(model_path: Union[str, Path], chunk_size: int = 4096) -> str:
     """Compute SHA-256 Merkle root over model weights.
 
-    For a single file, this is just the file's SHA-256.
-    For a directory, hash each file and compute Merkle root of hashes.
+    For a single file, this is the file's SHA-256 (unchanged contract).
+
+    For a directory, each leaf commits to the file's **path as well as its
+    bytes** — `sha256("<relative/path>\\x00<digest>")`. v0.2.x hashed contents
+    only, so two directories holding the same bytes under different filenames
+    produced an identical root; renaming `weights.bin` to `config.json` was
+    invisible to the model-identity check. Paths are POSIX-normalised so a root
+    computed on Windows matches one computed on Linux.
 
     Args:
         model_path: path to model file or directory
@@ -96,16 +133,20 @@ def compute_model_weight_root(model_path: Union[str, Path], chunk_size: int = 40
         return sha256_file(model_path)
 
     elif model_path.is_dir():
-        # Directory: hash each file, compute Merkle root
-        file_hashes = []
-        for file_path in sorted(model_path.rglob("*")):
+        # Directory: commit to (relative path, content digest) per file, in a
+        # deterministic path order, then Merkle over those leaves.
+        entries = []
+        for file_path in model_path.rglob("*"):
             if file_path.is_file():
-                file_hashes.append(sha256_file(file_path))
+                rel = file_path.relative_to(model_path).as_posix()
+                entries.append((rel, sha256_file(file_path)))
 
-        if not file_hashes:
+        if not entries:
             return ""
 
-        return compute_merkle_root(file_hashes)
+        entries.sort(key=lambda e: e[0])
+        leaves = [sha256(f"{rel}\x00{digest}") for rel, digest in entries]
+        return compute_merkle_root(leaves)
 
     else:
         raise FileNotFoundError(f"Model path not found: {model_path}")

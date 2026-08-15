@@ -25,9 +25,16 @@ def test_receipt_auto_timestamp():
 
 
 def test_receipt_auto_receipt_id():
-    """Test that Receipt auto-generates receipt_id."""
-    receipt = Receipt(timestamp_ms=1700000000000)
-    assert receipt.receipt_id.startswith("receipt_")
+    """Auto-generated receipt_id is unique, not derived from the timestamp.
+
+    It used to be f"receipt_{timestamp_ms}", which collided as "receipt_0" for
+    every receipt built without an explicit timestamp and also collided for any
+    two receipts issued in the same millisecond. It is now random.
+    """
+    a = Receipt(timestamp_ms=1700000000000)
+    b = Receipt(timestamp_ms=1700000000000)
+    assert a.receipt_id.startswith("ap_")
+    assert a.receipt_id != b.receipt_id
 
 
 def test_receipt_to_json():
