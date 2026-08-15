@@ -2,8 +2,16 @@
 
 from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Any
+import hashlib
 import json
+import secrets
 from datetime import datetime
+
+# Receipt versions whose signing preimage predates the v1.3 hardening pass.
+# Their builders are kept verbatim so receipts already issued to third parties
+# keep verifying; only newly-minted receipts use v1.3.
+LEGACY_VERSIONS = ("1.0", "1.1", "1.2")
+CURRENT_VERSION = "1.3"
 
 
 @dataclass
@@ -14,7 +22,10 @@ class Receipt:
     Verify(receipt, public_key, log) = TRUE with only those three inputs, forever.
     """
 
-    receipt_version: str = "1.1"  # 1.1 = injective length-prefixed preimage
+    receipt_version: str = CURRENT_VERSION
+    #   1.1 = injective length-prefixed preimage
+    #   1.2 = 1.1 + signed_extensions commitment
+    #   1.3 = 1.2 + receipt_id bound into the preimage (see canonical_message)
     model_weight_root: str = ""  # SHA-256 Merkle root of model weights
     model_root_type: str = "name_only"  # what model_weight_root actually is:
     #   "artifact_hash" = SHA-256 of a real weights file/dir (binds the weights)
@@ -31,7 +42,11 @@ class Receipt:
     hw_evidence: List[Dict[str, Any]] = field(default_factory=list)  # [] in AetherProof; R1+ in Signet
     signature: str = ""  # Ed25519 (AetherProof) or Ed25519+ML-DSA-65 (Signet)
     log_anchor: str = ""  # "local://log/<log_sequence>" for open-source version
-    receipt_id: str = ""  # Unique identifier (timestamp-based)
+    receipt_id: str = ""  # Unique identifier ("ap_<random hex>")
+    # SHA-256 of the signing public key, truncated — "which key signed this".
+    # Absent in <=v1.2, so identifying the signer among M keys meant O(M) trial
+    # verifications (measured: 38 attempts across 50 signers). Signed in v1.3.
+    signing_key_id: str = ""
     # Namespaced signed extensions (e.g. agent-chain causal context, issue #1).
     # Each key is a namespace (e.g. "org.liminal.agent_chain/v0.1") mapping to a
     # JSON object. When non-empty, a SHA-256 commitment over the canonicalized
@@ -40,11 +55,20 @@ class Receipt:
     signed_extensions: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        """Set receipt_id if not provided."""
+        """Default the timestamp, then derive receipt_id from it.
+
+        Order matters: receipt_id is derived from timestamp_ms, so the timestamp
+        must be defaulted FIRST. The reverse order (v0.2.2) produced
+        "receipt_0" for every receipt built without an explicit timestamp —
+        including every Receipt.for_api_call() — which then collided against the
+        log's UNIQUE receipt_id constraint on the second append.
+        """
         if not self.timestamp_ms:
             self.timestamp_ms = int(datetime.now().timestamp() * 1000)
         if not self.receipt_id:
-            self.receipt_id = f"receipt_{self.timestamp_ms}"
+            # timestamp alone is not unique at millisecond resolution, so mix in
+            # entropy — two receipts issued in the same millisecond must differ.
+            self.receipt_id = f"ap_{secrets.token_hex(4)}"
         # v1.2 only when extensions are present; otherwise stay v1.1 so existing
         # receipts and verifiers are unaffected.
         if self.signed_extensions and self.receipt_version == "1.1":
@@ -60,14 +84,22 @@ class Receipt:
         return json.dumps(self.to_dict(), indent=indent)
 
     def canonical_message(self) -> str:
-        # signing preimage — single source of truth; sign and verify must
-        # both use this. byte-identical output is the only contract.
-        #
-        # INJECTIVE encoding: each field is length-prefixed as "<len>:<field>".
-        # A plain "|".join was non-injective — a "|" inside any field shifted the
-        # boundaries so two different receipts could share one preimage (and thus
-        # one signature). Length-prefixing makes the field boundaries unambiguous,
-        # so distinct field-tuples always produce distinct preimages.
+        """Build the signing preimage for this receipt's version.
+
+        Single source of truth — sign and verify must both call this, and
+        byte-identical output is the only contract.
+
+        INJECTIVE encoding: each field is length-prefixed as "<len>:<field>".
+        A plain "|".join was non-injective — a "|" inside any field shifted the
+        boundaries so two different receipts could share one preimage (and thus
+        one signature). Length-prefixing makes the field boundaries unambiguous,
+        so distinct field-tuples always produce distinct preimages.
+
+        VERSION DISPATCH: v1.3 binds receipt_id and signing_key_id, which
+        <=v1.2 left unsigned. The legacy builder is kept byte-exact so receipts
+        already issued to third parties keep verifying — a fix that invalidated
+        outstanding receipts would be worse than the defect.
+        """
         fields = [
             self.receipt_version,
             self.model_weight_root,
@@ -79,6 +111,12 @@ class Receipt:
             self._canonical_hw_evidence(),
             self.log_anchor,
         ]
+        if self.receipt_version not in LEGACY_VERSIONS:
+            # v1.3+: receipt_id was rewritable on a standalone receipt file
+            # without breaking the signature; signing_key_id makes signer
+            # attribution O(1) instead of a brute-force search.
+            fields.append(self.receipt_id)
+            fields.append(self.signing_key_id)
         # v1.2: append the extensions commitment as one more length-prefixed
         # field. The injective encoding makes this unambiguous; a v1.1 receipt
         # never has this field, so the two can never collide.
@@ -105,19 +143,38 @@ class Receipt:
     def signed_extensions_hash(self) -> str:
         """Aggregated commitment over the signed extensions.
 
-        Per-extension commitments (sha256 of each namespace's canonical bytes),
-        sorted, then hashed together. Per-extension (not whole-map) so a holder
-        can disclose or omit one namespace without breaking the others — the same
-        selective-disclosure property the base receipt respects. With a single
-        extension the two collapse to identical bytes, so this is forward-safe.
-        """
-        import hashlib
+        NORMATIVE RULE: each extension yields a commitment
+        `sha256(canon(namespace) || canon(body))`; those **commitments** are
+        sorted lexicographically, concatenated, and hashed.
 
-        per = []
-        for ns in sorted(self.signed_extensions):
-            body = self._canonicalize(self.signed_extensions[ns])
-            leaf = hashlib.sha256(self._canonicalize(ns) + body).hexdigest()
-            per.append(leaf)
+        The sort is over the resulting hashes, NOT over the namespace keys.
+        Those two orders are not the same, and the previous implementation
+        sorted namespaces while the documentation said commitments — so two
+        implementations, each correctly following one reading, produced
+        different signatures for the same receipt. Reported by Aleksey Safonov
+        (safal207) in issue #1, 2026-06-24, and reproduced:
+
+            namespaces 'ns.a3/v1' < 'ns.b3/v1'
+            commitments d54ac416… > 99776f84…   (reversed)
+            -> sorted-by-namespace  c55734d7…
+               sorted-by-commitment cc60ffcc…
+
+        A single extension is unaffected — one leaf sorts to itself — so
+        receipts issued before this fix keep verifying unless they carried two
+        or more extensions whose orders diverged.
+
+        Scope note (also from issue #1): this aggregate provides multi-extension
+        INTEGRITY, not standalone selective disclosure. Verifying one disclosed
+        namespace requires either every other commitment or a Merkle inclusion
+        proof. Disclosure is all-or-nothing at v1.2 by design; a
+        domain-separated Merkle profile is deferred.
+        """
+        per = sorted(
+            hashlib.sha256(
+                self._canonicalize(ns) + self._canonicalize(body)
+            ).hexdigest()
+            for ns, body in self.signed_extensions.items()
+        )
         agg = hashlib.sha256("".join(per).encode("utf-8")).hexdigest()
         return f"sha256:{agg}"
 
@@ -150,13 +207,28 @@ class Receipt:
         (system_fingerprint, response id, created). The order is fixed and the
         keys sorted so the same response always yields the same root.
         """
-        import hashlib
-
+        # Length-prefixed, NOT "|".join. The join was non-injective in exactly
+        # the way canonical_message() had already been fixed for: a caller could
+        # smuggle "|system_fingerprint:fp_2" inside model_id and produce the same
+        # root as an honest call that really carried that fingerprint, forging
+        # the provider-metadata binding. Verified collision before the fix:
+        #   root("m", sf="fp_2") == root("m|system_fingerprint:fp_2")
         parts = [f"api:{provider}", f"model:{model_id}"]
         for k in sorted(metadata):
             if metadata[k] is not None:
                 parts.append(f"{k}:{metadata[k]}")
-        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+        preimage = "".join(f"{len(p)}:{p}" for p in parts)
+        return hashlib.sha256(preimage.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def key_id(public_key) -> str:
+        """Stable short identifier for a signing key: sha256 of its PEM, 16 hex.
+
+        Lets a verifier pick the right public key in one lookup instead of
+        trying every key it holds.
+        """
+        pem = public_key.export_public_pem()
+        return hashlib.sha256(pem).hexdigest()[:16]
 
     @classmethod
     def for_api_call(

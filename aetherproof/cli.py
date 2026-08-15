@@ -17,16 +17,20 @@ from .ui.easy_mode import (
 )
 from .ui.expert_mode import run_expert_mode
 from .core.log import ReceiptLog
-from .core.keystore import KEY_DIR, load_or_create_signer
+from .core.keystore import home, default_log, load_or_create_signer
 
 
 def _app_state():
-    # persistent app signing key + transparency log (shared keystore)
-    signer = load_or_create_signer(KEY_DIR)
-    pub = KEY_DIR / "signing_key.pub"
+    # persistent app signing key + transparency log (shared keystore).
+    # home() and default_log() resolve AETHERPROOF_HOME at call time and anchor
+    # the log to an ABSOLUTE path — the old CWD-relative default gave you a
+    # different log per directory you happened to run from.
+    key_dir = home()
+    signer = load_or_create_signer(key_dir)
+    pub = key_dir / "signing_key.pub"
     if pub.exists():
         _save_last_pubkey(pub)  # verify wizard defaults to the app key
-    return signer, ReceiptLog()
+    return signer, default_log()
 
 
 def _ask_path(message):
@@ -83,12 +87,12 @@ def _help_table():
     table.add_column("Command")
     table.add_column("Description")
     table.add_row("aetherproof", "Launch the interactive menu")
-    table.add_row("sign <model> <output> [--quiet]", "Sign a model output → receipt")
+    table.add_row("sign <model> <output> [--input F]", "Sign a model output → receipt")
     table.add_row("verify <receipt> [--pubkey K] [--output F] [--quiet]", "Verify a receipt (+ output file) offline")
     table.add_row("inspect <receipt>", "Show all receipt fields decoded")
     table.add_row("log <list|verify|count>", "Inspect the transparency log")
     table.add_row("keygen [--output NAME]", "Generate an Ed25519 keypair")
-    table.add_row("export <receipt> --format <json|hex|cbor>", "Export a receipt")
+    table.add_row("export <receipt> --format <json|hex>", "Export a receipt")
     table.add_row("tamper <receipt>", "Test tamper detection")
     table.add_row("--debug", "Show full tracebacks on error")
     console.print(table)

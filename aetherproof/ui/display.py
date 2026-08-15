@@ -24,6 +24,12 @@ for _stream in (sys.stdout, sys.stderr):
 
 console = Console()
 
+# Informational chrome (the banner) goes to STDERR so STDOUT carries only data.
+# The banner used to print to stdout, which corrupted every machine-readable
+# command: `aetherproof export r.json --format hex | ...` piped the banner text
+# into the consumer along with the hex, and the result did not decode.
+err_console = Console(stderr=True)
+
 BRAND = "#7fffd4"
 LINK = "#1a3aff"
 
@@ -100,12 +106,12 @@ def run_about() -> None:
 
 
 def header() -> None:
-    """Print branded header."""
+    """Print the branded header — to stderr, so stdout stays pipeable."""
     title_text = Text("AETHERPROOF", style="cyan bold")
     subtitle = Text("the open-source receipt engine", style="dim cyan")
-    console.print(f"\n{title_text}")
-    console.print(subtitle)
-    console.print(f"Prototype of Signet • {_V}\n", style="dim")
+    err_console.print(f"\n{title_text}")
+    err_console.print(subtitle)
+    err_console.print(f"Prototype of Signet • {_V}\n", style="dim")
 
 
 def receipt_table(receipt: "Receipt") -> None:
@@ -136,7 +142,9 @@ def success_box(title: str, message: str) -> None:
         title: box title
         message: box message
     """
-    panel = Panel(message, title=title, style="bold green", border_style="green")
+    # Text(): render the caller's message literally. Panel(str) would parse
+    # it as markup, so a message containing "[red]" lost that text silently.
+    panel = Panel(Text(message), title=title, style="bold green", border_style="green")
     console.print(panel)
 
 
@@ -147,7 +155,9 @@ def error_box(title: str, message: str) -> None:
         title: box title
         message: box message
     """
-    panel = Panel(message, title=title, style="bold red", border_style="red")
+    # Text(): render the caller's message literally. Panel(str) would parse
+    # it as markup, so a message containing "[red]" lost that text silently.
+    panel = Panel(Text(message), title=title, style="bold red", border_style="red")
     console.print(panel)
 
 
@@ -158,7 +168,9 @@ def warning_box(title: str, message: str) -> None:
         title: box title
         message: box message
     """
-    panel = Panel(message, title=title, style="bold yellow", border_style="yellow")
+    # Text(): render the caller's message literally. Panel(str) would parse
+    # it as markup, so a message containing "[red]" lost that text silently.
+    panel = Panel(Text(message), title=title, style="bold yellow", border_style="yellow")
     console.print(panel)
 
 
@@ -169,7 +181,9 @@ def info_box(title: str, message: str) -> None:
         title: box title
         message: box message
     """
-    panel = Panel(message, title=title, style="bold cyan", border_style="cyan")
+    # Text(): render the caller's message literally. Panel(str) would parse
+    # it as markup, so a message containing "[red]" lost that text silently.
+    panel = Panel(Text(message), title=title, style="bold cyan", border_style="cyan")
     console.print(panel)
 
 

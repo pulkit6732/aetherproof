@@ -42,7 +42,8 @@ def test_string_vs_int_timestamp_yield_same_receipt():
     """After coercion, a receipt loaded with a string timestamp must be identical
     to one built with an int — no preimage divergence."""
     as_int = Receipt(model_weight_root="a", output_hash="o",
-                     timestamp_ms=1, log_sequence=1)
+                     timestamp_ms=1, log_sequence=1, receipt_id="ap_fixed01")
     as_str = Receipt.from_dict({"model_weight_root": "a", "output_hash": "o",
-                                "timestamp_ms": "1", "log_sequence": "1"})
+                                "timestamp_ms": "1", "log_sequence": "1",
+                                "receipt_id": "ap_fixed01"})
     assert as_int.canonical_message() == as_str.canonical_message()

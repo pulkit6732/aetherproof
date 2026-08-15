@@ -8,11 +8,12 @@ from typing import List
 from rich.panel import Panel
 from rich.table import Table
 
-from .display import console, header
+from .display import console, err_console, header
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer, Verifier
 from aetherproof.core.log import ReceiptLog
-from aetherproof.core.keystore import load_or_create_signer, issue_receipt
+from aetherproof.core.keystore import (load_or_create_signer, issue_receipt,
+                                       default_log)
 from aetherproof.core.verifier import (
     verify_receipt,
     verify_receipt_file,
@@ -27,7 +28,9 @@ def _ok(msg: str) -> None:
 
 
 def _err(msg: str) -> None:
-    console.print(f"[red]Error:[/red] {msg}")
+    # Errors go to STDERR. stdout is the data channel — `--quiet` JSON results
+    # and `export` payloads must be pipeable without error text mixed in.
+    err_console.print(f"[red]Error:[/red] {msg}")
 
 
 def _emit_err(msg: str, quiet: bool) -> None:
@@ -91,13 +94,13 @@ def run_expert_mode(args: List[str]) -> bool:
         elif command == "verify":
             return cmd_verify(rest)
         elif command == "inspect":
-            cmd_inspect(rest)
+            return cmd_inspect(rest)
         elif command == "log":
             return cmd_log(rest)
         elif command == "keygen":
-            cmd_keygen(rest)
+            return cmd_keygen(rest)
         elif command == "export":
-            cmd_export(rest)
+            return cmd_export(rest)
         elif command == "tamper":
             return cmd_tamper(rest)
         else:
@@ -115,9 +118,15 @@ def show_help() -> None:
         """
 [cyan bold]EXPERT MODE COMMANDS[/cyan bold]
 
-[yellow]sign[/yellow] <model_path> <output_file> [--quiet]
-  Generate a signed receipt for a model and output
-  Example: aetherproof sign model.onnx output.txt
+[yellow]sign[/yellow] [<model_path>] <output_file> [--input FILE] [--quiet]
+  Generate a signed receipt for an AI output.
+  The model file is OPTIONAL — cloud AI users (ChatGPT, Claude, Gemini)
+  cannot download weights, so it is left out and the receipt is tiered
+  honestly as name_only instead of pretending the weights were checked.
+  --input binds the prompt too, so the receipt proves what was ASKED as
+  well as what was answered. Without it input_commitment stays empty.
+  Example: aetherproof sign answer.txt --input prompt.txt
+           aetherproof sign model.onnx answer.txt --input prompt.txt
 
 [yellow]verify[/yellow] <receipt_file> [--pubkey PATH] [--output FILE] [--quiet]
   Verify a receipt's signature; with --output, also check the output file
@@ -139,8 +148,9 @@ def show_help() -> None:
   Example: aetherproof keygen --output mykey
 
 [yellow]export[/yellow] <receipt_file> <--format FORMAT>
-  Export receipt in different formats
-  Formats: json, hex, cbor
+  Export a receipt. Formats: json, hex
+  hex is the receipt JSON as hex — for embedding where only an ASCII
+  scalar fits (a DB column, a QR code, an HTTP header).
   Example: aetherproof export receipt.json --format hex
 
 [yellow]tamper[/yellow] <receipt_file>
@@ -152,32 +162,68 @@ def show_help() -> None:
 
 def cmd_sign(args: List[str]) -> None:
     args, quiet = _pop_quiet(args)
-    if len(args) < 2:
-        _emit_err("usage: sign <model_path> <output_file> [--quiet]", quiet)
+    # --input binds the PROMPT as well as the answer. Without it the receipt
+    # proves "this output was not altered" but says nothing about what was
+    # asked, which is the half an auditor usually cares about.
+    args, input_file = _extract_opt(args, "--input")
+    args, model_opt = _extract_opt(args, "--model")
+
+    # The model file is OPTIONAL. Anyone using a cloud AI (ChatGPT, Claude,
+    # Gemini) cannot download the weights, so demanding a model path made the
+    # tool unusable for the majority of its actual users. One positional arg =
+    # just the output; two = model then output.
+    if len(args) >= 2:
+        model_arg, output_arg = args[0], args[1]
+    elif len(args) == 1:
+        model_arg, output_arg = model_opt, args[0]
+    else:
+        _emit_err("usage: sign [<model_path>] <output_file> [--input FILE] [--quiet]",
+                  quiet)
         return False
 
-    model_path = Path(args[0])
-    output_file = Path(args[1])
-    if not model_path.exists():
-        _emit_err(f"Model not found: {model_path}", quiet)
-        return False
+    output_file = Path(output_arg)
     if not output_file.exists():
         _emit_err(f"Output file not found: {output_file}", quiet)
         return False
 
-    model_weight_root = compute_model_weight_root(model_path)
+    model_path = Path(model_arg) if model_arg else None
+    if model_path is not None and not model_path.exists():
+        _emit_err(f"Model not found: {model_path}", quiet)
+        return False
+
+    input_commitment = ""
+    if input_file:
+        ip = Path(input_file)
+        if not ip.exists():
+            _emit_err(f"Input file not found: {ip}", quiet)
+            return False
+        input_commitment = sha256_file(ip)
+
+    # Tier honestly: hashing real weights is artifact_hash, the strongest claim.
+    # With no model file there is nothing to hash, so the root commits only to
+    # the fact that no model was identified — and says so as name_only rather
+    # than implying the weights were checked.
+    if model_path is not None:
+        model_weight_root = compute_model_weight_root(model_path)
+        model_root_type = "artifact_hash"
+    else:
+        model_weight_root = hash_output("unspecified")
+        model_root_type = "name_only"
+
     # raw-byte hash (streamed) — exact for any size / encoding / binary, and
     # symmetric with `verify --output`, which recomputes the same way.
     output_hash = sha256_file(output_file)
 
     # persistent app key + transparency log, same as the interactive wizard
     signer = load_or_create_signer()
-    log = ReceiptLog()
+    log = default_log()
     try:
         receipt, path = issue_receipt(
             signer, log,
             model_weight_root=model_weight_root,
+            model_root_type=model_root_type,
             output_hash=output_hash,
+            input_commitment=input_commitment,
         )
     except Exception as e:
         _emit_err(f"Signing failed: {e}", quiet)
@@ -259,20 +305,26 @@ def cmd_verify(args: List[str]) -> bool:
     return overall
 
 
-def cmd_inspect(args: List[str]) -> None:
+def cmd_inspect(args: List[str]) -> bool:
+    """Show a receipt's fields.
+
+    Returns False on failure so the exit code is non-zero — this returned None
+    unconditionally, so `aetherproof inspect missing.json && deploy` deployed.
+    """
     if not args:
         _err("usage: inspect <receipt_file>")
-        return
+        return False
     receipt_path = Path(args[0])
     if not receipt_path.exists():
         _err(f"Receipt not found: {receipt_path}")
-        return
+        return False
     try:
         receipt = Receipt.from_json(receipt_path.read_text(encoding="utf-8"))
     except Exception as e:
         _err(f"Could not parse receipt: {e}")
-        return
+        return False
     _receipt_panel(receipt, title=f"Inspect {receipt.receipt_id}")
+    return True
 
 
 def cmd_log(args: List[str]) -> bool:
@@ -280,7 +332,7 @@ def cmd_log(args: List[str]) -> bool:
         _err("usage: log <list|verify|count>")
         return False
 
-    log = ReceiptLog()
+    log = default_log()
     sub = args[0]
 
     if sub == "list":
@@ -305,7 +357,7 @@ def cmd_log(args: List[str]) -> bool:
         return False
 
 
-def cmd_keygen(args: List[str]) -> None:
+def cmd_keygen(args: List[str]) -> bool:
     output_prefix = "aetherproof_key"
     if len(args) > 1 and args[0] == "--output":
         output_prefix = args[1]
@@ -313,38 +365,58 @@ def cmd_keygen(args: List[str]) -> None:
     signer = Signer.generate()
     priv_path = Path(f"{output_prefix}.pem")
     pub_path = Path(f"{output_prefix}.pub")
-    signer.export_private_file(str(priv_path))
-    signer.export_public_file(str(pub_path))
+    try:
+        signer.export_private_file(str(priv_path))
+        signer.export_public_file(str(pub_path))
+    except OSError as e:
+        _err(f"Could not write keypair: {e}")
+        return False
 
     _ok(f"Keypair generated → {priv_path}, {pub_path}")
     console.print("[red]Keep the private key secret.[/red]")
+    return True
 
 
-def cmd_export(args: List[str]) -> None:
+EXPORT_FORMATS = ("json", "hex")
+
+
+def cmd_export(args: List[str]) -> bool:
+    """Export a receipt.
+
+    Returns False on any failure so the process exits non-zero — these used to
+    return None unconditionally, so `aetherproof export missing.json && deploy`
+    happily ran the deploy.
+
+    `hex` is the canonical receipt JSON encoded as hex, which is what you want
+    when embedding a receipt somewhere that only accepts an ASCII scalar (a
+    database column, a QR code, an HTTP header). `cbor` was previously
+    advertised in the help but printed "not yet implemented" and exited 0 — it
+    is no longer offered rather than pretending.
+    """
     if len(args) < 2 or args[1] != "--format":
-        _err("usage: export <receipt_file> --format <json|hex|cbor>")
-        return
+        _err(f"usage: export <receipt_file> --format <{'|'.join(EXPORT_FORMATS)}>")
+        return False
 
     receipt_path = Path(args[0])
     fmt = args[2] if len(args) > 2 else "json"
     if not receipt_path.exists():
         _err(f"Receipt not found: {receipt_path}")
-        return
+        return False
 
     try:
         receipt = Receipt.from_json(receipt_path.read_text(encoding="utf-8"))
     except Exception as e:
         _err(f"Could not parse receipt: {e}")
-        return
+        return False
 
     if fmt == "json":
         print(receipt.to_json(pretty=True))
     elif fmt == "hex":
-        console.print("[dim](hex format not yet implemented)[/dim]")
-    elif fmt == "cbor":
-        console.print("[dim](cbor format not yet implemented)[/dim]")
+        print(receipt.to_json().encode("utf-8").hex())
     else:
-        _err(f"Unknown format: {fmt}")
+        _err(f"Unknown format: {fmt}. Supported: {', '.join(EXPORT_FORMATS)}")
+        return False
+    return True
 
 
 def cmd_tamper(args: List[str]) -> bool:

@@ -67,9 +67,11 @@ def test_hw_evidence_key_order_is_canonical():
     """Bug C: semantically-equal evidence with different key order must share one
     preimage (so a re-serialization can't invalidate a valid receipt)."""
     r1 = Receipt(model_weight_root="a", output_hash="o", timestamp_ms=1,
-                 log_sequence=1, hw_evidence=[{"t": "x", "v": 1, "kid": "k"}])
+                 log_sequence=1, receipt_id="ap_fixed01",
+                 hw_evidence=[{"t": "x", "v": 1, "kid": "k"}])
     r2 = Receipt(model_weight_root="a", output_hash="o", timestamp_ms=1,
-                 log_sequence=1, hw_evidence=[{"kid": "k", "v": 1, "t": "x"}])
+                 log_sequence=1, receipt_id="ap_fixed01",
+                 hw_evidence=[{"kid": "k", "v": 1, "t": "x"}])
     assert r1.canonical_message() == r2.canonical_message()
 
 

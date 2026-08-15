@@ -8,6 +8,9 @@
 
 Generate cryptographic receipts that prove an AI output is real and unmodified — no servers, no dependencies, verifiable forever offline.
 
+> **Not a developer?** Start with the [plain-language guide](docs/GETTING-STARTED.md)
+> — first receipt in three steps, no code.
+
 ```
 pip install aetherproof
 ```
@@ -16,7 +19,7 @@ Run `aetherproof` with no arguments for the interactive menu:
 
 ```
       .+######+.        AETHERPROOF
-    ##          ##      v0.2.2
+    ##          ##      v0.4.0
    #      /\      #     Cryptographic receipt engine
   #      /  \      #    Prototype of Signet · R0/L2
   #     / /\ \     #
@@ -251,6 +254,25 @@ fields = [
     json.dumps(r["hw_evidence"], sort_keys=True, separators=(",", ":")),
     r["log_anchor"],
 ]
+
+# v1.3 also binds the receipt id and the signing key id. Older receipts
+# (<=1.2) do not carry them, so their preimage ends above — which is why
+# receipts issued before the upgrade still verify unchanged.
+if r["receipt_version"] not in ("1.0", "1.1", "1.2"):
+    fields += [r["receipt_id"], r["signing_key_id"]]
+
+# v1.2+ appends a commitment over any signed extensions
+if r.get("signed_extensions"):
+    def canon(o):
+        return json.dumps(o, sort_keys=True, separators=(",", ":"),
+                          ensure_ascii=False).encode("utf-8")
+    leaves = sorted(
+        hashlib.sha256(canon(ns) + canon(body)).hexdigest()
+        for ns, body in r["signed_extensions"].items()
+    )
+    agg = hashlib.sha256("".join(leaves).encode("utf-8")).hexdigest()
+    fields.append(f"sha256:{agg}")
+
 preimage = "".join(f"{len(f)}:{f}" for f in fields).encode("utf-8")
 
 pub.verify(bytes.fromhex(r["signature"]), preimage)  # raises if invalid
@@ -306,8 +328,12 @@ AetherProof is **Layer 2** of the **Signet** stack. Signet adds hardware roots, 
 
 ## License
 
-Apache 2.0. Use it, deploy it, fork it, embed it in commercial products — 
-no restrictions. See LICENSE for full terms.
+Apache-2.0. Use it, deploy it, fork it, embed it in a commercial product — no
+copyleft obligation. The receipt format and the offline verifier are meant to be
+copied freely; a proof layer nobody can adopt is not a proof layer.
+
+*Note: versions up to 0.2.2 were released under AGPL-3.0-or-later. From 0.3.0
+onward the project is Apache-2.0.*
 
 ---
 

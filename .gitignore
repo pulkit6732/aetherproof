@@ -24,3 +24,8 @@ receipts/
 *.pub
 demo_receipt.json
 demo_log.db
+
+# Test/coverage artefacts
+.coverage
+htmlcov/
+*.db
