@@ -4,7 +4,7 @@ version     = "0.5.0"
 edition     = "2021"
 authors     = ["Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>"]
 description = "Python bindings for the AetherProof Rust core"
-license     = "MIT OR Apache-2.0"
+license     = "Apache-2.0"
 
 [lib]
 name       = "_native"

@@ -1,4 +1,4 @@
-"""The README's "verify without AetherProof" snippet must actually work.
+"""The documented "verify without AetherProof" snippet must actually work.
 
 That snippet is the project's central claim made concrete: a receipt can be
 checked with a standard crypto library and no AetherProof code, so the format
@@ -9,8 +9,11 @@ It HAD drifted: v1.3 added receipt_id and signing_key_id to the preimage while
 the README still listed the nine v1.1 fields, so the snippet failed against
 every receipt the current version produces.
 
-These tests extract the code from README.md and run it, so the documentation
-cannot silently rot again.
+These tests extract the code from docs/VERIFICATION.md and run it, so the
+documentation cannot silently rot again. The authoritative snippet lives there
+rather than in the README because a partial verifier in the README would be worse
+than none — a reader who copies an incomplete one concludes the signatures are
+broken.
 """
 
 import hashlib
@@ -24,7 +27,11 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer
 
-README = Path(__file__).resolve().parents[1] / "README.md"
+REPO = Path(__file__).resolve().parents[1]
+README = REPO / "README.md"
+# The full, authoritative verifier snippet. The README carries a shortened form
+# and links here; this file is what an outside party actually follows.
+VERIFY_DOC = REPO / "docs" / "VERIFICATION.md"
 
 
 def readme_preimage(r: dict) -> bytes:
@@ -143,24 +150,24 @@ def test_a_rewritten_receipt_id_is_caught(signer):
 # ══ the README text itself stays in sync ════════════════════════════════════
 
 def test_readme_snippet_mentions_the_v13_fields():
-    text = README.read_text(encoding="utf-8")
+    text = VERIFY_DOC.read_text(encoding="utf-8")
     block = text.split("rebuild the injective preimage")[1][:1200]
     assert 'r["receipt_id"]' in block
     assert 'r["signing_key_id"]' in block
 
 
 def test_readme_snippet_still_handles_legacy_versions():
-    text = README.read_text(encoding="utf-8")
+    text = VERIFY_DOC.read_text(encoding="utf-8")
     block = text.split("rebuild the injective preimage")[1][:1200]
     assert '"1.1"' in block and '"1.2"' in block
 
 
 def test_readme_snippet_is_valid_python():
     """Extract the documented code and compile it."""
-    text = README.read_text(encoding="utf-8")
+    text = VERIFY_DOC.read_text(encoding="utf-8")
     blocks = re.findall(r"```python\n(.*?)```", text, re.S)
     snippet = next(b for b in blocks if "rebuild the injective preimage" in b)
-    compile(snippet, "README.md", "exec")
+    compile(snippet, "docs/VERIFICATION.md", "exec")
 
 
 def test_readme_does_not_claim_an_unimplemented_signature_scheme():
