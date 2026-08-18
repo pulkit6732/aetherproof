@@ -8,7 +8,7 @@ version = "0.4.0"
 description = "AetherProof — the open-source receipt engine. Prototype of Signet."
 readme = "README.md"
 license = {text = "Apache-2.0"}
-authors = [{name = "Pulkit Srivastava"}]
+authors = [{name = "Pulkit Kr Srivastava", email = "pulkitsrivastavae@gmail.com"}]
 keywords = [
     "cryptography",
     "ai",

@@ -44,7 +44,52 @@ inference itself, and it trusts the operator's key custody and clock.
 
 ---
 
+## 2a. Integrity vs completeness — the limit that matters most
+
+Every claim in §1 is an **integrity** claim: *what is in the log is authentic,
+ordered, and unmodified.* That is a different statement from the one an auditor,
+a regulator, or an opposing lawyer actually asks:
+
+> *"Show me the record of this decision."* → **integrity.** AetherProof answers this.
+> *"Show me that you logged* ***all*** *the decisions."* → **completeness.** Nothing here answers this.
+
+The gap is not academic, and it is not closed by anything in this repository.
+
+**A deployer who logs 9,000 of 10,000 inferences — omitting the 1,000 that would
+embarrass them — passes every check in §1.** The log is perfectly append-only.
+Every signature verifies. Every hash chains. The record is cryptographically
+sound and evidentially worthless, because the omitted rows were never written and
+nothing in a self-operated log can attest to what is absent.
+
+This is why the tail-truncation row in §2 is the most important line in that
+table rather than a footnote. It is the same problem in its simplest form: a
+shorter self-consistent chain is indistinguishable from a chain that was always
+that length.
+
+**Why this cannot be fixed locally.** Detecting an omission requires comparing
+the log against something the log's operator does not control. Any purely local
+mechanism is computed by the same party who chose what to record, so it inherits
+that choice. Closing it requires an independent party — a witness who retains
+signed log heads, or an exogenous record (a provider's usage report) to reconcile
+against. Both are out of scope here and belong to Signet.
+
+**What to say when asked.** Not *"our logs are complete"* — that is unprovable
+with this tool. Say: *"every record we produce is tamper-evident and offline
+verifiable by you, without trusting our servers. We do not claim, and no
+single-operator log can claim, that no record was withheld; that requires an
+independent witness, which is a separate layer."*
+
+Stating this unprompted is stronger than being caught by it. A reviewer who finds
+the gap themselves discounts everything else in the document.
+
+---
+
 ## 3. Mapping to the questions a security review asks
+
+**Read this table with §2a in mind.** Every row answers an *integrity* question.
+No row answers a *completeness* question, and several of these regulations are
+ultimately asking a completeness question — so the "residual gap" column is doing
+real work and should be quoted alongside the claim, never dropped from it.
 
 | Regulation / control | The question it asks | What AetherProof R0 answers | Residual gap (say it) |
 |---|---|---|---|
@@ -63,9 +108,33 @@ inference itself, and it trusts the operator's key custody and clock.
 > SHA-256 of the output, a model identity hash, a timestamp, and an append-only
 > hash-chained log position. Any modification of the output or the receipt is
 > detectable offline by any party using only the receipt and our public key, with
-> no dependency on our servers. This is a software-key (R0) implementation; hardware
-> key custody, inference attestation, post-quantum signatures, and an
-> independently-witnessed log are roadmap items (Signet) and are not claimed here."
+> no dependency on our servers. This establishes the **integrity** of each record
+> we produce; it does not establish that no record was withheld, which no
+> single-operator log can establish and which we do not claim. This is a
+> software-key (R0) implementation; hardware key custody, inference attestation,
+> post-quantum signatures, and an independently-witnessed log are roadmap items
+> (Signet) and are not claimed here."
 
 Make the claim at the level the code supports. The strongest honest statement is
-about **integrity and authentication of the record**, not about the inference.
+about **integrity and authentication of the record** — not about the inference,
+and not about the completeness of the set.
+
+---
+
+## 5. Claims to refuse, even when invited
+
+A reviewer or a slide deck will sometimes offer you a stronger sentence than the
+code supports. These are the ones to decline:
+
+| Tempting claim | Why it is false | The honest version |
+|---|---|---|
+| "Cryptographically proves GPT-4o produced this" | No client-side tool can attest a closed cloud model's weights; only the provider could, and none does | "Proves the exact input, the exact output, the model the API *claimed*, and the time — none of it altered" |
+| "Post-quantum secure" | Signatures are Ed25519 only. There is no ML-DSA in this codebase | "Ed25519 today; hybrid post-quantum is a Signet roadmap item" |
+| "Complete audit trail" | See §2a — completeness is exactly what is not proven | "Tamper-evident record of each output we produce" |
+| "Immutable log" | It is a local SQLite file. It is tamper-*evident*, not immutable | "Append-only and tamper-evident; alterations are detectable" |
+| "Independently verifiable" *implying a third party vouches* | Anyone can verify the **math** offline, but the log is operator-run | "Verifiable by anyone with the public key; the log itself is not third-party witnessed" |
+| "Proves when it happened" | `timestamp_ms` is the signer's own clock | "Binds a claimed time that cannot be changed after signing" |
+
+The pattern in every row: AetherProof proves things about **signing time**, under
+**one key**, held by **the signer**. Any claim that reaches past those three
+constraints is reaching past the code.

@@ -194,6 +194,36 @@ This is not a claim. It's built in. Offline verification uses only:
 
 No network. No API calls. No special hardware. Works in 2026, 2035, 2050.
 
+## What this does not prove — read this before you cite it
+
+AetherProof proves **integrity**: what is in the log is authentic, ordered, and
+unmodified. It does not prove **completeness**, and the difference decides whether
+a claim survives contact with a reviewer.
+
+> *"Show me the record of this decision."* → integrity. **Answered.**
+> *"Show me that you logged* ***all*** *the decisions."* → completeness. **Not answered.**
+
+A deployer who logs 9,000 of 10,000 inferences — omitting the 1,000 that would
+embarrass them — passes every check this tool performs. The log is perfectly
+append-only, every signature verifies, every hash chains. The record is
+cryptographically sound and evidentially worthless.
+
+This is not a bug and it is not fixable here. Detecting an omission means
+comparing the log against something its operator does not control; any local
+mechanism is computed by the same party who chose what to record. Closing it
+needs an independent witness, which is a separate layer (Signet).
+
+**So do not say "complete audit trail."** Say: *every record we produce is
+tamper-evident and offline-verifiable by you, without trusting our servers — and
+no single-operator log can prove nothing was withheld.* Stating that unprompted is
+stronger than being caught by it.
+
+Signatures are **Ed25519 only**. There is no post-quantum signing in this
+release, whatever any slide says.
+
+The full list — what is proven, what is not, and the claims to refuse even when
+invited — is in [`docs/CLAIMS.md`](docs/CLAIMS.md).
+
 ## How offline verification actually works
 
 You can prove a receipt is genuine with **no internet and no AetherProof code at
@@ -321,6 +351,45 @@ r = Receipt(
 This is the AetherProof side of the [agent-chain context spec](https://github.com/pulkit6732/aetherproof/issues/1).
 Multi-hop pipeline aggregation (signing each hop, identifying a tampered hop) is
 **Signet Layer 3** and builds on this primitive.
+
+## Implementations
+
+AetherProof exists in two languages. Both are live and both are in this repository.
+
+| | Rust — `rust/` | Python — `aetherproof/` |
+|---|---|---|
+| Receipt | **128 bytes, fixed-width binary** | 646 bytes JSON |
+| Signature | Ed25519 (`ed25519-dalek` 2.x) | Ed25519 (`cryptography`) |
+| AetherOS kernel wire compatibility | **yes** | no |
+| Session Merkle proofs | no | **yes** |
+| Signed extensions (v1.2), key rotation | no | **yes** |
+| Tests | 18 | 568 (93% coverage) |
+| Distribution | source | PyPI |
+
+The Rust core defines the original 128-byte wire format, byte-identical to the
+AetherOS kernel receipt format — a receipt produced by the kernel verifies with this
+library and CLI.
+
+```bash
+cd rust/
+cargo test --release            # 18 passed
+cargo run --release --example bench
+```
+
+Measured on one machine, 20,000 operations each:
+
+| Operation | Rust | Python | Ratio |
+|---|---|---|---|
+| Sign (build + sign) | **18.84 µs** · 53,091/s | 45.38 µs · 22,034/s | **2.4×** |
+| Verify | **22.77 µs** · 43,910/s | 101.69 µs · 9,834/s | **4.5×** |
+| Receipt size | **128 B** | 646 B | **5.05×** |
+
+Python figures were taken behind a correctness gate asserting a valid signature
+verifies, a flipped signature fails, and a tampered message fails.
+
+`docs/ROADMAP.md` covers 0.5.0: a single Rust core with PyO3 bindings, the 128-byte
+format restored as canonical, the Merkle session tree ported down, and ML-DSA-65
+(FIPS 204) added as a second signature slot alongside Ed25519.
 
 ## Architecture (god file)
 

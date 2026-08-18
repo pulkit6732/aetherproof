@@ -29,3 +29,7 @@ demo_log.db
 .coverage
 htmlcov/
 *.db
+
+# Rust
+/rust/target/
+**/*.rs.bk

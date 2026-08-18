@@ -1,0 +1,12 @@
+[package]
+name    = "aetherproof"
+version = "0.1.0"
+edition = "2021"
+authors     = ["Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>"]
+
+[[bin]]
+name = "aetherproof"
+path = "src/main.rs"
+
+[dependencies]
+aetherproof-core = { path = "../core" }

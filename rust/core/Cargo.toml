@@ -1,0 +1,13 @@
+[package]
+name        = "aetherproof-core"
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>"]
+description = "Cryptographic AI execution receipt engine — EU AI Act §13(3)(c) compliance"
+license     = "MIT OR Apache-2.0"
+keywords    = ["ai", "compliance", "eu-ai-act", "cryptography", "audit"]
+categories  = ["cryptography", "security"]
+
+[dependencies]
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+getrandom     = { version = "0.2", features = ["std"] }
