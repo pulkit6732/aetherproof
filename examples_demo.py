@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AetherProof demo — end-to-end workflow."""
+"""AetherProof demo - end-to-end workflow."""
 
 from pathlib import Path
 from datetime import datetime
@@ -10,7 +10,7 @@ from aetherproof.core.hash import hash_output, hash_input
 from aetherproof.core.log import ReceiptLog
 
 print("=" * 70)
-print("AetherProof Demo — The Invariant")
+print("AetherProof Demo - The Invariant")
 print("=" * 70)
 print()
 
@@ -90,7 +90,7 @@ print(f"   Total receipts in log: {log.count()}")
 print()
 
 print("=" * 70)
-print("SUCCESS — The invariant holds:")
+print("SUCCESS - The invariant holds:")
 print("  Verify(receipt, public_key, log) = TRUE")
 print("  Using ONLY those three inputs, forever.")
 print("=" * 70)

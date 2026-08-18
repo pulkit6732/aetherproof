@@ -1,4 +1,4 @@
-//! Post-quantum signature slot — ML-DSA-65 (FIPS 204).
+//! Post-quantum signature slot - ML-DSA-65 (FIPS 204).
 //!
 //! Author: Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>
 //!
@@ -21,7 +21,7 @@
 //! [144..]      pq_sig                ML-DSA-65 signature over core[0..64]
 //! ```
 //!
-//! Both signatures cover the **same** preimage — bytes `[0..64]` of the core
+//! Both signatures cover the **same**preimage - bytes `[0..64]` of the core
 //! receipt. There is one signed message, not two, so the signatures cannot
 //! disagree about what was signed.
 //!
@@ -137,7 +137,7 @@ pub fn trailer_sig(data: &[u8]) -> Result<&[u8], PqError> {
 
 /// Verify only the post-quantum signature over the core receipt's signed prefix.
 ///
-/// This does **not** check the Ed25519 signature. Use [`verify_hybrid`] to require
+/// This does **not**check the Ed25519 signature. Use [`verify_hybrid`] to require
 /// both.
 pub fn verify_pq(data: &[u8], pk: &ml_dsa_65::PublicKey) -> bool {
     let sig = match trailer_sig(data) {
@@ -151,10 +151,10 @@ pub fn verify_pq(data: &[u8], pk: &ml_dsa_65::PublicKey) -> bool {
     pk.verify(&data[..SIGNED_PREFIX], &sig_arr, &[])
 }
 
-/// Verify a hybrid receipt: **both** the Ed25519 signature and the ML-DSA signature
+/// Verify a hybrid receipt: **both**the Ed25519 signature and the ML-DSA signature
 /// must be valid over the same signed prefix.
 ///
-/// Returns `false` if either signature fails, or if no trailer is present — a
+/// Returns `false` if either signature fails, or if no trailer is present - a
 /// caller asking for hybrid verification is asking for both, so a missing
 /// post-quantum signature is a failure, not a pass.
 pub fn verify_hybrid(

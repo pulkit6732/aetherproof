@@ -92,9 +92,9 @@ fn main() {
     println!(
         "  Here byte0 vs byte63 is {}.",
         if m0 < m63 * 0.98 {
-            "faster — consistent with a leak"
+            "faster - consistent with a leak"
         } else if m0 > m63 * 1.02 {
-            "slower — inconsistent with a leak"
+            "slower - inconsistent with a leak"
         } else {
             "indistinguishable"
         }

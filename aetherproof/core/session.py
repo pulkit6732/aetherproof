@@ -1,13 +1,13 @@
-"""Session receipts — sign a whole conversation, or any slice of one.
+"""Session receipts - sign a whole conversation, or any slice of one.
 
 The problem this solves, measured on the shipped v0.2.2 code: proving that turn
 457 of a 1000-turn session was really in that session required reading 457 log
 rows and handing the auditor *every receipt in the session*. There was no
-compact proof — `log_anchor` was the string "local://log/457".
+compact proof - `log_anchor` was the string "local://log/457".
 
 Here each turn is a Merkle leaf. Sealing the session signs ONE root. Any single
 turn then ships with a ~10-hash inclusion proof (ceil(log2(1000))), and checking
-it reveals nothing about the other 999 turns — which is the selective-disclosure
+it reveals nothing about the other 999 turns - which is the selective-disclosure
 property regulated buyers actually need.
 
     from aetherproof.core.session import Session
@@ -24,7 +24,7 @@ property regulated buyers actually need.
 
 Scope boundary: this is the FREE layer. It proves a turn belongs to a session
 you sealed. It cannot prove you did not seal a *second*, edited session and show
-that one instead — defeating that needs an independent witness publishing the
+that one instead - defeating that needs an independent witness publishing the
 root, which is the transparency-log service (Signet). The split is deliberate:
 everything provable on one machine is free and offline forever.
 """
@@ -76,7 +76,7 @@ def inclusion_proof(leaf_hashes: List[str], index: int) -> List[Tuple[str, str]]
     """Sibling path for `index` as [(side, hash)], side in {"L","R"}.
 
     A promoted node contributes no sibling at that level, so proofs are not all
-    the same length — that is expected, not a bug.
+    the same length - that is expected, not a bug.
     """
     if not 0 <= index < len(leaf_hashes):
         raise IndexError(f"turn {index} outside 0..{len(leaf_hashes) - 1}")
@@ -127,7 +127,7 @@ class Turn:
     def leaf_hash(self) -> str:
         """Injective, length-prefixed commitment to this turn.
 
-        Same encoding discipline as Receipt.canonical_message — a delimiter
+        Same encoding discipline as Receipt.canonical_message - a delimiter
         inside model_id must not be able to shift field boundaries.
         """
         parts = [
@@ -347,7 +347,7 @@ class Session:
                     public_key: Verifier) -> bool:
         """Full check: seal is authentic AND this turn is inside it.
 
-        Costs len(proof) hashes — ~10 for a 1000-turn session — and needs none
+        Costs len(proof) hashes - ~10 for a 1000-turn session - and needs none
         of the other turns.
         """
         if not Session.verify_seal(seal, public_key):

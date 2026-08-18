@@ -21,7 +21,7 @@ def test_basic_receipt_signing_and_verification():
         timestamp_ms=1700000000000,
     )
 
-    # Sign it — signing_bytes() is the single source of truth for the preimage
+    # Sign it - signing_bytes() is the single source of truth for the preimage
     signer = Signer.generate()
     receipt.signature = signer.sign(receipt.signing_bytes())
 

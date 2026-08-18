@@ -4,7 +4,7 @@
 direction: a standalone receipt file saying which session and turn it came from,
 committed inside the signature via the v1.2 signed-extensions mechanism.
 
-Without it a receipt is an orphan — nothing connects turn N to turn N-1, which
+Without it a receipt is an orphan - nothing connects turn N to turn N-1, which
 is exactly what the causal-context extension was proposed for and what
 issue_receipt never actually filled in.
 """
@@ -50,7 +50,7 @@ def test_bound_receipt_names_its_session_and_turn(rig):
 
 
 def test_turn_zero_is_recorded_not_dropped(rig):
-    """turn_index=0 is falsy — it must still be bound."""
+    """turn_index=0 is falsy - it must still be bound."""
     log, signer, pub, tmp = rig
     r = issue(log, signer, tmp, session_id="s_abc", turn_index=0)
     assert r.signed_extensions[SESSION_NS]["turn_index"] == "0"

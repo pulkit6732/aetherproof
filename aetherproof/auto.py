@@ -1,4 +1,4 @@
-"""Headless AetherProof — zero interaction, for automation.
+"""Headless AetherProof - zero interaction, for automation.
 
 The wizard and the CLI both assume a human at a terminal. That is the wrong
 shape for where receipts actually need to be generated: a cloud coding model, a
@@ -19,7 +19,7 @@ Nothing in this module reads stdin or writes to stdout.
         s.turn(prompt=..., output=...)
     # seals on exit; s.seal_path holds the signed root
 
-    # wrap any client call — the lazy path
+    # wrap any client call - the lazy path
     from aetherproof.auto import receipted
     @receipted(model_id="gpt-4o")
     def ask(prompt): return client.responses(prompt)
@@ -153,7 +153,7 @@ def sign(
 
     `model_id` sets the honest tier automatically: given one, the root is
     `api_attested` built from the id the provider returned; without one it is
-    `name_only`. Neither claims to bind the weights — that needs a local file.
+    `name_only`. Neither claims to bind the weights - that needs a local file.
     """
     if is_disabled():
         return None
@@ -275,7 +275,7 @@ class AutoSession:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
-        # seal even when the caller's block raised — a crashed run still wants
+        # seal even when the caller's block raised - a crashed run still wants
         # a record of what it produced up to that point
         self.close()
         return False

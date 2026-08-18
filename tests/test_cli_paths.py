@@ -8,7 +8,7 @@ test coverage because every existing test drove the library API directly:
      receipts lived. Cause: KEY_DIR was a module constant frozen at import.
 
   2. The transparency log was CWD-relative ("./receipts/log.db"). Signing from
-     two different directories produced two separate logs — the append-only
+     two different directories produced two separate logs - the append-only
      chain forked per working directory and neither log was complete. This is
      the worst of the three: the core guarantee was quietly scoped to wherever
      you happened to `cd`.
@@ -57,7 +57,7 @@ def sign(workspace, *extra, cwd=None):
     return json.loads(r.stdout)
 
 
-# ── 1 · AETHERPROOF_HOME ─────────────────────────────────────────────────────
+# ── 1 | AETHERPROOF_HOME ─────────────────────────────────────────────────────
 
 def test_home_env_var_is_respected(workspace):
     sign(workspace)
@@ -73,7 +73,7 @@ def test_nothing_is_written_to_the_real_user_home(workspace):
     assert (workspace / "home" / "log.db").exists()
 
 
-# ── 2 · the log must not follow the working directory ───────────────────────
+# ── 2 | the log must not follow the working directory ───────────────────────
 
 def test_log_does_not_fragment_across_directories(workspace):
     """The regression: one log, wherever you run from."""
@@ -122,7 +122,7 @@ def test_log_verify_sees_every_receipt(workspace):
     assert r.returncode == 0
 
 
-# ── 3 · binding the prompt ───────────────────────────────────────────────────
+# ── 3 | binding the prompt ───────────────────────────────────────────────────
 
 def test_input_option_populates_the_commitment(workspace):
     receipt = sign(workspace, "--input", str(workspace / "prompt.txt"))
@@ -137,7 +137,7 @@ def test_input_commitment_is_the_prompt_digest(workspace):
 
 
 def test_without_input_the_commitment_is_empty(workspace):
-    """Unchanged default — but now it is a choice, not an oversight."""
+    """Unchanged default - but now it is a choice, not an oversight."""
     assert sign(workspace)["input_commitment"] == ""
 
 
@@ -160,7 +160,7 @@ def test_missing_input_file_is_reported_not_ignored(workspace):
 # ── the receipt the CLI actually emits ───────────────────────────────────────
 
 def test_cli_issues_current_version_receipts(workspace):
-    """The CLI must not lag the library — it was silently emitting v1.1."""
+    """The CLI must not lag the library - it was silently emitting v1.1."""
     receipt = sign(workspace)
     assert receipt["receipt_version"] == "1.3"
     assert receipt["signing_key_id"] != ""
@@ -200,7 +200,7 @@ def sign_no_model(workspace, *extra, cwd=None):
 
 
 def test_signing_without_a_model_file_works(workspace):
-    """A ChatGPT/Claude/Gemini user cannot download weights — requiring a model
+    """A ChatGPT/Claude/Gemini user cannot download weights - requiring a model
     path made the tool unusable for most of its real audience."""
     receipt = sign_no_model(workspace)
     assert receipt["output_hash"] != ""
@@ -295,7 +295,7 @@ def test_human_errors_go_to_stderr(workspace):
     (["log", "count"], 0),
 ])
 def test_exit_codes_are_scriptable(workspace, args, expected):
-    """`aetherproof inspect r.json && deploy` must not deploy after a failure —
+    """`aetherproof inspect r.json && deploy` must not deploy after a failure -
     export/inspect/keygen returned None unconditionally, so it did."""
     sign(workspace)
     path = next((workspace / "home" / "receipts").glob("*.json"))

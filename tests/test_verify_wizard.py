@@ -5,7 +5,7 @@ handed a receipt and needs to know whether to trust it. Its four verdicts are
 not interchangeable, and the distinction between them is the whole product:
 
   valid       signature good, logged here, local log intact
-  unlogged    signature good, but issued on a DIFFERENT machine. Not tamper —
+  unlogged    signature good, but issued on a DIFFERENT machine. Not tamper -
               and calling it tamper would be a false accusation, which is the
               failure mode that destroys trust in a verification tool.
   log_broken  receipt intact, but THIS machine's log was altered

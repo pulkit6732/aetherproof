@@ -31,7 +31,7 @@ def test_empty_extensions_stays_v11_and_byte_identical():
 
     New receipts default to v1.3 since the hardening pass, so the v1.1<->v1.2
     relationship is now tested by pinning the version explicitly. That is the
-    behaviour that must not drift — receipts already issued under v1.1 keep
+    behaviour that must not drift - receipts already issued under v1.1 keep
     their exact preimage.
     """
     a = Receipt(receipt_version="1.1", model_weight_root="m", output_hash="o",
@@ -92,10 +92,10 @@ def test_v12_survives_json_round_trip():
     assert restored.canonical_message() == original.canonical_message()
 
 
-# ── issue #1 · normative sort order (safal207, 2026-06-24) ───────────────────
+# ── issue #1 | normative sort order (safal207, 2026-06-24) ───────────────────
 # The aggregate sorts the resulting COMMITMENTS, not the namespace keys. Those
 # orders differ, and the implementation previously sorted namespaces while the
-# docstring said commitments — so two implementations, each following one
+# docstring said commitments - so two implementations, each following one
 # reading, signed the same receipt differently.
 
 def _leaf(ns, body):
@@ -111,7 +111,7 @@ def _divergent_namespaces():
         ba, bb = {"x": str(i)}, {"y": str(i)}
         if [_leaf(a, ba), _leaf(b, bb)] != sorted([_leaf(a, ba), _leaf(b, bb)]):
             return a, b, ba, bb
-    raise AssertionError("no divergent pair found — widen the search")
+    raise AssertionError("no divergent pair found - widen the search")
 
 
 def test_aggregate_sorts_commitments_not_namespaces():

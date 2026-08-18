@@ -4,7 +4,7 @@ use aetherproof_core::pq::*;
 use aetherproof_core::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-// xorshift64* — deterministic, seeded, no external dep
+// xorshift64* - deterministic, seeded, no external dep
 struct Rng(u64);
 impl Rng {
     fn next(&mut self) -> u64 {

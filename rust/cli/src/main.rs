@@ -1,7 +1,7 @@
 // AetherProof CLI
 // Author: Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>
 
-//! aetherproof CLI — generate, verify, benchmark, and self-test AetherProof receipts.
+//! aetherproof CLI - generate, verify, benchmark, and self-test AetherProof receipts.
 //!
 //! Commands
 //!   verify   <receipt.bin>                       verify a 128-byte receipt
@@ -137,7 +137,7 @@ fn cmd_generate(args: &[String]) {
         process::exit(2);
     });
 
-    println!("\nreceipt saved → {out_path}  ({RECEIPT_SIZE} bytes)");
+    println!("\nreceipt saved -> {out_path}  ({RECEIPT_SIZE} bytes)");
     println!(
         "binary_hash   = 0x{:016X}  (FNV-1a of {} bytes)",
         fnv1a(&binary),
@@ -172,7 +172,7 @@ fn cmd_self_test() {
     // T1: RECEIPT_SIZE == 128
     check!("T1: RECEIPT_SIZE == 128", RECEIPT_SIZE == 128);
 
-    // T2: generate → verify
+    // T2: generate -> verify
     let r1 = generate(42, b"test_model.onnx", 0xDEAD_CAFE_0000_0001, 7, &sk);
     let b1 = to_bytes(&r1);
     check!("T2: freshly generated receipt verifies", verify(&b1, &vk));
@@ -190,7 +190,7 @@ fn cmd_self_test() {
     );
     check!("T3: round-trip binary_len", r1.binary_len == r2.binary_len);
 
-    // T4: tamper probe (flip sig byte → INVALID, original → VALID)
+    // T4: tamper probe (flip sig byte -> INVALID, original -> VALID)
     check!("T4: tamper probe passes", tamper_probe(&b1, &vk));
 
     // T5: flip every metadata byte individually
@@ -203,7 +203,7 @@ fn cmd_self_test() {
         }
     }
     check!(
-        "T5: flip any metadata byte → INVALID (64/64)",
+        "T5: flip any metadata byte -> INVALID (64/64)",
         all_meta_flip_invalid
     );
 
@@ -217,7 +217,7 @@ fn cmd_self_test() {
         }
     }
     check!(
-        "T6: flip any sig byte → INVALID (64/64)",
+        "T6: flip any sig byte -> INVALID (64/64)",
         all_sig_flip_invalid
     );
 
@@ -225,7 +225,7 @@ fn cmd_self_test() {
     let wrong_sk = aetherproof_core::SigningKey::from_bytes(&[0xFFu8; 32]);
     let r3 = generate(1, b"x", 0, 0, &wrong_sk);
     let b3 = to_bytes(&r3);
-    check!("T7: wrong key → INVALID", !verify(&b3, &vk));
+    check!("T7: wrong key -> INVALID", !verify(&b3, &vk));
 
     // T8: FNV-1a known vector
     check!(
@@ -233,11 +233,11 @@ fn cmd_self_test() {
         fnv1a(b"foobar") == 0x85944171f73967e8
     );
 
-    // T9: different binaries → different hashes
+    // T9: different binaries -> different hashes
     let ra = generate(1, b"model_a", 0, 0, &sk);
     let rb = generate(1, b"model_b", 0, 0, &sk);
     check!(
-        "T9: distinct binaries → distinct hashes",
+        "T9: distinct binaries -> distinct hashes",
         ra.binary_hash != rb.binary_hash
     );
 
@@ -252,7 +252,7 @@ fn cmd_self_test() {
     println!("{pass} passed  {fail} failed");
 
     if fail == 0 {
-        println!("\nAll tests pass — EU AI Act §13(3)(c) compliant receipt engine verified.");
+        println!("\nAll tests pass - EU AI Act §13(3)(c) compliant receipt engine verified.");
         process::exit(0);
     } else {
         process::exit(1);
@@ -273,7 +273,7 @@ fn cmd_bench(args: &[String]) {
     let vk = dev_verifying_key();
     let binary = b"benchmark_model_v1.onnx_placeholder_bytes";
 
-    println!("AetherProof bench — {count} receipts");
+    println!("AetherProof bench - {count} receipts");
     println!("─────────────────────────────────────");
 
     // Generate
@@ -284,7 +284,7 @@ fn cmd_bench(args: &[String]) {
     }
     let gen_ms = t0.elapsed().as_millis().max(1);
     let gen_rate = count * 1000 / gen_ms as u64;
-    println!("generate: {count} receipts in {gen_ms}ms  →  {gen_rate} receipts/sec");
+    println!("generate: {count} receipts in {gen_ms}ms  ->  {gen_rate} receipts/sec");
 
     // Verify all
     let t1 = Instant::now();
@@ -296,7 +296,7 @@ fn cmd_bench(args: &[String]) {
     }
     let ver_ms = t1.elapsed().as_millis().max(1);
     let ver_rate = count * 1000 / ver_ms as u64;
-    println!("verify:   {count} receipts in {ver_ms}ms  →  {ver_rate} receipts/sec");
+    println!("verify:   {count} receipts in {ver_ms}ms  ->  {ver_rate} receipts/sec");
     println!(
         "verified: {verified}/{count} ({:.1}%)",
         verified as f64 / count as f64 * 100.0
@@ -311,7 +311,7 @@ fn cmd_bench(args: &[String]) {
         }
     }
     let tamp_ms = t2.elapsed().as_millis().max(1);
-    println!("tamper:   {count} probes  in {tamp_ms}ms  →  {tamper_ok}/{count} tampers detected");
+    println!("tamper:   {count} probes  in {tamp_ms}ms  ->  {tamper_ok}/{count} tampers detected");
 
     println!("─────────────────────────────────────");
     if verified == count && tamper_ok == count {
@@ -326,7 +326,7 @@ fn cmd_bench(args: &[String]) {
 
 fn print_receipt_table(r: &aetherproof_core::Receipt, valid: bool) {
     println!("┌─────────────────────────────────────────────────────────┐");
-    println!("│  AetherProof Receipt — AI Execution Audit               │");
+    println!("│  AetherProof Receipt - AI Execution Audit               │");
     println!("├─────────────────────────────────────────────────────────┤");
     println!("│  pid           : {:<38}│", r.pid);
     println!(
@@ -351,9 +351,9 @@ fn print_receipt_table(r: &aetherproof_core::Receipt, valid: bool) {
     println!("...                          │");
     println!("├─────────────────────────────────────────────────────────┤");
     if valid {
-        println!("│  ✓ VALID — Ed25519 verified — EU AI Act §13(3)(c) ✓    │");
+        println!("│   VALID - Ed25519 verified - EU AI Act §13(3)(c)     │");
     } else {
-        println!("│  ✗ INVALID — signature does not match receipt contents  │");
+        println!("│   INVALID - signature does not match receipt contents  │");
     }
     println!("└─────────────────────────────────────────────────────────┘");
 }
@@ -367,7 +367,7 @@ fn parse_u64_hex_or_dec(s: &str) -> u64 {
 }
 
 fn print_help() {
-    println!("AetherProof — cryptographic AI execution audit (EU AI Act §13(3)(c))");
+    println!("AetherProof - cryptographic AI execution audit (EU AI Act §13(3)(c))");
     println!();
     println!("USAGE:");
     println!("  aetherproof verify   <receipt.bin>");

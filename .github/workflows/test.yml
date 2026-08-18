@@ -33,7 +33,7 @@ jobs:
           python -m pip install pytest pytest-cov
 
       # The pure-Python package must pass on its own. The native extension is
-      # optional, and tests that need it skip when it is absent — so this job
+      # optional, and tests that need it skip when it is absent - so this job
       # proves the package does not depend on it.
       - name: Run suite without the native extension
         run: python -m pytest tests/ -q

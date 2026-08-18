@@ -38,8 +38,8 @@ def main_menu() -> str:
         Choice: '1' (easy), '2' (expert), or 'q' (quit)
     """
     console.print("\n[cyan bold]Choose your mode:[/cyan bold]\n")
-    console.print("[green][1][/green] Easy Mode   — for anyone (step-by-step wizard)")
-    console.print("[cyan][2][/cyan] Expert Mode — for developers (CLI subcommands)")
+    console.print("[green][1][/green] Easy Mode   - for anyone (step-by-step wizard)")
+    console.print("[cyan][2][/cyan] Expert Mode - for developers (CLI subcommands)")
     console.print("[red][Q][/red] Quit\n")
 
     choice = console.input("[cyan]Enter choice (1, 2, or Q): [/cyan]").strip().lower()

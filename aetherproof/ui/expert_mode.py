@@ -24,11 +24,11 @@ from aetherproof.core.hash import hash_output, sha256_file, compute_model_weight
 
 
 def _ok(msg: str) -> None:
-    console.print(f"[green]✓[/green] {msg}")
+    console.print(f"[green][/green] {msg}")
 
 
 def _err(msg: str) -> None:
-    # Errors go to STDERR. stdout is the data channel — `--quiet` JSON results
+    # Errors go to STDERR. stdout is the data channel - `--quiet` JSON results
     # and `export` payloads must be pipeable without error text mixed in.
     err_console.print(f"[red]Error:[/red] {msg}")
 
@@ -70,7 +70,7 @@ def _log_table(rows) -> None:
     table.add_column("Model")
     for r in rows:
         ts = datetime.fromtimestamp(r["timestamp_ms"] / 1000, timezone.utc).isoformat()
-        table.add_row(str(r["sequence"]), r["receipt_id"], ts, r["model_weight_root"][:12] + "…")
+        table.add_row(str(r["sequence"]), r["receipt_id"], ts, r["model_weight_root"][:12] + "...")
     console.print(table)
 
 
@@ -120,7 +120,7 @@ def show_help() -> None:
 
 [yellow]sign[/yellow] [<model_path>] <output_file> [--input FILE] [--quiet]
   Generate a signed receipt for an AI output.
-  The model file is OPTIONAL — cloud AI users (ChatGPT, Claude, Gemini)
+  The model file is OPTIONAL - cloud AI users (ChatGPT, Claude, Gemini)
   cannot download weights, so it is left out and the receipt is tiered
   honestly as name_only instead of pretending the weights were checked.
   --input binds the prompt too, so the receipt proves what was ASKED as
@@ -149,7 +149,7 @@ def show_help() -> None:
 
 [yellow]export[/yellow] <receipt_file> <--format FORMAT>
   Export a receipt. Formats: json, hex
-  hex is the receipt JSON as hex — for embedding where only an ASCII
+  hex is the receipt JSON as hex - for embedding where only an ASCII
   scalar fits (a DB column, a QR code, an HTTP header).
   Example: aetherproof export receipt.json --format hex
 
@@ -201,7 +201,7 @@ def cmd_sign(args: List[str]) -> None:
 
     # Tier honestly: hashing real weights is artifact_hash, the strongest claim.
     # With no model file there is nothing to hash, so the root commits only to
-    # the fact that no model was identified — and says so as name_only rather
+    # the fact that no model was identified - and says so as name_only rather
     # than implying the weights were checked.
     if model_path is not None:
         model_weight_root = compute_model_weight_root(model_path)
@@ -210,7 +210,7 @@ def cmd_sign(args: List[str]) -> None:
         model_weight_root = hash_output("unspecified")
         model_root_type = "name_only"
 
-    # raw-byte hash (streamed) — exact for any size / encoding / binary, and
+    # raw-byte hash (streamed) - exact for any size / encoding / binary, and
     # symmetric with `verify --output`, which recomputes the same way.
     output_hash = sha256_file(output_file)
 
@@ -232,7 +232,7 @@ def cmd_sign(args: List[str]) -> None:
     if quiet:
         print(receipt.to_json())
         return True
-    _ok(f"Receipt signed → {path}  (logged at #{receipt.log_sequence:06d})")
+    _ok(f"Receipt signed -> {path}  (logged at #{receipt.log_sequence:06d})")
     _receipt_panel(receipt, title="RECEIPT SIGNED")
     console.print(f"[dim]Verify with:[/dim] aetherproof verify {path}")
     return True
@@ -295,20 +295,20 @@ def cmd_verify(args: List[str]) -> bool:
         return overall
 
     if not sig_valid:
-        _err("INVALID — receipt failed verification (tampered).")
+        _err("INVALID - receipt failed verification (tampered).")
     elif output_unmodified is None:
-        _ok("VALID — signature intact (receipt unmodified).")
+        _ok("VALID - signature intact (receipt unmodified).")
     elif output_unmodified:
-        _ok("VALID — signature intact AND output file matches the receipt.")
+        _ok("VALID - signature intact AND output file matches the receipt.")
     else:
-        _err("OUTPUT MODIFIED — the output file does not match this receipt.")
+        _err("OUTPUT MODIFIED - the output file does not match this receipt.")
     return overall
 
 
 def cmd_inspect(args: List[str]) -> bool:
     """Show a receipt's fields.
 
-    Returns False on failure so the exit code is non-zero — this returned None
+    Returns False on failure so the exit code is non-zero - this returned None
     unconditionally, so `aetherproof inspect missing.json && deploy` deployed.
     """
     if not args:
@@ -345,9 +345,9 @@ def cmd_log(args: List[str]) -> bool:
     elif sub == "verify":
         # key-free: hash chain + per-receipt sequence binding (rotation-safe)
         if log.verify_integrity():
-            _ok(f"Log integrity verified — {log.count()} receipts, hash chain intact, no gaps.")
+            _ok(f"Log integrity verified - {log.count()} receipts, hash chain intact, no gaps.")
             return True
-        _err("Log integrity check FAILED — chain broken, a gap, or a renumbered entry.")
+        _err("Log integrity check FAILED - chain broken, a gap, or a renumbered entry.")
         return False
     elif sub == "count":
         console.print(f"{log.count()} receipts in log")
@@ -372,7 +372,7 @@ def cmd_keygen(args: List[str]) -> bool:
         _err(f"Could not write keypair: {e}")
         return False
 
-    _ok(f"Keypair generated → {priv_path}, {pub_path}")
+    _ok(f"Keypair generated -> {priv_path}, {pub_path}")
     console.print("[red]Keep the private key secret.[/red]")
     return True
 
@@ -383,14 +383,14 @@ EXPORT_FORMATS = ("json", "hex")
 def cmd_export(args: List[str]) -> bool:
     """Export a receipt.
 
-    Returns False on any failure so the process exits non-zero — these used to
+    Returns False on any failure so the process exits non-zero - these used to
     return None unconditionally, so `aetherproof export missing.json && deploy`
     happily ran the deploy.
 
     `hex` is the canonical receipt JSON encoded as hex, which is what you want
     when embedding a receipt somewhere that only accepts an ASCII scalar (a
     database column, a QR code, an HTTP header). `cbor` was previously
-    advertised in the help but printed "not yet implemented" and exited 0 — it
+    advertised in the help but printed "not yet implemented" and exited 0 - it
     is no longer offered rather than pretending.
     """
     if len(args) < 2 or args[1] != "--format":
@@ -435,7 +435,7 @@ def cmd_tamper(args: List[str]) -> bool:
             return False
         public_key = Verifier.from_public_file(str(pubkey_path))
         if tamper_detect(receipt, public_key):
-            _ok("Tamper detection works — a one-bit flip is caught.")
+            _ok("Tamper detection works - a one-bit flip is caught.")
             return True
         _err("Tamper detection FAILED (unexpected).")
         return False

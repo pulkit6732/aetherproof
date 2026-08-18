@@ -1,4 +1,4 @@
-"""CLI entry point — bare interactive menu or direct subcommands."""
+"""CLI entry point - bare interactive menu or direct subcommands."""
 
 import sys
 import json
@@ -23,7 +23,7 @@ from .core.keystore import home, default_log, load_or_create_signer
 def _app_state():
     # persistent app signing key + transparency log (shared keystore).
     # home() and default_log() resolve AETHERPROOF_HOME at call time and anchor
-    # the log to an ABSOLUTE path — the old CWD-relative default gave you a
+    # the log to an ABSOLUTE path - the old CWD-relative default gave you a
     # different log per directory you happened to run from.
     key_dir = home()
     signer = load_or_create_signer(key_dir)
@@ -48,7 +48,7 @@ def _ask_text(message, default=""):
 
 
 def run_expert_shell():
-    console.print("[dim]Expert shell — type a command, or 'exit' to return.[/dim]")
+    console.print("[dim]Expert shell - type a command, or 'exit' to return.[/dim]")
     while True:
         try:
             line = console.input("[cyan bold]aetherproof>[/cyan bold] ").strip()
@@ -83,11 +83,11 @@ def run_keygen_wizard():
 
 
 def _help_table():
-    table = Table(title="AetherProof — commands", show_header=True, header_style="cyan")
+    table = Table(title="AetherProof - commands", show_header=True, header_style="cyan")
     table.add_column("Command")
     table.add_column("Description")
     table.add_row("aetherproof", "Launch the interactive menu")
-    table.add_row("sign <model> <output> [--input F]", "Sign a model output → receipt")
+    table.add_row("sign <model> <output> [--input F]", "Sign a model output -> receipt")
     table.add_row("verify <receipt> [--pubkey K] [--output F] [--quiet]", "Verify a receipt (+ output file) offline")
     table.add_row("inspect <receipt>", "Show all receipt fields decoded")
     table.add_row("log <list|verify|count>", "Inspect the transparency log")

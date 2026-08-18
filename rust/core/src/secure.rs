@@ -8,7 +8,7 @@
 //! The plain binding takes a signing key as a byte string. In Python that is a
 //! `bytes` object: immutable, so the caller *cannot* wipe it, and it stays
 //! readable in the heap until the garbage collector happens to reclaim the
-//! allocation — which does not overwrite the contents either. A key used once at
+//! allocation - which does not overwrite the contents either. A key used once at
 //! start-up is still recoverable from a core dump hours later.
 //!
 //! `SecureSigner` closes that. The key is generated inside Rust, never crosses
@@ -64,7 +64,7 @@ impl SecureSigner {
 
     /// Adopt an existing 32-byte seed.
     ///
-    /// The caller's copy is *not* wiped — this type cannot reach it. Prefer
+    /// The caller's copy is *not* wiped - this type cannot reach it. Prefer
     /// [`SecureSigner::generate`] where the key does not already exist.
     pub fn from_seed(seed: &[u8]) -> Result<Self, SecureError> {
         let arr: [u8; 32] = seed.try_into().map_err(|_| SecureError::BadKeyLength {
@@ -122,7 +122,7 @@ impl SecureSigner {
         // Zeroize *in place* before clearing the Option.
         //
         // `self.seed.take()` moves the array out and wipes the moved copy,
-        // leaving the original storage untouched — the key survives. That was a
+        // leaving the original storage untouched - the key survives. That was a
         // real defect here, caught by `seed_is_actually_overwritten_not_just_dropped`,
         // which reads through a raw pointer to the original address rather than
         // trusting that "dropped" means "erased".
@@ -156,12 +156,12 @@ pub fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     // A hand-rolled `diff |= x ^ y` loop looks constant-time in the source and is
     // not in the binary: measured here at 400 rounds x 200,000 iterations with the
     // buffer address held fixed, a difference in byte 0 ran 3.55% faster than one
-    // in byte 63 against a 0.11% noise floor — the direction a short-circuit
+    // in byte 63 against a 0.11% noise floor - the direction a short-circuit
     // produces. The loop never short-circuits in the source; LLVM introduced it.
     // Writing this correctly requires barriers the language cannot express, which
     // is why it is delegated rather than reimplemented.
     if a.len() != b.len() {
-        // Length is not secret — it is observable from the message itself.
+        // Length is not secret - it is observable from the message itself.
         return false;
     }
     bool::from(subtle::ConstantTimeEq::ct_eq(a, b))
@@ -295,8 +295,8 @@ mod tests {
 
     #[test]
     fn wrong_seed_length_is_rejected() {
-        // SecureSigner deliberately has no Debug impl — a key that can be
-        // printed ends up in a log file — so match on the error instead of
+        // SecureSigner deliberately has no Debug impl - a key that can be
+        // printed ends up in a log file - so match on the error instead of
         // asserting equality on the Result.
         assert!(matches!(
             SecureSigner::from_seed(&[0u8; 31]),

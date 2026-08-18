@@ -1,8 +1,8 @@
 """The headless automation surface (aetherproof.auto).
 
 This module exists because the wizard and CLI assume a human at a terminal, and
-the places receipts actually need generating — a cloud coding model, a CI job, an
-agent loop, a cron task — have no human to prompt. Nothing here may read stdin,
+the places receipts actually need generating - a cloud coding model, a CI job, an
+agent loop, a cron task - have no human to prompt. Nothing here may read stdin,
 block, or take down the caller's real work.
 
 The failure policy is the load-bearing property: by default a receipt failure is
@@ -52,7 +52,7 @@ def test_model_id_selects_the_api_attested_tier():
 
 
 def test_no_model_id_falls_back_to_name_only():
-    """No id means no provider attestation — the tier must say so."""
+    """No id means no provider attestation - the tier must say so."""
     r = auto.sign(output="4")
     assert r.model_root_type == "name_only"
 

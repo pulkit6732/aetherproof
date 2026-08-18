@@ -12,7 +12,7 @@ SCHEMA_VERSION = 2  # 1 = pre-chain, 2 = hash-chained over the full receipt body
 
 
 def _body_hash(receipt_json: str) -> str:
-    # hash of the entire stored receipt — chains the whole record, not a subset
+    # hash of the entire stored receipt - chains the whole record, not a subset
     return hashlib.sha256(receipt_json.encode("utf-8")).hexdigest()
 
 
@@ -82,8 +82,8 @@ class ReceiptLog:
         """`synchronous` trades durability for throughput.
 
         FULL (default) survives OS crash and power loss. NORMAL is still
-        corruption-safe under WAL — the only exposure is losing the most recent
-        commits on a power cut — and is the usual recommendation for WAL. A
+        corruption-safe under WAL - the only exposure is losing the most recent
+        commits on a power cut - and is the usual recommendation for WAL. A
         receipt log defaults to the durable end because a receipt that was
         acknowledged and then vanished is worse than a slow one.
         """
@@ -103,13 +103,13 @@ class ReceiptLog:
         """Open a connection configured for safe multi-writer use.
 
         `isolation_level=None` turns OFF the sqlite3 module's implicit
-        transaction management so we can issue BEGIN IMMEDIATE ourselves —
+        transaction management so we can issue BEGIN IMMEDIATE ourselves -
         without this, python starts a deferred transaction and the write lock is
         not taken until the first INSERT, which is exactly the window that let
         two writers read the same chain head.
 
         `journal_mode` is deliberately NOT set here. WAL is a persistent property
-        of the database file, so setting it per-connection is pure overhead —
+        of the database file, so setting it per-connection is pure overhead -
         measured at 2.4 ms of the 7.9 ms each append was costing, because it
         takes a lock to switch mode even when the mode is already WAL. It is set
         once in _init_db instead. busy_timeout and synchronous are per-connection
@@ -121,7 +121,7 @@ class ReceiptLog:
                 cached.execute("SELECT 1").fetchone()
                 return cached
             except sqlite3.Error:
-                # stale (db replaced, handle closed) — drop and reopen
+                # stale (db replaced, handle closed) - drop and reopen
                 try:
                     cached.close()
                 except sqlite3.Error:
@@ -244,7 +244,7 @@ class ReceiptLog:
             # BEGIN IMMEDIATE takes the RESERVED write lock up front, so the
             # read of the chain head and the write that extends it are one
             # atomic step. Without it (v0.2.2) two writers both read the same
-            # head and the chain forked — measured to break at 2 concurrent
+            # head and the chain forked - measured to break at 2 concurrent
             # writers, silently, with every row still written and no exception
             # raised. This holds across processes as well as threads.
             cursor.execute("BEGIN IMMEDIATE")
@@ -321,12 +321,12 @@ class ReceiptLog:
         Key-free (always): sequences are contiguous 1..N; the hash chain over each
         receipt body is consistent; and each receipt's own signed log_sequence
         equals its slot. Together these make deletion, reordering, content edits,
-        and delete-then-renumber tamper-evident WITHOUT any key — so key rotation
+        and delete-then-renumber tamper-evident WITHOUT any key - so key rotation
         never false-flags an authentic log.
 
         With public_key (deeper, key-bound): additionally re-verifies each receipt's
         Ed25519 signature, catching a forger who rewrites an embedded log_sequence
-        and recomputes the whole chain — they still cannot reproduce the signature.
+        and recomputes the whole chain - they still cannot reproduce the signature.
 
         `public_key` may be a single Verifier or a mapping/iterable of them. Rows
         naming a `signing_key_id` we were not given are reported UNVERIFIABLE, not
@@ -392,7 +392,7 @@ class ReceiptLog:
             if rcpt.signing_key_id:
                 key = keys.get(rcpt.signing_key_id)
                 if key is None:
-                    # Not forgery — we simply were not given this key (rotation).
+                    # Not forgery - we simply were not given this key (rotation).
                     report.unverifiable.append((i, rcpt.signing_key_id))
                     continue
                 candidates = [key]

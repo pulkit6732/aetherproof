@@ -1,10 +1,10 @@
-"""Security/CI regression tests — CLI exit-code contract.
+"""Security/CI regression tests - CLI exit-code contract.
 
 A verification or signing FAILURE must exit non-zero so shell pipelines and CI
 gates catch it. Bug D: `sign` with missing args exited 0, so
 `aetherproof sign && echo ok` falsely reported success.
 
-These run the CLI as a subprocess — the real contract a CI script sees.
+These run the CLI as a subprocess - the real contract a CI script sees.
 """
 
 import subprocess

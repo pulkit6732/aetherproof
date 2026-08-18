@@ -1,16 +1,16 @@
 """Fault-isolation and extreme-stress audit.
 
-Design rule for this file: **no verdict is a literal.** Every pass/fail is
+Design rule for this file: **no verdict is a literal.**Every pass/fail is
 derived from a value computed at runtime, and the raw evidence (counts, timings,
 exception text) is printed alongside so the verdict can be re-derived by hand.
 
 Two things this measures that the combined suite did not:
 
-  I · ISOLATION — break exactly one component, then probe every other component
+  I | ISOLATION - break exactly one component, then probe every other component
       independently. Answers "if one part of AetherProof fails, does the rest
       keep working, or does the whole thing go down with it?"
 
-  S · STRESS  — ramp load until something breaks and report the exact
+  S | STRESS  - ramp load until something breaks and report the exact
       threshold, rather than asserting a single arbitrary N.
 
 Run: python tests/stress/isolation_audit.py
@@ -72,7 +72,7 @@ def mkreceipt(signer, i=0, **kw):
     return r
 
 
-# ══ I · FAULT ISOLATION ══════════════════════════════════════════════════════
+# ══ I | FAULT ISOLATION ══════════════════════════════════════════════════════
 # Each test breaks ONE thing, then probes the others independently.
 
 def i1_log_deleted_signing_still_works():
@@ -96,8 +96,8 @@ def i1_log_deleted_signing_still_works():
 
     r = mkreceipt(s, 2)
     ok = verify_receipt(r, s.get_public_key())
-    note = ("open handle blocked the delete until close() — Windows"
-            if held else "deleted while open — POSIX")
+    note = ("open handle blocked the delete until close() - Windows"
+            if held else "deleted while open - POSIX")
     return ok, (f"log.db removed ({note}); new receipt signed+verified={ok} "
                 f"(signing path has no log dependency)")
 
@@ -128,7 +128,7 @@ def i2_log_corrupted_offline_verify_survives():
     ok = verified is True
     return ok, (f"db overwritten with 8KB random; offline verify={verified}; "
                 f"log side: {log_behaviour}. Independence={'held' if ok else 'BROKEN'}"
-                + ("" if not log_raised else " (log failure is loud, not silent — good)"))
+                + ("" if not log_raised else " (log failure is loud, not silent - good)"))
 
 
 def i3_private_key_destroyed_verification_survives():
@@ -145,7 +145,7 @@ def i3_private_key_destroyed_verification_survives():
     v = Verifier.from_public_pem(pub_pem)
     ok = verify_receipt(r, v)
     return ok, (f"private key deleted; receipt still verifies={ok} "
-                f"(verification depends only on the public key — the stated invariant)")
+                f"(verification depends only on the public key - the stated invariant)")
 
 
 def i4_public_key_corrupted_fails_closed():
@@ -193,7 +193,7 @@ def i5_readonly_dir_append_fails_loudly():
     silent_loss = (raised is None) and (after == before)
     ok = not silent_loss
     return ok, (f"read-only db: raised={raised} count {before}->{after}; "
-                f"silent data loss={'YES — receipt vanished with no error' if silent_loss else 'no'}")
+                f"silent data loss={'YES - receipt vanished with no error' if silent_loss else 'no'}")
 
 
 def i6_crash_midwrite_leaves_log_consistent():
@@ -243,11 +243,11 @@ def i8_receipt_serialisation_independent_of_signer():
 
 
 def i9_verifier_needs_no_aetherproof_log():
-    """Verify a receipt with only receipt + pubkey — no log object at all."""
+    """Verify a receipt with only receipt + pubkey - no log object at all."""
     s = Signer.generate()
     r = mkreceipt(s, 1)
     ok = verify_receipt(r, s.get_public_key(), log_entry=None) is True
-    return ok, f"verify_receipt(receipt, pubkey, log=None)={ok} — the 3-input invariant with log omitted"
+    return ok, f"verify_receipt(receipt, pubkey, log=None)={ok} - the 3-input invariant with log omitted"
 
 
 def i10_one_bad_receipt_does_not_block_the_rest():
@@ -272,7 +272,7 @@ def i10_one_bad_receipt_does_not_block_the_rest():
                 f"-> {survivors}/5 still provable independently")
 
 
-# ══ S · EXTREME STRESS — find the actual threshold ═══════════════════════════
+# ══ S | EXTREME STRESS - find the actual threshold ═══════════════════════════
 
 def s1_concurrency_threshold():
     """Ramp thread count until the chain first breaks. Report the exact N."""
@@ -334,7 +334,7 @@ def s2_corruption_rate_vs_load(n=64, trials=5):
     ok = broken == 0
     return ok, (f"{trials} trials at {n} threads -> {broken}/{trials} corrupted "
                 f"[{', '.join(detail)}]  "
-                f"{'DETERMINISTIC' if broken in (0, trials) else 'FLAKY — passes some runs, fails others'}")
+                f"{'DETERMINISTIC' if broken in (0, trials) else 'FLAKY - passes some runs, fails others'}")
 
 
 def s3_keygen_race_repeatability(n=16, trials=8):
@@ -411,7 +411,7 @@ def s5_memory_growth():
     ok = leaked_kb < held_kb * 0.25
     return ok, (f"2000 receipts held={held_kb:.0f} KB ({held_kb/2000*1024:.0f} B each); "
                 f"after release residual={leaked_kb:.0f} KB -> "
-                f"{'reclaimed' if ok else 'RETAINED — possible leak'}")
+                f"{'reclaimed' if ok else 'RETAINED - possible leak'}")
 
 
 def s6_single_turn_inclusion_cost():
@@ -540,7 +540,7 @@ def s8_large_payload():
 
 
 def main():
-    banner("I · FAULT ISOLATION — break one part, probe the others independently")
+    banner("I | FAULT ISOLATION - break one part, probe the others independently")
     probe("I", "i1  log destroyed -> signing still works", i1_log_deleted_signing_still_works)
     probe("I", "i2  log corrupted -> offline verify survives", i2_log_corrupted_offline_verify_survives)
     probe("I", "i3  private key destroyed -> old receipts still verify", i3_private_key_destroyed_verification_survives)
@@ -552,7 +552,7 @@ def main():
     probe("I", "i9  verifier runs with no log", i9_verifier_needs_no_aetherproof_log)
     probe("I", "i10 one corrupt receipt -> others independently provable", i10_one_bad_receipt_does_not_block_the_rest)
 
-    banner("S · EXTREME STRESS — ramp to the breaking point, report the threshold")
+    banner("S | EXTREME STRESS - ramp to the breaking point, report the threshold")
     probe("S", "s1  concurrency threshold (where does the chain first break?)", s1_concurrency_threshold)
     probe("S", "s2  is the corruption deterministic or flaky?", s2_corruption_rate_vs_load)
     probe("S", "s3  keygen race repeatability", s3_keygen_race_repeatability)
@@ -566,9 +566,9 @@ def main():
     for sec in ("I", "S"):
         rows = [r for r in ROWS if r[0] == sec]
         p = sum(1 for r in rows if r[2])
-        print(f"  {sec}: {p} OK · {len(rows) - p} BAD  ({len(rows)} probes)")
+        print(f"  {sec}: {p} OK | {len(rows) - p} BAD  ({len(rows)} probes)")
     bad = [r for r in ROWS if not r[2]]
-    print(f"\n  TOTAL: {len(ROWS) - len(bad)} OK · {len(bad)} BAD  ({len(ROWS)} probes)")
+    print(f"\n  TOTAL: {len(ROWS) - len(bad)} OK | {len(bad)} BAD  ({len(ROWS)} probes)")
     if bad:
         print("\n  BAD:")
         for sec, name, _, _ in bad:

@@ -1,4 +1,4 @@
-"""AetherProof — the open-source receipt engine. Prototype of Signet."""
+"""AetherProof - the open-source receipt engine. Prototype of Signet."""
 
 __version__ = "0.4.0"
 __author__ = "Pulkit Srivastava"

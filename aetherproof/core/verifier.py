@@ -1,4 +1,4 @@
-"""Offline receipt verification — the core invariant."""
+"""Offline receipt verification - the core invariant."""
 
 from typing import Optional, Dict, Any
 from pathlib import Path

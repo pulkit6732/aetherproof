@@ -71,17 +71,17 @@ def compute_merkle_root(hashes: List[str]) -> str:
 
     Two properties the v0.2.x construction did not have:
 
-    1. **No odd-leaf duplication.** The old code padded an odd level by hashing
+    1. **No odd-leaf duplication.**The old code padded an odd level by hashing
        the last node against itself, which is the Bitcoin CVE-2012-2459 pattern:
        [A,B,C] and [A,B,C,C] produced an identical root, so a model directory's
        root did not identify a unique file set. An unpaired node is now promoted
        to the next level unchanged.
-    2. **Leaf/internal domain separation.** Leaves hash under LEAF_PREFIX and
+    2. **Leaf/internal domain separation.**Leaves hash under LEAF_PREFIX and
        internal nodes under NODE_PREFIX, so an internal node cannot be presented
        as a leaf.
 
     Empty list returns "". A single leaf returns its *tagged* hash, not the raw
-    input — returning the leaf unchanged would break property 2 for 1-file trees.
+    input - returning the leaf unchanged would break property 2 for 1-file trees.
 
     Args:
         hashes: list of hex-encoded leaf hashes
@@ -113,7 +113,7 @@ def compute_model_weight_root(model_path: Union[str, Path], chunk_size: int = 40
     For a single file, this is the file's SHA-256 (unchanged contract).
 
     For a directory, each leaf commits to the file's **path as well as its
-    bytes** — `sha256("<relative/path>\\x00<digest>")`. v0.2.x hashed contents
+    bytes**- `sha256("<relative/path>\\x00<digest>")`. v0.2.x hashed contents
     only, so two directories holding the same bytes under different filenames
     produced an identical root; renaming `weights.bin` to `config.json` was
     invisible to the model-identity check. Paths are POSIX-normalised so a root

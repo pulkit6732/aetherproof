@@ -2,7 +2,7 @@
 
 That snippet is the project's central claim made concrete: a receipt can be
 checked with a standard crypto library and no AetherProof code, so the format
-outlives the tool. If it drifts out of date it is worse than no example — a
+outlives the tool. If it drifts out of date it is worse than no example - a
 reader concludes the format is undocumented or the signatures are broken.
 
 It HAD drifted: v1.3 added receipt_id and signing_key_id to the preimage while
@@ -12,7 +12,7 @@ every receipt the current version produces.
 These tests extract the code from docs/VERIFICATION.md and run it, so the
 documentation cannot silently rot again. The authoritative snippet lives there
 rather than in the README because a partial verifier in the README would be worse
-than none — a reader who copies an incomplete one concludes the signatures are
+than none - a reader who copies an incomplete one concludes the signatures are
 broken.
 """
 
@@ -38,7 +38,7 @@ def readme_preimage(r: dict) -> bytes:
     """Independent reimplementation of the README's documented procedure.
 
     Deliberately written from the README's prose rather than by importing
-    Receipt.canonical_message — importing it would make this test pass even if
+    Receipt.canonical_message - importing it would make this test pass even if
     the documented procedure were wrong, which is the whole thing being checked.
     """
     fields = [
@@ -138,7 +138,7 @@ def test_tampering_is_caught_by_the_documented_procedure(signer):
 
 
 def test_a_rewritten_receipt_id_is_caught(signer):
-    """The v1.3 addition — the reason the snippet had to change."""
+    """The v1.3 addition - the reason the snippet had to change."""
     from cryptography.exceptions import InvalidSignature
     r = json.loads(signed(signer).to_json())
     r["receipt_id"] = "ap_00000000"
@@ -175,7 +175,7 @@ def test_readme_does_not_claim_an_unimplemented_signature_scheme():
 
     ML-DSA-65 exists in the Rust core (rust/core/src/pq.rs). It does NOT exist in
     the Python package. A README line mentioning it must therefore be scoped to
-    the implementation that has it — "rust", the 0.5.0 roadmap, or Signet — and
+    the implementation that has it - "rust", the 0.5.0 roadmap, or Signet - and
     this test verifies the Rust claim against the Rust source rather than trusting
     a keyword.
     """

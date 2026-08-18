@@ -14,7 +14,7 @@ def temp_log():
     The log caches one sqlite connection per thread (a 10x throughput win over
     reopening per call), which keeps a handle on the .db file. On Windows an
     open handle blocks directory removal, so the log must be closed before the
-    TemporaryDirectory cleans up — the same discipline any long-running caller
+    TemporaryDirectory cleans up - the same discipline any long-running caller
     needs.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -207,7 +207,7 @@ def test_sophisticated_renumber_caught_key_free(temp_log):
     """A recomputed-chain renumber is caught KEY-FREE via the sequence binding.
 
     The attacker did not rewrite each receipt's embedded log_sequence, so a row's
-    signed log_sequence no longer equals its slot — detected without any key, and
+    signed log_sequence no longer equals its slot - detected without any key, and
     therefore robust to key rotation.
     """
     import tempfile
@@ -227,7 +227,7 @@ def test_sophisticated_renumber_caught_key_free(temp_log):
 
 def test_most_thorough_forgery_needs_signature(temp_log):
     """If the attacker also rewrites each receipt's embedded log_sequence, only the
-    key-bound signature check catches it — the chain and sequence binding pass."""
+    key-bound signature check catches it - the chain and sequence binding pass."""
     import tempfile, sqlite3, json
     from pathlib import Path
     from aetherproof.core.signer import Signer

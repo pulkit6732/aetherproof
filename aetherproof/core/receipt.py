@@ -31,10 +31,10 @@ class Receipt:
     #   "artifact_hash" = SHA-256 of a real weights file/dir (binds the weights)
     #   "api_attested"  = SHA-256 over the model id + provider metadata that the
     #                     CLOUD API RETURNED (gpt-4o-2024-08-06, system_fingerprint).
-    #                     Proves input+output+claimed-model, NOT the weights — only
+    #                     Proves input+output+claimed-model, NOT the weights - only
     #                     the provider can attest those. Honest cloud tier.
     #   "name_only"     = SHA-256 of a hand-typed model-name string only (proves the
-    #                     CLAIM of that name; weakest — the user could type anything)
+    #                     CLAIM of that name; weakest - the user could type anything)
     input_commitment: str = ""  # SHA-256 of input prompt (may be hidden)
     output_hash: str = ""  # SHA-256 of model output
     timestamp_ms: int = 0  # Unix milliseconds
@@ -43,7 +43,7 @@ class Receipt:
     signature: str = ""  # Ed25519 (AetherProof) or Ed25519+ML-DSA-65 (Signet)
     log_anchor: str = ""  # "local://log/<log_sequence>" for open-source version
     receipt_id: str = ""  # Unique identifier ("ap_<random hex>")
-    # SHA-256 of the signing public key, truncated — "which key signed this".
+    # SHA-256 of the signing public key, truncated - "which key signed this".
     # Absent in <=v1.2, so identifying the signer among M keys meant O(M) trial
     # verifications (measured: 38 attempts across 50 signers). Signed in v1.3.
     signing_key_id: str = ""
@@ -59,15 +59,15 @@ class Receipt:
 
         Order matters: receipt_id is derived from timestamp_ms, so the timestamp
         must be defaulted FIRST. The reverse order (v0.2.2) produced
-        "receipt_0" for every receipt built without an explicit timestamp —
-        including every Receipt.for_api_call() — which then collided against the
+        "receipt_0" for every receipt built without an explicit timestamp -
+        including every Receipt.for_api_call() - which then collided against the
         log's UNIQUE receipt_id constraint on the second append.
         """
         if not self.timestamp_ms:
             self.timestamp_ms = int(datetime.now().timestamp() * 1000)
         if not self.receipt_id:
             # timestamp alone is not unique at millisecond resolution, so mix in
-            # entropy — two receipts issued in the same millisecond must differ.
+            # entropy - two receipts issued in the same millisecond must differ.
             self.receipt_id = f"ap_{secrets.token_hex(4)}"
         # v1.2 only when extensions are present; otherwise stay v1.1 so existing
         # receipts and verifiers are unaffected.
@@ -86,18 +86,18 @@ class Receipt:
     def canonical_message(self) -> str:
         """Build the signing preimage for this receipt's version.
 
-        Single source of truth — sign and verify must both call this, and
+        Single source of truth - sign and verify must both call this, and
         byte-identical output is the only contract.
 
         INJECTIVE encoding: each field is length-prefixed as "<len>:<field>".
-        A plain "|".join was non-injective — a "|" inside any field shifted the
+        A plain "|".join was non-injective - a "|" inside any field shifted the
         boundaries so two different receipts could share one preimage (and thus
         one signature). Length-prefixing makes the field boundaries unambiguous,
         so distinct field-tuples always produce distinct preimages.
 
         VERSION DISPATCH: v1.3 binds receipt_id and signing_key_id, which
         <=v1.2 left unsigned. The legacy builder is kept byte-exact so receipts
-        already issued to third parties keep verifying — a fix that invalidated
+        already issued to third parties keep verifying - a fix that invalidated
         outstanding receipts would be worse than the defect.
         """
         fields = [
@@ -144,22 +144,22 @@ class Receipt:
         """Aggregated commitment over the signed extensions.
 
         NORMATIVE RULE: each extension yields a commitment
-        `sha256(canon(namespace) || canon(body))`; those **commitments** are
+        `sha256(canon(namespace) || canon(body))`; those **commitments**are
         sorted lexicographically, concatenated, and hashed.
 
         The sort is over the resulting hashes, NOT over the namespace keys.
         Those two orders are not the same, and the previous implementation
-        sorted namespaces while the documentation said commitments — so two
+        sorted namespaces while the documentation said commitments - so two
         implementations, each correctly following one reading, produced
         different signatures for the same receipt. Reported by Aleksey Safonov
         (safal207) in issue #1, 2026-06-24, and reproduced:
 
             namespaces 'ns.a3/v1' < 'ns.b3/v1'
-            commitments d54ac416… > 99776f84…   (reversed)
-            -> sorted-by-namespace  c55734d7…
-               sorted-by-commitment cc60ffcc…
+            commitments d54ac416... > 99776f84...   (reversed)
+            -> sorted-by-namespace  c55734d7...
+               sorted-by-commitment cc60ffcc...
 
-        A single extension is unaffected — one leaf sorts to itself — so
+        A single extension is unaffected - one leaf sorts to itself - so
         receipts issued before this fix keep verifying unless they carried two
         or more extensions whose orders diverged.
 
@@ -198,7 +198,7 @@ class Receipt:
 
     @staticmethod
     def api_attested_root(model_id: str, provider: str = "", **metadata: Any) -> str:
-        """Build a model root from what a CLOUD API RETURNED — never from a
+        """Build a model root from what a CLOUD API RETURNED - never from a
         hand-typed name.
 
         `model_id` is the resolved id the API echoed back (e.g.
@@ -244,7 +244,7 @@ class Receipt:
     ) -> "Receipt":
         """Construct an honest cloud-API receipt (model_root_type='api_attested').
 
-        The model identity comes from `model_id` — which the caller reads off the
+        The model identity comes from `model_id` - which the caller reads off the
         API RESPONSE (resp.model), not from a guess. Binds: input commitment,
         output hash, and the provider-reported model + metadata. Does NOT prove
         the weights ran (only the provider can attest that).

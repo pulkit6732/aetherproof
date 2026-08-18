@@ -2,7 +2,7 @@
 
 The extension is optional. `aetherproof` never imports it, so its absence changes
 nothing and these tests skip. When it *is* installed, every function it exposes
-must produce byte-identical output to the Python it mirrors — otherwise a caller
+must produce byte-identical output to the Python it mirrors - otherwise a caller
 who opts into the faster path gets different receipts, which is worse than having
 no faster path at all.
 

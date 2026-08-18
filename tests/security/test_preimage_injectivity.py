@@ -1,4 +1,4 @@
-"""Security regression tests — signing preimage must be INJECTIVE.
+"""Security regression tests - signing preimage must be INJECTIVE.
 
 Each test here corresponds to a real bug found during adversarial stress testing.
 These are the highest-value tests in the suite: they encode forgery attempts that

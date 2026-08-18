@@ -1,7 +1,7 @@
 """Coverage for the core paths the existing suite never exercised.
 
-Coverage analysis put verifier.py — the module that implements the project's
-one stated invariant — at 57%, the lowest of any core module. The file-based
+Coverage analysis put verifier.py - the module that implements the project's
+one stated invariant - at 57%, the lowest of any core module. The file-based
 verification path (`verify_receipt_file`), the log-anchor check, the empty-field
 guards, and `tamper_detect` had no tests at all. signer.py (74%), keystore.py
 (73%) and hash.py (93%) had similar holes around PEM loading, password handling,
@@ -57,7 +57,7 @@ def make(signer, **kw):
     return r
 
 
-# ══ verifier.py — the invariant ═════════════════════════════════════════════
+# ══ verifier.py - the invariant ═════════════════════════════════════════════
 
 @pytest.mark.parametrize("field", ["receipt_id", "model_weight_root",
                                    "output_hash", "signature"])
@@ -132,7 +132,7 @@ def test_verify_receipt_file_rejects_a_mismatched_log_position(tmp_path, signer,
 
 
 def test_verify_receipt_file_when_the_log_has_no_such_sequence(tmp_path, signer, pub):
-    """No matching entry means no anchor check — signature alone still decides."""
+    """No matching entry means no anchor check - signature alone still decides."""
     r = make(signer, log_sequence=7, log_anchor="local://log/7")
     rp = tmp_path / "r.json"
     kp = tmp_path / "r.pub"
@@ -163,7 +163,7 @@ def test_log_anchor_mismatched_sequence_fails(signer, pub):
 
 
 def test_log_anchor_zero_sequence_fails(signer, pub):
-    """Sequence 0 is not a real slot — it must not satisfy the anchor."""
+    """Sequence 0 is not a real slot - it must not satisfy the anchor."""
     r = make(signer, log_sequence=0, log_anchor="local://log/0")
     assert verify_receipt(r, pub, {"sequence": 0}) is False
 
@@ -194,14 +194,14 @@ def test_tamper_detect_reports_working_crypto(signer, pub):
 
 
 def test_tamper_detect_on_an_empty_root_returns_false(signer, pub):
-    """Nothing to flip — the probe cannot make a claim."""
+    """Nothing to flip - the probe cannot make a claim."""
     r = make(signer)
     r.model_weight_root = ""
     assert tamper_detect(r, pub) is False
 
 
 def test_tamper_detect_flips_an_f_root_the_other_way(signer, pub):
-    """The probe flips to 'F' unless the digit already is — cover that branch."""
+    """The probe flips to 'F' unless the digit already is - cover that branch."""
     r = make(signer, model_weight_root="F" * 64)
     assert tamper_detect(r, pub) is True
 
@@ -290,7 +290,7 @@ def test_two_generated_signers_differ():
     assert a.export_private_pem() != b.export_private_pem()
 
 
-# ══ keystore.py — path resolution ═══════════════════════════════════════════
+# ══ keystore.py - path resolution ═══════════════════════════════════════════
 
 def test_home_defaults_under_the_user_home(monkeypatch):
     monkeypatch.delenv(HOME_ENV, raising=False)
@@ -339,7 +339,7 @@ def test_unknown_keystore_attribute_still_raises():
         ks.NoSuchThing
 
 
-# ── keystore.py — key creation ───────────────────────────────────────────────
+# ── keystore.py - key creation ───────────────────────────────────────────────
 
 def test_second_call_reuses_the_same_key(tmp_path):
     a = load_or_create_signer(key_dir=tmp_path)
@@ -376,7 +376,7 @@ def test_public_key_is_written_beside_the_private_one(tmp_path):
     assert (tmp_path / "signing_key.pem").exists()
 
 
-# ── keystore.py — issue_receipt failure handling ─────────────────────────────
+# ── keystore.py - issue_receipt failure handling ─────────────────────────────
 
 def test_issue_receipt_writes_both_receipt_and_pubkey(tmp_path):
     log = ReceiptLog(db_path=str(tmp_path / "log.db"))

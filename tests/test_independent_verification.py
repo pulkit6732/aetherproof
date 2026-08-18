@@ -4,7 +4,7 @@
 receipts. That is necessary but not the whole claim. The claim is stronger:
 
     a receipt produced by the REAL CLI can be verified by a party who does not
-    have AetherProof at all — only a standard crypto library.
+    have AetherProof at all - only a standard crypto library.
 
 So these tests do both halves for real:
   * the receipt is produced by running `python -m aetherproof sign` as a
@@ -15,7 +15,7 @@ So these tests do both halves for real:
 
 Marked `slow` because each test spawns two subprocesses. A stronger variant that
 builds a clean virtualenv with only `cryptography` is gated behind
-AETHERPROOF_TEST_VENV=1 — it needs network access, so it is opt-in rather than a
+AETHERPROOF_TEST_VENV=1 - it needs network access, so it is opt-in rather than a
 default CI dependency.
 """
 
@@ -31,7 +31,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 # Verifier source. Imports ONLY stdlib + cryptography, and asserts up front that
-# aetherproof cannot be imported — so a passing run is proof of independence,
+# aetherproof cannot be imported - so a passing run is proof of independence,
 # not just of correctness.
 VERIFIER = textwrap.dedent(r'''
     import sys, importlib.abc, importlib.machinery
@@ -173,7 +173,7 @@ def test_an_edited_receipt_is_rejected(rig):
     ("log_anchor", "local://log/999"),
 ])
 def test_every_signed_field_is_rejected_when_rewritten(rig, field, value):
-    """receipt_id and signing_key_id are the v1.3 additions — proving they are
+    """receipt_id and signing_key_id are the v1.3 additions - proving they are
     bound end to end, through the real CLI and an outside verifier."""
     tmp_path, receipt, _, _ = rig
     d = json.loads(receipt.read_text(encoding="utf-8"))

@@ -11,7 +11,7 @@
 //! against each other in tests.
 //!
 //! Every function here is a thin wrapper over `aetherproof_core`. There is no
-//! second implementation of any algorithm in this file — that is the whole point.
+//! second implementation of any algorithm in this file - that is the whole point.
 //! A binding that reimplements logic is a second place for the signing preimage to
 //! drift, which is the defect class this project already fixed once.
 
@@ -190,8 +190,8 @@ fn pq_has_trailer(data: &[u8]) -> bool {
 ///
 /// The secret never crosses into Python. `generate()` produces it here, signing
 /// happens here, and only public keys and signatures come back out. A Python
-/// `bytes` object holding a key cannot be wiped — it is immutable, and garbage
-/// collection does not overwrite it — so a key that round-trips through Python
+/// `bytes` object holding a key cannot be wiped - it is immutable, and garbage
+/// collection does not overwrite it - so a key that round-trips through Python
 /// stays readable in the heap long after its last use.
 #[pyclass(name = "SecureSigner", unsendable)]
 struct PySecureSigner {

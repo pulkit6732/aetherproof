@@ -1,9 +1,9 @@
-"""Security regression tests — receipt parsing and type handling.
+"""Security regression tests - receipt parsing and type handling.
 
 Bug B (medium): Receipt.from_dict did not coerce numeric fields, so a JSON
 receipt with timestamp_ms / log_sequence as strings parsed into str fields.
 Because the preimage str()-es them, int 1 and str "1" were treated as equal in
-one path and unequal in another — a type-confusion footgun. Also, unknown keys
+one path and unequal in another - a type-confusion footgun. Also, unknown keys
 in a (possibly newer / attacker-supplied) receipt should be ignored, not crash.
 """
 
@@ -40,7 +40,7 @@ def test_json_round_trip_preserves_preimage():
 
 def test_string_vs_int_timestamp_yield_same_receipt():
     """After coercion, a receipt loaded with a string timestamp must be identical
-    to one built with an int — no preimage divergence."""
+    to one built with an int - no preimage divergence."""
     as_int = Receipt(model_weight_root="a", output_hash="o",
                      timestamp_ms=1, log_sequence=1, receipt_id="ap_fixed01")
     as_str = Receipt.from_dict({"model_weight_root": "a", "output_hash": "o",

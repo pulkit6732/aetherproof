@@ -74,7 +74,7 @@ def test_help_table_no_longer_advertises_cbor(capsys):
 # ══ top-level error handling ════════════════════════════════════════════════
 
 def test_keyboard_interrupt_exits_zero_with_a_sentence(monkeypatch, capsys):
-    """Ctrl-C is a user choice, not a crash — and nothing was written."""
+    """Ctrl-C is a user choice, not a crash - and nothing was written."""
     monkeypatch.setattr(cli, "_run", lambda argv: (_ for _ in ()).throw(KeyboardInterrupt))
     with pytest.raises(SystemExit) as e:
         cli.main(["sign", "x"])

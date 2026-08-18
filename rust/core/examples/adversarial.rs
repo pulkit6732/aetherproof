@@ -107,7 +107,7 @@ fn main() {
         bad += 1;
     }
 
-    // PQ trailer — every field is attacker-controlled
+    // PQ trailer - every field is attacker-controlled
     let core_r = to_bytes(&generate(1, b"m", 0, 1, &sk));
     if !probe("trailer_sig(core only)", || {
         let _ = trailer_sig(&core_r);

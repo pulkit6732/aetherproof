@@ -1,4 +1,4 @@
-"""Session receipts — Merkle trees, range sealing, inclusion proofs.
+"""Session receipts - Merkle trees, range sealing, inclusion proofs.
 
 Covers core/session.py, which closes D10: proving that turn K belonged to a
 session used to require reading every prior log row and handing the auditor the
@@ -55,7 +55,7 @@ def test_every_leaf_proves_against_the_root(n):
     """The proof format must match the tree shape at every size.
 
     Odd levels promote rather than duplicate, so proofs are not all the same
-    length — an off-by-one in the promotion path would only show up at some n.
+    length - an off-by-one in the promotion path would only show up at some n.
     """
     leaves = [sha256(f"leaf{i}") for i in range(n)]
     root = merkle_root(leaves)
@@ -217,7 +217,7 @@ def test_verify_turn_needs_no_other_turns(signer, pub):
 
 
 def test_proof_carries_no_plaintext(signer, pub):
-    """Only hashes cross the wire — the prompt and output never do."""
+    """Only hashes cross the wire - the prompt and output never do."""
     s = Session(signer)
     s.record(prompt="PATIENT NAME REDACTED", output="SECRET DIAGNOSIS")
     wire = s.prove(0, start=0, end=0).to_json()

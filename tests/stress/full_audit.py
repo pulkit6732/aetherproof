@@ -1,11 +1,11 @@
 """Full adversarial + stress audit of AetherProof.
 
-Standalone diagnostic harness (not a pytest suite) — it reports on behaviour
+Standalone diagnostic harness (not a pytest suite) - it reports on behaviour
 rather than asserting it, so a broken invariant prints a finding instead of
 aborting the run. Run: python tests/stress/full_audit.py
 
 Battery:
-  A  concurrency (threads and processes) — the agentic-fleet case
+  A  concurrency (threads and processes) - the agentic-fleet case
   B  log tamper-evidence
   C  cryptographic correctness
   D  input robustness
@@ -59,7 +59,7 @@ def mkreceipt(signer, i=0, **kw):
     return r
 
 
-# ── A · CONCURRENCY ───────────────────────────────────────────────────────────
+# ── A | CONCURRENCY ───────────────────────────────────────────────────────────
 
 def a1_concurrent_append(n=64):
     d = tmpdir()
@@ -171,11 +171,11 @@ def a5_sustained_load(n=500):
     log.verify_integrity(signer.get_public_key())
     vdt = time.perf_counter() - t1
     record("A", f"a5 sequential {n} receipts stay intact", intact,
-           f"append {dt / n * 1000:.2f} ms/receipt · full-log verify {vdt * 1000:.0f} ms "
+           f"append {dt / n * 1000:.2f} ms/receipt | full-log verify {vdt * 1000:.0f} ms "
            f"-> verify is O(n), grows with every receipt ever issued")
 
 
-# ── B · LOG TAMPER-EVIDENCE ───────────────────────────────────────────────────
+# ── B | LOG TAMPER-EVIDENCE ───────────────────────────────────────────────────
 
 def _seeded_log(n=6):
     d = tmpdir()
@@ -206,7 +206,7 @@ def b_tamper_suite():
     c.execute("UPDATE receipts SET receipt_json=? WHERE sequence=2", (json.dumps(j),)); c.commit(); c.close()
     record("B", "b3 receipt_json body edit is detected", not log.verify_integrity())
 
-    # b4 tail truncation — the documented gap
+    # b4 tail truncation - the documented gap
     d, log, s = _seeded_log()
     c = sqlite3.connect(d / "log.db"); c.execute("DELETE FROM receipts WHERE sequence>4"); c.commit(); c.close()
     detected = not log.verify_integrity()
@@ -222,7 +222,7 @@ def b_tamper_suite():
     record("B", "b5 delete-then-renumber is detected", not log.verify_integrity())
 
 
-# ── C · CRYPTOGRAPHIC CORRECTNESS ─────────────────────────────────────────────
+# ── C | CRYPTOGRAPHIC CORRECTNESS ─────────────────────────────────────────────
 
 def c_crypto_suite():
     a, b, c_ = sha256("a"), sha256("b"), sha256("c")
@@ -245,7 +245,7 @@ def c_crypto_suite():
     honest = Receipt.api_attested_root("m", "openai", system_fingerprint="fp_2")
     forged = Receipt.api_attested_root("m|system_fingerprint:fp_2", "openai")
     record("C", "c4 api_attested_root resists model_id smuggling", honest != forged,
-           "" if honest != forged else 'non-injective "|".join — caller can forge '
+           "" if honest != forged else 'non-injective "|".join - caller can forge '
                                        "the provider fingerprint binding")
 
     r = mkreceipt(Signer.generate())
@@ -263,7 +263,7 @@ def c_crypto_suite():
            x.canonical_message() != y.canonical_message())
 
 
-# ── D · INPUT ROBUSTNESS ──────────────────────────────────────────────────────
+# ── D | INPUT ROBUSTNESS ──────────────────────────────────────────────────────
 
 def d_input_suite():
     s = Signer.generate()
@@ -308,7 +308,7 @@ def d_input_suite():
            not verify_receipt(r, s.get_public_key()))
 
 
-# ── E · MULTI-TURN SESSION ────────────────────────────────────────────────────
+# ── E | MULTI-TURN SESSION ────────────────────────────────────────────────────
 
 def e_session_suite(turns=1000, target=457):
     d = tmpdir()
@@ -352,12 +352,12 @@ def e_session_suite(turns=1000, target=457):
     cross = Session.verify_turn(proof, other.seal(), s.get_public_key())
     bound = (proof.session_id == seal.session_id) and (cross is False)
     record("E", "e4 a turn is bound to its own session, not a replayable copy", bound,
-           f"session_id carried={proof.session_id[:12]}…; replaying this proof "
+           f"session_id carried={proof.session_id[:12]}...; replaying this proof "
            f"against an identical-content sibling session verified={cross} "
            f"(must be False)")
 
 
-# ── F · KEY LIFECYCLE ─────────────────────────────────────────────────────────
+# ── F | KEY LIFECYCLE ─────────────────────────────────────────────────────────
 
 def f_key_suite():
     d = tmpdir()
@@ -396,7 +396,7 @@ def f_key_suite():
     record("F", "f4 private key can be encrypted at rest", enc and not plain_enc,
            f"with AETHERPROOF_KEY_PASSPHRASE set: encrypted={enc}, mode {mode}. "
            f"Without it: encrypted={plain_enc} (file-permission protection only) "
-           f"— opt-in, so the default install still leaks on a readable disk")
+           f"- opt-in, so the default install still leaks on a readable disk")
 
     d3 = tmpdir()
     l3 = ReceiptLog(db_path=str(d3 / "log.db"))
@@ -412,26 +412,26 @@ def f_key_suite():
 
 
 def main():
-    banner("A · CONCURRENCY — the agentic-fleet case")
+    banner("A | CONCURRENCY - the agentic-fleet case")
     a1_concurrent_append()
     a2_concurrent_keygen()
     a3_concurrent_issue_receipt()
     a4_multiprocess_append()
     a5_sustained_load()
 
-    banner("B · LOG TAMPER-EVIDENCE")
+    banner("B | LOG TAMPER-EVIDENCE")
     b_tamper_suite()
 
-    banner("C · CRYPTOGRAPHIC CORRECTNESS")
+    banner("C | CRYPTOGRAPHIC CORRECTNESS")
     c_crypto_suite()
 
-    banner("D · INPUT ROBUSTNESS")
+    banner("D | INPUT ROBUSTNESS")
     d_input_suite()
 
-    banner("E · MULTI-TURN SESSION / SELECTIVE VERIFICATION")
+    banner("E | MULTI-TURN SESSION / SELECTIVE VERIFICATION")
     e_session_suite()
 
-    banner("F · KEY LIFECYCLE")
+    banner("F | KEY LIFECYCLE")
     f_key_suite()
 
     banner("SUMMARY")
@@ -441,9 +441,9 @@ def main():
         bys[sec] = (p + (1 if ok else 0), f + (0 if ok else 1))
     for sec in sorted(bys):
         p, f = bys[sec]
-        print(f"  {sec}: {p} pass · {f} FAIL")
+        print(f"  {sec}: {p} pass | {f} FAIL")
     tp = sum(p for p, _ in bys.values()); tf = sum(f for _, f in bys.values())
-    print(f"\n  TOTAL: {tp} pass · {tf} FAIL  ({tp + tf} checks)")
+    print(f"\n  TOTAL: {tp} pass | {tf} FAIL  ({tp + tf} checks)")
     print("\n  FAILING:")
     for sec, name, ok, _ in RESULTS:
         if not ok:

@@ -30,7 +30,7 @@ def log_path() -> Path:
     """The transparency log.
 
     MUST be absolute. ReceiptLog's own default is "./receipts/log.db", which is
-    CWD-relative — signing from two different directories produced two separate
+    CWD-relative - signing from two different directories produced two separate
     logs, so the append-only chain silently forked per working directory and
     neither log was complete.
     """
@@ -54,7 +54,7 @@ def __getattr__(name):
 
 # Optional passphrase for the private key at rest. When set, the PEM is written
 # with BestAvailableEncryption instead of NoEncryption. Left unset the key is
-# still written 0600, but an attacker who can read the file can forge receipts —
+# still written 0600, but an attacker who can read the file can forge receipts -
 # so the env var is the difference between "protected by file permissions" and
 # "protected by a secret".
 PASSPHRASE_ENV = "AETHERPROOF_KEY_PASSPHRASE"
@@ -73,7 +73,7 @@ def _passphrase() -> Optional[bytes]:
 
 
 def _chmod_600(path: Path) -> None:
-    """Owner-read/write only. Best effort — POSIX bits are advisory on Windows."""
+    """Owner-read/write only. Best effort - POSIX bits are advisory on Windows."""
     try:
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
     except OSError:
@@ -86,7 +86,7 @@ def load_or_create_signer(key_dir: Path = None) -> Signer:
     Creation is an atomic O_EXCL claim rather than exists()-then-write. The old
     check-then-create was a race: measured over 8 trials x 16 threads it handed
     out 2-4 DISTINCT keys every single time, and the losing threads' public keys
-    were overwritten and never persisted — making their receipts permanently
+    were overwritten and never persisted - making their receipts permanently
     unverifiable. Now exactly one caller wins the create; everyone else falls
     through and reads the winner's key.
     """
@@ -102,7 +102,7 @@ def load_or_create_signer(key_dir: Path = None) -> Signer:
     candidate = Signer.generate()
     pem = candidate.export_private_pem(password=pw)
     try:
-        # O_EXCL is the atomic claim — it fails if anyone else got here first.
+        # O_EXCL is the atomic claim - it fails if anyone else got here first.
         fd = os.open(priv, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError:
         # Lost the race: the winner's key is authoritative. Discard ours rather
@@ -163,7 +163,7 @@ def issue_receipt(
 
     The log_sequence is reserved (max+1) and the log_anchor set BEFORE signing,
     so both are covered by the signature. Files are written first; log.append is
-    the commit point — on any failure the files are rolled back so nothing is
+    the commit point - on any failure the files are rolled back so nothing is
     left orphaned. Raises ValueError on a concurrent sequence collision.
 
     Passing `session_id` / `turn_index` / `session_root` binds this receipt to a
@@ -176,7 +176,7 @@ def issue_receipt(
     receipts_dir = Path(receipts_dir) if receipts_dir else receipts_path()
     receipts_dir.mkdir(parents=True, exist_ok=True)
 
-    # Assemble the signed extensions once — every retry must sign the same
+    # Assemble the signed extensions once - every retry must sign the same
     # context, or the receipt's identity would shift between attempts.
     signed_ext = dict(extensions or {})
     ctx = {}
@@ -190,7 +190,7 @@ def issue_receipt(
         signed_ext.setdefault(SESSION_NS, {}).update(ctx)
 
     # The sequence is inside the signing preimage, so it cannot be assigned
-    # after signing — it has to be chosen, signed, and committed, and if another
+    # after signing - it has to be chosen, signed, and committed, and if another
     # writer took that slot first the whole build must be redone. v0.2.2 tried
     # once and gave up: 29 of 32 concurrent calls failed. Signing is ~45 us, so
     # retrying is far cheaper than the lock it would otherwise need.

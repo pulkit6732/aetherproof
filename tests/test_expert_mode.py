@@ -2,8 +2,8 @@
 
 `test_cli_paths.py` drives the same commands through a real subprocess, which is
 the honest integration check but is invisible to coverage and slow. These call
-the command functions directly, so every branch — usage errors, missing files,
-bad formats, unknown subcommands — is actually exercised and measured.
+the command functions directly, so every branch - usage errors, missing files,
+bad formats, unknown subcommands - is actually exercised and measured.
 
 Between them: inspect, log list/verify/count, keygen, export json/hex/cbor, and
 tamper had NO tests of any kind before this file.
@@ -37,7 +37,7 @@ def files(tmp_path):
 
 
 def out(capsys):
-    """stdout only — the data channel."""
+    """stdout only - the data channel."""
     return capsys.readouterr().out
 
 
@@ -341,7 +341,7 @@ def test_export_hex_reconstructs_a_verifiable_receipt(capsys, files, tmp_path):
 
 
 def test_cbor_is_no_longer_advertised(capsys):
-    """It printed a dim note and exited 0 — worse than not offering it."""
+    """It printed a dim note and exited 0 - worse than not offering it."""
     em.show_help()
     assert "cbor" not in out(capsys).lower()
 

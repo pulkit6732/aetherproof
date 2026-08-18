@@ -1,4 +1,4 @@
-"""The interactive wizard — the path a non-technical user actually takes.
+"""The interactive wizard - the path a non-technical user actually takes.
 
 easy_mode.py was 284 statements at 0% coverage, and that mattered more than the
 number suggests: it had its own copy of the receipt-building logic, and that
@@ -82,7 +82,7 @@ def test_selecting_a_listed_model(monkeypatch, choice):
 
 
 def test_custom_model_name_is_collected_and_trimmed(monkeypatch):
-    monkeypatch.setattr(em.questionary, "select", lambda *a, **k: Stub("Custom…"))
+    monkeypatch.setattr(em.questionary, "select", lambda *a, **k: Stub("Custom..."))
     monkeypatch.setattr(em.questionary, "text", lambda *a, **k: Stub("  MyModel  "))
     assert em._select_model() == "MyModel"
 
@@ -93,7 +93,7 @@ def test_cancelling_the_model_prompt(monkeypatch):
 
 
 def test_cancelling_the_custom_name_prompt(monkeypatch):
-    monkeypatch.setattr(em.questionary, "select", lambda *a, **k: Stub("Custom…"))
+    monkeypatch.setattr(em.questionary, "select", lambda *a, **k: Stub("Custom..."))
     monkeypatch.setattr(em.questionary, "text", lambda *a, **k: Stub(None))
     assert em._select_model() is None
 
@@ -185,7 +185,7 @@ def test_collect_cancelled(monkeypatch):
     assert em._collect_output() is None
 
 
-# ══ signing — the regression that mattered ══════════════════════════════════
+# ══ signing - the regression that mattered ══════════════════════════════════
 
 def test_wizard_receipts_are_current_version(rig):
     """Was pinned to "1.1", so the wizard silently skipped the v1.3 binding."""

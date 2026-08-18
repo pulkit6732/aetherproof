@@ -1,7 +1,7 @@
 """Presentation helpers.
 
 display.py was 33% covered. It is "just" presentation, but every command routes
-its output through here — an exception in a formatting helper takes the whole
+its output through here - an exception in a formatting helper takes the whole
 tool down, and the failure would look to a user like the cryptography broke.
 
 These also pin the stdout/stderr split: the banner is chrome and belongs on

@@ -1,4 +1,4 @@
-"""AetherProof terminal UI — easy mode and expert mode."""
+"""AetherProof terminal UI - easy mode and expert mode."""
 
 from .easy_mode import run_easy_mode
 from .expert_mode import run_expert_mode

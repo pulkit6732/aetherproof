@@ -21,7 +21,7 @@ from aetherproof.core.keystore import home, issue_receipt
 
 # Paths resolve through the keystore so AETHERPROOF_HOME is honoured;
 # a module-level Path.home() constant ignored it (same bug as the CLI had).
-MODEL_CHOICES = ["GPT-4o", "Gemini", "Llama 3", "Mistral", "Custom…"]
+MODEL_CHOICES = ["GPT-4o", "Gemini", "Llama 3", "Mistral", "Custom..."]
 
 
 def _ask(question):
@@ -60,7 +60,7 @@ def _select_model():
     ))
     if model is None:
         return None
-    if model == "Custom…":
+    if model == "Custom...":
         name = _ask(questionary.text(
             "Model name:",
             validate=lambda t: True if t.strip() else "Model name cannot be empty.",
@@ -94,7 +94,7 @@ def _collect_output():
 
 def _paste_output():
     console.print("Paste the AI output below. Press Enter twice when done.")
-    console.print("[dim](If the output has blank lines, use the file option instead — "
+    console.print("[dim](If the output has blank lines, use the file option instead - "
                   "a blank line ends the paste.)[/dim]")
     while True:
         lines = []
@@ -120,7 +120,7 @@ def _hash_output_file():
     if path_str is None:
         return None
     p = Path(path_str).expanduser()
-    # hash the raw bytes — exact for any size / encoding / binary, streamed so
+    # hash the raw bytes - exact for any size / encoding / binary, streamed so
     # a multi-GB file never loads into memory.
     digest = hash_bytes_file(p)
     size = p.stat().st_size
@@ -136,7 +136,7 @@ def _sign_and_log(signer, log, model, output_hash):
         "[4/4] Writing to log",
     ]
     written = []        # files created this run, for rollback
-    committed = False   # True once log.append succeeds — the commit point
+    committed = False   # True once log.append succeeds - the commit point
     receipt = None
     path = None
     try:
@@ -155,7 +155,7 @@ def _sign_and_log(signer, log, model, output_hash):
 
             progress.start_task(tasks[1])
             # interactive easy-mode binds to the model NAME the user typed.
-            # this proves the claim "I said it was <name>" — NOT the weights.
+            # this proves the claim "I said it was <name>" - NOT the weights.
             # the receipt is honest about that via model_root_type="name_only".
             model_weight_root = hash_output(model)
             _finish(progress, tasks[1])
@@ -171,7 +171,7 @@ def _sign_and_log(signer, log, model, output_hash):
             # receipt_id or signing_key_id), wrote to a RECEIPTS_DIR frozen at
             # import (ignoring AETHERPROOF_HOME), and had no retry when a
             # concurrent writer took the sequence. The wizard is the path
-            # non-technical users take — it must not be the least-hardened one.
+            # non-technical users take - it must not be the least-hardened one.
             receipt, path = issue_receipt(
                 signer, log,
                 model_weight_root=model_weight_root,
@@ -201,7 +201,7 @@ def _finish(progress, task):
 
 
 def _atomic_write(path: Path, data: bytes):
-    # write to a temp sibling then replace — target is never partially written
+    # write to a temp sibling then replace - target is never partially written
     tmp = path.with_name(path.name + ".tmp")
     try:
         tmp.write_bytes(data)
@@ -228,9 +228,9 @@ def _show_success(receipt, model, path):
     inner.add_column()
     inner.add_row("Receipt ID", receipt.receipt_id)
     inner.add_row("Model", model)
-    trust = ("name only — proves the claimed name, NOT the weights"
+    trust = ("name only - proves the claimed name, NOT the weights"
              if receipt.model_root_type == "name_only"
-             else "artifact hash — bound to the weights file")
+             else "artifact hash - bound to the weights file")
     inner.add_row("Model root", trust)
     inner.add_row("Output hash", f"sha256:{receipt.output_hash[:16]}...")
     signed_at = datetime.fromtimestamp(receipt.timestamp_ms / 1000, timezone.utc).isoformat()
@@ -261,10 +261,10 @@ def _inline_verify(path):
     receipt = Receipt.from_json(path.read_text(encoding="utf-8"))
     ok = verify_receipt(receipt, Verifier.from_public_file(str(pub)))
     if ok:
-        console.print(Panel("✓ VALID — signature intact, output unmodified.",
+        console.print(Panel(" VALID - signature intact, output unmodified.",
                             border_style="green"))
     else:
-        console.print(Panel("✗ INVALID — receipt failed verification.",
+        console.print(Panel(" INVALID - receipt failed verification.",
                             border_style="red"))
 
 
@@ -375,18 +375,18 @@ def _evaluate(receipt, pub, log):
         and entry.get("signature") == receipt.signature
     )
     if not found:
-        # valid signature, simply not issued here — NOT tamper
+        # valid signature, simply not issued here - NOT tamper
         return {"status": "unlogged",
                 "reason": "The signature is authentic, but this receipt is not in "
                           "this machine's transparency log. That is expected when "
                           "verifying a receipt that was issued on another machine."}
 
-    # 3. receipt is logged here — is the local log itself intact?
+    # 3. receipt is logged here - is the local log itself intact?
     #    key-free: chain + sequence binding (rotation-safe, no false TAMPER)
     if not log.verify_integrity():
         return {"status": "log_broken", "field": "local transparency log",
                 "reason": "The signature is authentic and the receipt is logged, but "
-                          "this machine's log failed its integrity check — the local "
+                          "this machine's log failed its integrity check - the local "
                           "log has been altered. The receipt itself is intact."}
 
     return {"status": "valid"}
@@ -396,10 +396,10 @@ def _verify_valid_panel():
     inner = Table.grid(padding=(0, 2))
     inner.add_column(style="dim", justify="right")
     inner.add_column()
-    inner.add_row("Signature", "✓ VALID")
-    inner.add_row("Log entry", "✓ FOUND, INTACT")
-    inner.add_row("Chain", "✓ UNBROKEN")
-    inner.add_row("Tamper", "✓ NONE DETECTED")
+    inner.add_row("Signature", " VALID")
+    inner.add_row("Log entry", " FOUND, INTACT")
+    inner.add_row("Chain", " UNBROKEN")
+    inner.add_row("Tamper", " NONE DETECTED")
     console.print(Panel(inner, title="RECEIPT VALID", border_style="green"))
 
 
@@ -407,11 +407,11 @@ def _verify_unlogged_panel(result):
     inner = Table.grid(padding=(0, 2))
     inner.add_column(style="dim", justify="right")
     inner.add_column()
-    inner.add_row("Signature", "✓ VALID")
-    inner.add_row("Log entry", "— not in this machine's log")
-    inner.add_row("Chain", "— not checked (not logged here)")
-    inner.add_row("Tamper", "✓ NONE DETECTED")
-    console.print(Panel(inner, title="SIGNATURE VALID — NOT IN THIS LOG", border_style="yellow"))
+    inner.add_row("Signature", " VALID")
+    inner.add_row("Log entry", "- not in this machine's log")
+    inner.add_row("Chain", "- not checked (not logged here)")
+    inner.add_row("Tamper", " NONE DETECTED")
+    console.print(Panel(inner, title="SIGNATURE VALID - NOT IN THIS LOG", border_style="yellow"))
     console.print(result["reason"])
 
 
@@ -419,10 +419,10 @@ def _verify_logbroken_panel(result):
     inner = Table.grid(padding=(0, 2))
     inner.add_column(style="dim", justify="right")
     inner.add_column()
-    inner.add_row("Signature", "✓ VALID (receipt intact)")
-    inner.add_row("Log entry", "✓ FOUND")
-    inner.add_row("Chain", "✗ BROKEN")
-    inner.add_row("Tamper", "✗ LOCAL LOG ALTERED")
+    inner.add_row("Signature", " VALID (receipt intact)")
+    inner.add_row("Log entry", " FOUND")
+    inner.add_row("Chain", " BROKEN")
+    inner.add_row("Tamper", " LOCAL LOG ALTERED")
     console.print(Panel(inner, title="LOG INTEGRITY FAILURE", border_style="red"))
     console.print(result["reason"])
 

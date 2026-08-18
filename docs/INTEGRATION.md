@@ -1,8 +1,8 @@
+[Back to the AetherProof README](../README.md)
+
 # Integration guide
 
-**AetherProof — Pulkit Kr Srivastava · Apache-2.0**
-
-How to add AetherProof to something that already exists, in the smallest number of
+**AetherProof - Pulkit Kr Srivastava | Apache-2.0**How to add AetherProof to something that already exists, in the smallest number of
 steps that actually work. Each section is a real situation, not a feature tour.
 
 Every snippet here runs. Where a thing is not built yet, it says so instead of
@@ -12,16 +12,14 @@ showing you code that will not import.
 
 ## Pick your path in one question
 
-**Do you control the code that produces the AI output?**
-
-- **Yes** → [Path A](#path-a--you-call-the-model). Three lines.
-- **No, I only have the output afterwards** → [Path B](#path-b--you-only-have-the-output).
-- **Yes, and the key must not sit in Python memory** → [Path C](#path-c--secrets-that-get-wiped).
-- **I only need to check someone else's receipt** → [Path D](#path-d--verify-only).
+**Do you control the code that produces the AI output?**- **Yes**-> [Path A](#path-a--you-call-the-model). Three lines.
+- **No, I only have the output afterwards**-> [Path B](#path-b--you-only-have-the-output).
+- **Yes, and the key must not sit in Python memory**-> [Path C](#path-c--secrets-that-get-wiped).
+- **I only need to check someone else's receipt**-> [Path D](#path-d--verify-only).
 
 ---
 
-## Path A — you call the model
+## Path A - you call the model
 
 The common case. You have a function that calls an API and returns text, and you
 want a receipt for every call.
@@ -42,7 +40,7 @@ sign(prompt=user_prompt, output=out, model_id=resp.model)
 ```
 
 That is the whole integration. `sign()` never prompts, never blocks, never reads
-stdin. On failure it returns `None` and your program continues — a pipeline losing
+stdin. On failure it returns `None` and your program continues - a pipeline losing
 a receipt is bad, a pipeline crashing over one is worse.
 
 If a missing receipt *is* a failure for you, invert it:
@@ -91,11 +89,11 @@ proof = inclusion_proof(leaf_hashes, 500)     # sibling path for turn 500
 assert verify_inclusion(leaf_hashes[500], proof, root)
 ```
 
-The proof reveals nothing about turns 0–499 or 501–999.
+The proof reveals nothing about turns 0-499 or 501-999.
 
 ---
 
-## Path B — you only have the output
+## Path B - you only have the output
 
 You did not make the call. You have a file, a transcript, or a blob, and you need
 it to be tamper-evident from now on.
@@ -105,23 +103,23 @@ aetherproof sign model.onnx output.txt
 aetherproof verify receipt.json --output output.txt
 ```
 
-**Understand what this does and does not give you.** Signing an artifact today
+**Understand what this does and does not give you.**Signing an artifact today
 proves it has not changed *since today*. It says nothing about whether it was
-altered before you signed it. If that distinction matters — legacy archives,
-evidence, anything where the gap between creation and signing is long — signing
+altered before you signed it. If that distinction matters - legacy archives,
+evidence, anything where the gap between creation and signing is long - signing
 now does not close it, and no signature scheme can. That is a property of what a
 signature is, not a limitation of this tool.
 
 ---
 
-## Path C — secrets that get wiped
+## Path C - secrets that get wiped
 
 A Python `bytes` object holding a signing key is immutable: you cannot wipe it, and
 garbage collection does not overwrite the allocation. The key stays readable in the
 heap long after its last use, and in a core dump afterwards.
 
-If that matters — a long-lived service, a shared host, anything that produces crash
-dumps — use the native extension's `SecureSigner`. The key is generated inside Rust,
+If that matters - a long-lived service, a shared host, anything that produces crash
+dumps - use the native extension's `SecureSigner`. The key is generated inside Rust,
 never crosses back into Python, and is overwritten on release.
 
 ### C1. Build the extension
@@ -132,7 +130,7 @@ python -m maturin build --release
 pip install ../target/wheels/aetherproof_native-*.whl
 ```
 
-Needs a Rust toolchain ([rustup.rs](https://rustup.rs)). It is **optional** — the
+Needs a Rust toolchain ([rustup.rs](https://rustup.rs)). It is **optional**- the
 `aetherproof` package does not import it and behaves identically without it.
 
 ### C2. Use it
@@ -149,7 +147,7 @@ verifier = _native.SecureVerifier(pub)
 assert verifier.verify_receipt(receipt)
 ```
 
-The key is wiped even if the block exits by exception. Nothing returns it —
+The key is wiped even if the block exits by exception. Nothing returns it -
 there is no `private_key` accessor, and `repr()` shows only `<SecureSigner live>`
 or `<SecureSigner destroyed>`.
 
@@ -182,17 +180,9 @@ hybrid = _native.pq_attach(receipt, priv_pq)     # 128-byte core untouched
 assert _native.pq_verify(hybrid, pub_pq)
 ```
 
-**Know the cost before you turn this on:**
+**Know the cost before you turn this on:**| | Ed25519 | ML-DSA-65 | |---|---|---| | Signature | 64 B | **3,309 B**| | Full receipt | 128 B | **3,453 B**| | Public key | 32 B | 1,952 B | | Sign | 18.84 µs | 787.83 µs (**42x**) | | Verify | 22.77 µs | 177.59 µs (7.8x) |
 
-| | Ed25519 | ML-DSA-65 |
-|---|---|---|
-| Signature | 64 B | **3,309 B** |
-| Full receipt | 128 B | **3,453 B** |
-| Public key | 32 B | 1,952 B |
-| Sign | 18.84 µs | 787.83 µs (**42×**) |
-| Verify | 22.77 µs | 177.59 µs (7.8×) |
-
-A hybrid receipt is **27× larger** than a plain one. There is no compact
+A hybrid receipt is **27x larger**than a plain one. There is no compact
 post-quantum option: 3,309 bytes is the FIPS 204 signature size, and no framing
 choice shrinks it. Turn this on when you need it, not by default.
 
@@ -204,12 +194,12 @@ assert hybrid[:128] == receipt          # true, by test
 
 ---
 
-## Path D — verify only
+## Path D - verify only
 
 You received a receipt and a public key. You do not want to install this project to
 check it.
 
-**You do not have to.** Verification needs `cryptography` and 21 lines. No network,
+**You do not have to.**Verification needs `cryptography` and 21 lines. No network,
 no account, no special hardware, and it keeps working if this project is abandoned.
 The full verifier is in the README under *How offline verification actually works*.
 
@@ -227,11 +217,7 @@ aetherproof verify receipt.json --output output.txt --quiet   # exit 0 or 1
 
 ## Choosing between the two implementations
 
-| Use | When |
-|---|---|
-| **Python** (`pip install aetherproof`) | default; no toolchain needed; the whole feature set |
-| **Rust core** (`rust/`) | 128-byte receipts, kernel wire compatibility, post-quantum, secret wiping, constant-time comparison |
-| **Both** (extension installed) | Python API unchanged, 2.9–4.3× faster Merkle work |
+| Use | When | |---|---| | **Python**(`pip install aetherproof`) | default; no toolchain needed; the whole feature set | | **Rust core**(`rust/`) | 128-byte receipts, kernel wire compatibility, post-quantum, secret wiping, constant-time comparison | | **Both**(extension installed) | Python API unchanged, 2.9-4.3x faster Merkle work |
 
 They are verified to agree: `tests/test_native_equivalence.py` holds them to
 identical output across 17 tree sizes, every proof index in 10 tree sizes, 150
@@ -241,27 +227,20 @@ randomised trees, and cross-verification in both directions.
 
 ## Operational notes
 
-**Where things live.** `~/.aetherproof/` holds `signing_key.pem`, `signing_key.pub`,
+**Where things live.**`~/.aetherproof/` holds `signing_key.pem`, `signing_key.pub`,
 `log.db`, and `receipts/`. Override with `AETHERPROOF_HOME`.
 
-**Environment variables.**
+**Environment variables.**| | | |---|---| | `AETHERPROOF_HOME` | where keys and the log live | | `AETHERPROOF_STRICT=1` | a receipt failure raises instead of returning `None` | | `AETHERPROOF_DISABLE=1` | no-op every call - for test suites | | `AETHERPROOF_KEY_PASSPHRASE` | encrypt the key at rest |
 
-| | |
-|---|---|
-| `AETHERPROOF_HOME` | where keys and the log live |
-| `AETHERPROOF_STRICT=1` | a receipt failure raises instead of returning `None` |
-| `AETHERPROOF_DISABLE=1` | no-op every call — for test suites |
-| `AETHERPROOF_KEY_PASSPHRASE` | encrypt the key at rest |
-
-**Back up your private key.** Losing it means you can no longer issue receipts under
+**Back up your private key.**Losing it means you can no longer issue receipts under
 that identity. Already-issued receipts keep verifying, because verification needs
 only the public key.
 
-**Concurrency.** The log is SQLite in WAL mode with `BEGIN IMMEDIATE`. Verified
+**Concurrency.**The log is SQLite in WAL mode with `BEGIN IMMEDIATE`. Verified
 intact at 128 threads and 12 processes, and after hard-killing writers mid-write.
 Throughput ~1,400 receipts/sec.
 
-**Key rotation.** Receipts carry `signing_key_id`, so a verifier does one lookup
+**Key rotation.**Receipts carry `signing_key_id`, so a verifier does one lookup
 rather than trying every key you hold. Rotating never invalidates old receipts.
 
 ---
@@ -270,20 +249,20 @@ rather than trying every key you hold. Rotating never invalidates old receipts.
 
 Full list in `docs/CLAIMS.md`. The three that change design decisions:
 
-1. **Integrity, not completeness.** *"Show me the record of this decision"* is
+1. **Integrity, not completeness.***"Show me the record of this decision"* is
    answered. *"Show me that you logged them all"* is not. Someone who logs 9,000 of
-   10,000 outputs passes every check here. This is unsolvable locally — it needs an
+   10,000 outputs passes every check here. This is unsolvable locally - it needs an
    independent witness, which is not built.
 
-2. **The timestamp is the signer's own clock.** Bound at signing, not externally
+2. **The timestamp is the signer's own clock.**Bound at signing, not externally
    anchored. If you need a third party to attest the time, this does not do that.
 
-3. **It does not prove which model ran.** It signs a `(model, output)` pair you
+3. **It does not prove which model ran.**It signs a `(model, output)` pair you
    supply. There is no inference attestation.
 
-**Where it does not fit at all:** detecting deepfakes or unsigned AI content. A
-scammer never signs, so there is nothing to verify. That is detection — a different
-technology needing serious compute — and this project does not do it.
+**Where it does not fit at all:**detecting deepfakes or unsigned AI content. A
+scammer never signs, so there is nothing to verify. That is detection - a different
+technology needing serious compute - and this project does not do it.
 
 ---
 

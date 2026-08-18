@@ -81,7 +81,7 @@ def test_model_root_type_default_is_name_only():
 
 
 def test_model_root_type_is_in_signing_preimage():
-    """model_root_type must be signed — otherwise a name_only receipt could be
+    """model_root_type must be signed - otherwise a name_only receipt could be
     relabeled artifact_hash without breaking the signature."""
     name_only = Receipt(model_weight_root="abc", model_root_type="name_only",
                         output_hash="def", timestamp_ms=1, log_sequence=1)

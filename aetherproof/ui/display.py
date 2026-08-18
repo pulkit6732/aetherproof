@@ -12,9 +12,9 @@ from datetime import datetime
 
 from aetherproof import __version__
 
-_V = f"v{__version__}"  # single source of truth — never hardcode the version
+_V = f"v{__version__}"  # single source of truth - never hardcode the version
 
-# force utf-8 so box-drawing / · / ✓ encode under any Windows codepage
+# force utf-8 so box-drawing / | /  encode under any Windows codepage
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8")
@@ -48,13 +48,13 @@ _LOGO_LINES = [
     ("AETHERPROOF", f"bold {BRAND}"),
     (_V, "dim white"),
     ("Cryptographic receipt engine", "white"),
-    ("Prototype of Signet · R0/L2", "dim"),
+    ("Prototype of Signet | R0/L2", "dim"),
     ("", None),
     ("github.com/pulkit6732/aetherproof", LINK),
     ("Verify(receipt, pk, log) = TRUE", "dim"),
 ]
 
-_ACTIONS = "Sign · Verify · Inspect · Log · Keygen"
+_ACTIONS = "Sign | Verify | Inspect | Log | Keygen"
 
 
 def print_logo() -> None:
@@ -89,13 +89,13 @@ def run_about() -> None:
     invariant = Panel(
         Group(
             Text("Verify(receipt, public_key, log) = TRUE"),
-            Text("using only those three inputs — offline, forever."),
+            Text("using only those three inputs - offline, forever."),
         ),
         border_style="dim cyan",
     )
     body = Group(
         Text("AetherProof is the open-source cryptographic receipt engine."),
-        Text("The prototype of Signet — the AI inference trust layer."),
+        Text("The prototype of Signet - the AI inference trust layer."),
         Text(""),
         invariant,
         Text(""),
@@ -106,7 +106,7 @@ def run_about() -> None:
 
 
 def header() -> None:
-    """Print the branded header — to stderr, so stdout stays pipeable."""
+    """Print the branded header - to stderr, so stdout stays pipeable."""
     title_text = Text("AETHERPROOF", style="cyan bold")
     subtitle = Text("the open-source receipt engine", style="dim cyan")
     err_console.print(f"\n{title_text}")
@@ -120,7 +120,7 @@ def receipt_table(receipt: "Receipt") -> None:
     Args:
         receipt: Receipt object to display
     """
-    table = Table(title="Receipt — Cryptographic Proof", show_header=True)
+    table = Table(title="Receipt - Cryptographic Proof", show_header=True)
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="white")
 
@@ -130,7 +130,7 @@ def receipt_table(receipt: "Receipt") -> None:
     table.add_row("Input Commitment", receipt.input_commitment[:32] + "..." if receipt.input_commitment else "(hidden)")
     table.add_row("Timestamp", datetime.fromtimestamp(receipt.timestamp_ms / 1000).isoformat())
     table.add_row("Log Sequence", str(receipt.log_sequence))
-    table.add_row("Signature Valid", "✓ YES" if receipt.signature else "✗ NO")
+    table.add_row("Signature Valid", " YES" if receipt.signature else " NO")
 
     console.print(table)
 
@@ -212,12 +212,12 @@ def verification_result(receipt_id: str, is_valid: bool) -> None:
     """
     if is_valid:
         success_box(
-            "✓ VERIFIED",
+            " VERIFIED",
             f"Receipt {receipt_id[:16]}... is valid and unmodified.",
         )
     else:
         error_box(
-            "✗ INVALID",
+            " INVALID",
             f"Receipt {receipt_id[:16]}... failed verification (tampered?).",
         )
 
@@ -229,8 +229,8 @@ def main_menu() -> str:
         Choice: 'easy', 'expert', or 'quit'
     """
     console.print("\n[cyan bold]Choose your mode:[/cyan bold]")
-    console.print("[green][1][/green] Easy Mode   — for anyone (wizard)")
-    console.print("[cyan][2][/cyan] Expert Mode — for developers (CLI)")
+    console.print("[green][1][/green] Easy Mode   - for anyone (wizard)")
+    console.print("[cyan][2][/cyan] Expert Mode - for developers (CLI)")
     console.print("[red][Q][/red] Quit")
     console.print()
 

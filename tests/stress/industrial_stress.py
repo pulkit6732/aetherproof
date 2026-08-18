@@ -3,14 +3,14 @@
 The earlier batteries used threads and modest N. This one is shaped like actual
 deployments:
 
-  P1  agent fleet     — N separate OS PROCESSES hammering one shared log+key,
+  P1  agent fleet     - N separate OS PROCESSES hammering one shared log+key,
                         the way a CI matrix or a container fleet does
-  P2  sustained       — high volume over time, watching for drift or degradation
-  P3  mixed workload  — single receipts AND session sealing at once, contending
-  P4  cold start swarm— M processes racing to create the key from nothing
-  P5  crash recovery  — kill writers mid-flight, verify the log survives
-  P6  long session    — 50k turns, proof cost and memory at scale
-  P7  headless matrix — the automation module under the same pressure
+  P2  sustained       - high volume over time, watching for drift or degradation
+  P3  mixed workload  - single receipts AND session sealing at once, contending
+  P4  cold start swarm- M processes racing to create the key from nothing
+  P5  crash recovery  - kill writers mid-flight, verify the log survives
+  P6  long session    - 50k turns, proof cost and memory at scale
+  P7  headless matrix - the automation module under the same pressure
 
 Run: python tests/stress/industrial_stress.py [scale]
      scale defaults to 1; pass 2, 4 ... to multiply the load.
@@ -146,7 +146,7 @@ def _crash_worker(args):
     log = L(db_path=db)
     for i in range(n):
         if i == die_at:
-            os._exit(9)  # no cleanup, no flush — a real kill
+            os._exit(9)  # no cleanup, no flush - a real kill
         try:
             log.append(mkreceipt(sgn, wid * 100000 + i))
         except Exception:
@@ -173,7 +173,7 @@ def _headless_worker(args):
         return (0, False, f"{type(e).__name__}: {e}")
 
 
-# ── P1 · agent fleet ─────────────────────────────────────────────────────────
+# ── P1 | agent fleet ─────────────────────────────────────────────────────────
 
 def p1_process_fleet():
     procs = 12 * SCALE
@@ -205,7 +205,7 @@ def p1_process_fleet():
                 f"         chain {report}; {expected/dt:.0f} receipts/sec aggregate")
 
 
-# ── P2 · sustained volume ────────────────────────────────────────────────────
+# ── P2 | sustained volume ────────────────────────────────────────────────────
 
 def p2_sustained_volume():
     n = 20000 * SCALE
@@ -243,7 +243,7 @@ def p2_sustained_volume():
                 f"{verify_s:.1f}s; intact={intact}")
 
 
-# ── P3 · mixed workload ──────────────────────────────────────────────────────
+# ── P3 | mixed workload ──────────────────────────────────────────────────────
 
 def p3_mixed_workload():
     procs = 8 * SCALE
@@ -280,7 +280,7 @@ def p3_mixed_workload():
                 f"         {report}")
 
 
-# ── P4 · cold-start swarm ────────────────────────────────────────────────────
+# ── P4 | cold-start swarm ────────────────────────────────────────────────────
 
 def p4_cold_start_swarm():
     procs = 16 * SCALE
@@ -301,10 +301,10 @@ def p4_cold_start_swarm():
     return ok, (f"{procs} PROCESSES racing to create a key from an empty dir: "
                 f"distinct keys={len(distinct)} orphaned={orphaned} errors={len(errs)}\n"
                 f"         (>1 key here means some processes signed with a key whose "
-                f"public half was overwritten — permanently unverifiable receipts)")
+                f"public half was overwritten - permanently unverifiable receipts)")
 
 
-# ── P5 · crash recovery ──────────────────────────────────────────────────────
+# ── P5 | crash recovery ──────────────────────────────────────────────────────
 
 def p5_crash_recovery():
     d = tmpdir()
@@ -342,7 +342,7 @@ def p5_crash_recovery():
                 f"         (a hard kill must never leave a chain that reads as tampered)")
 
 
-# ── P6 · very long session ───────────────────────────────────────────────────
+# ── P6 | very long session ───────────────────────────────────────────────────
 
 def p6_long_session():
     n = 50000 * SCALE
@@ -389,7 +389,7 @@ def p6_long_session():
                 f"{min(verify_ms):.3f}-{max(verify_ms):.3f} ms, seal {len(seal.to_json())} B")
 
 
-# ── P7 · headless under load ─────────────────────────────────────────────────
+# ── P7 | headless under load ─────────────────────────────────────────────────
 
 def p7_headless_matrix():
     procs = 8 * SCALE
@@ -419,10 +419,10 @@ def main():
     global SCALE
     if len(sys.argv) > 1:
         SCALE = int(sys.argv[1])
-    print(f"AetherProof industrial stress — scale x{SCALE}, "
+    print(f"AetherProof industrial stress - scale x{SCALE}, "
           f"{mp.cpu_count()} CPUs, pid {os.getpid()}")
 
-    banner("P · INDUSTRIAL LOAD")
+    banner("P | INDUSTRIAL LOAD")
     probe("P", "p1  agent fleet: 12 OS processes on one shared log", p1_process_fleet)
     probe("P", "p2  sustained: 20k receipts, watching for throughput drift", p2_sustained_volume)
     probe("P", "p3  mixed workload: receipts + session sealing concurrently", p3_mixed_workload)
@@ -434,7 +434,7 @@ def main():
     banner("SUMMARY")
     ok = sum(1 for r in ROWS if r[2])
     total_s = sum(r[4] for r in ROWS)
-    print(f"  {ok} OK · {len(ROWS) - ok} BAD  ({len(ROWS)} probes, {total_s:.0f}s)")
+    print(f"  {ok} OK | {len(ROWS) - ok} BAD  ({len(ROWS)} probes, {total_s:.0f}s)")
     bad = [r for r in ROWS if not r[2]]
     if bad:
         print("\n  BAD:")

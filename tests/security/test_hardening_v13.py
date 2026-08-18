@@ -6,7 +6,7 @@ the fix, so the suite is the proof the defect is closed.
 
 Findings covered:
   F1  receipt_id collided ("receipt_0") for every Receipt built without an
-      explicit timestamp — i.e. every receipt from Receipt.for_api_call().
+      explicit timestamp - i.e. every receipt from Receipt.for_api_call().
   C1  api_attested_root used a non-injective "|".join, the same encoding the
       signing preimage had already abandoned for that exact reason.
   C2  compute_merkle_root duplicated the odd leaf (CVE-2012-2459 pattern), had
@@ -39,7 +39,7 @@ from aetherproof.core.hash import (
 META = {"system_fingerprint": "fp_a7d06e42bc", "response_id": "chatcmpl-9x"}
 
 
-# ── F1 · receipt_id uniqueness ────────────────────────────────────────────────
+# ── F1 | receipt_id uniqueness ────────────────────────────────────────────────
 
 def test_api_receipts_get_distinct_ids():
     """Two cloud receipts must not share an id.
@@ -79,7 +79,7 @@ def test_two_api_receipts_both_append_to_log(tmp_path):
     assert log.count() == 2
 
 
-# ── C1 · api_attested_root injectivity ────────────────────────────────────────
+# ── C1 | api_attested_root injectivity ────────────────────────────────────────
 
 def test_api_attested_root_resists_model_id_smuggling():
     """A caller must not be able to forge a metadata binding via model_id.
@@ -111,7 +111,7 @@ def test_api_attested_root_still_separates_distinct_inputs():
             != Receipt.api_attested_root("gpt-3.5", "openai"))
 
 
-# ── C2 · Merkle construction ──────────────────────────────────────────────────
+# ── C2 | Merkle construction ──────────────────────────────────────────────────
 
 def test_odd_leaf_is_not_duplicated():
     """CVE-2012-2459 class: [A,B,C] must not equal [A,B,C,C]."""
@@ -191,7 +191,7 @@ def test_single_file_model_root_is_the_file_digest(tmp_path):
     assert compute_model_weight_root(f) == sha256("weights")
 
 
-# ── F4 · receipt_id is signed ─────────────────────────────────────────────────
+# ── F4 | receipt_id is signed ─────────────────────────────────────────────────
 
 def _signed(**kw):
     base = dict(model_weight_root="a" * 64, model_root_type="artifact_hash",
