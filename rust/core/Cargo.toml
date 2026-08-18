@@ -11,3 +11,4 @@ categories  = ["cryptography", "security"]
 [dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 getrandom     = { version = "0.2", features = ["std"] }
+fips204       = "0.4"

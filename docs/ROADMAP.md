@@ -19,14 +19,14 @@ This document records where each implementation stands and what 0.5.0 does about
 | Session Merkle proofs | no | **yes** |
 | Signed extensions (v1.2) | no | **yes** |
 | Key rotation / `signing_key_id` | no | **yes** |
-| Tests | 18 | 568 (93% coverage) |
+| Tests | 30 | 568 (93% coverage) |
 | Distribution | source | PyPI |
 
 Both are live. The Rust workspace builds clean and passes its full suite:
 
 ```
 cargo build --release   # Finished in ~15s
-cargo test  --release   # 18 passed; 0 failed
+cargo test  --release   # 30 passed; 0 failed
 ```
 
 ### Measured, same machine, 20,000 operations each
@@ -81,12 +81,51 @@ will be exactly one, in Rust, and Python will call it.
    proofs. This is the strongest feature of the Python line and it belongs beside the
    primitives, not above them.
 
-3. **Add ML-DSA-65 (FIPS 204) as a second signature slot.**
-   Not a replacement for Ed25519 — a hybrid. A receipt carries the Ed25519 signature
-   and, optionally, a post-quantum signature over the same preimage. Verification
-   succeeds if the required slots verify, so existing Ed25519-only receipts keep
-   verifying unchanged. Neither implementation has post-quantum signing today; this is
-   the release that adds it.
+3. **ML-DSA-65 (FIPS 204) as a second signature slot — BUILT, `rust/core/src/pq.rs`.**
+   Not a replacement for Ed25519 — a hybrid. The 128-byte core is untouched; a trailer
+   is appended carrying an ML-DSA-65 signature over the *same* signed prefix, so there
+   is one signed message rather than two that could disagree.
+
+   ```text
+   [0..128]    core receipt   128-byte Ed25519 record, unchanged
+   [128..136]  pq_magic       "AETHPQ01"
+   [136]       pq_alg         1 = ML-DSA-65
+   [137..140]  _pad           [0; 3]
+   [140..144]  pq_sig_len     u32 little-endian
+   [144..]     pq_sig         ML-DSA-65 over core[0..64]
+   ```
+
+   **Measured, not estimated:**
+
+   | | Bytes |
+   |---|---|
+   | Core receipt (Ed25519 only) | 128 |
+   | Trailer header | 16 |
+   | ML-DSA-65 signature | **3,309** |
+   | **Hybrid receipt total** | **3,453** |
+   | ML-DSA-65 public key | 1,952 |
+
+   | Operation | Time | Rate |
+   |---|---|---|
+   | ML-DSA sign | 787.83 µs | 1,269/s |
+   | ML-DSA verify | 177.59 µs | 5,631/s |
+   | Hybrid verify (both) | 231.85 µs | 4,313/s |
+
+   **A 152-byte Ed25519+ML-DSA hybrid receipt is not achievable.** An ML-DSA-65
+   signature is 3,309 bytes by the standard; no framing choice makes it smaller. Any
+   claim of a ~152-byte post-quantum hybrid is wrong and should not be repeated.
+   The smallest NIST-selected signature is Falcon-512 at 666 bytes, still five times
+   the core receipt. If a small receipt matters more than a self-contained one, the
+   alternative is storing a 32-byte commitment to an externally held PQ signature —
+   a weaker guarantee, and it must be described as such.
+
+   Post-quantum signing costs 42× Ed25519 on sign and 7.8× on verify. It is opt-in
+   for that reason.
+
+   Backward compatibility is verified by test, not asserted:
+   attaching a trailer leaves the 128 core bytes byte-identical, a verifier that
+   predates the trailer still accepts the receipt, and hybrid verification fails
+   closed when the trailer is absent.
 
 4. **PyO3 bindings, unchanged public API.**
    `Signer`, `Verifier`, `Receipt`, `Session`, and `aetherproof.auto` keep their current
@@ -120,7 +159,7 @@ A verifier must fail closed. Add an `isinstance` check in the constructor.
 |---|---|
 | 1. `aetherproof-core`: 128-byte format, Ed25519, injective preimage | Rust suite green; byte-identical to `rust-legacy-v0.2.0` output |
 | 2. Merkle session tree in Rust | Inclusion proofs match Python's for identical input |
-| 3. ML-DSA-65 second slot | Ed25519-only receipts still verify; hybrid verifies both |
+| 3. ML-DSA-65 second slot — **done** | Ed25519-only receipts still verify; hybrid verifies both |
 | 4. PyO3 bindings | Full 568-test Python suite green against the Rust core |
 | 5. Wheels + release | Linux / macOS / Windows; `pip install aetherproof` unchanged |
 
