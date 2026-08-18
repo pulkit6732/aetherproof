@@ -1,0 +1,13 @@
+[build-system]
+requires      = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name            = "aetherproof-native"
+version         = "0.5.0"
+description     = "Native core for AetherProof"
+requires-python = ">=3.9"
+authors         = [{name = "Pulkit Kr Srivastava", email = "pulkitsrivastavae@gmail.com"}]
+
+[tool.maturin]
+module-name = "_native"

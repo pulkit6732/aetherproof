@@ -164,8 +164,46 @@ def test_readme_snippet_is_valid_python():
 
 
 def test_readme_does_not_claim_an_unimplemented_signature_scheme():
-    """Ed25519 only. ML-DSA is roadmap, and CLAIMS.md says so."""
+    """A post-quantum claim must name where it is implemented, and be true there.
+
+    ML-DSA-65 exists in the Rust core (rust/core/src/pq.rs). It does NOT exist in
+    the Python package. A README line mentioning it must therefore be scoped to
+    the implementation that has it — "rust", the 0.5.0 roadmap, or Signet — and
+    this test verifies the Rust claim against the Rust source rather than trusting
+    a keyword.
+    """
+    repo = README.parent
+    rust_pq = repo / "rust" / "core" / "src" / "pq.rs"
+    rust_has_mldsa = rust_pq.is_file() and "ml_dsa_65" in rust_pq.read_text(encoding="utf-8")
+
+    scopes = ("signet", "rust", "roadmap", "0.5.0")
+    # Markdown wraps sentences across lines, so scope is a property of the
+    # paragraph, not of whichever line the token happens to land on.
     text = README.read_text(encoding="utf-8").lower()
-    for line in text.splitlines():
-        if "ml-dsa" in line:
-            assert "signet" in line, f"ML-DSA claimed for AetherProof: {line!r}"
+    for para in text.split(chr(10) + chr(10)):
+        if "ml-dsa" not in para:
+            continue
+        flat = " ".join(para.split())
+        assert any(s in para for s in scopes), (
+            f"ML-DSA claimed without naming which implementation has it: {flat!r}"
+        )
+        if "rust" in para:
+            assert rust_has_mldsa, (
+                f"README claims ML-DSA in Rust but rust/core/src/pq.rs does not "
+                f"implement ml_dsa_65: {flat!r}"
+            )
+
+
+def test_python_package_does_not_claim_post_quantum_signing():
+    """The Python package signs with Ed25519 only. Nothing in it may say otherwise."""
+    pkg = README.parent / "aetherproof"
+    for path in pkg.rglob("*.py"):
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            low = line.lower()
+            if "ml-dsa" not in low and "dilithium" not in low:
+                continue
+            # A comment noting where PQ *would* live is fine; a claim is not.
+            assert "signet" in low or "roadmap" in low or "rust" in low, (
+                f"{path.name}:{n} implies post-quantum signing in the Python "
+                f"package, which signs with Ed25519 only: {line.strip()!r}"
+            )

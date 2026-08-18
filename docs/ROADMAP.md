@@ -162,9 +162,56 @@ will be exactly one, in Rust, and Python will call it.
    predates the trailer still accepts the receipt, and hybrid verification fails
    closed when the trailer is absent.
 
-4. **PyO3 bindings, unchanged public API.**
-   `Signer`, `Verifier`, `Receipt`, `Session`, and `aetherproof.auto` keep their current
-   signatures. Existing code, including published integrations, continues to work.
+4. **PyO3 bindings — BUILT, `rust/py/`.**
+
+   **Additive, never substitutive.** The `aetherproof` package does not import the
+   extension, does not require it, and behaves identically whether or not it is
+   present. `grep -rn "_native" aetherproof/` returns nothing. That is the property
+   that makes this safe: an optional module the package never touches cannot break it.
+
+   Verified rather than asserted — the full Python suite passes with the extension
+   installed, unchanged, at **569 passed, 1 skipped**.
+
+   The binding is a thin wrapper. No algorithm is reimplemented in `rust/py/src/lib.rs`;
+   every function forwards to `aetherproof-core`. A binding that reimplements logic is a
+   second place for the signing preimage to drift, which is the defect class this
+   project already fixed once.
+
+   **Equivalence is enforced permanently** by `tests/test_native_equivalence.py`
+   (49 tests, skipped when the extension is absent):
+
+   | Checked | Result |
+   |---|---|
+   | Leaf and node primitives | identical |
+   | Roots over 17 sizes, including odd-promotion cases | identical |
+   | Every proof for every index across 10 tree sizes | identical |
+   | Proofs cross-verified in both directions | each verifier accepts the other's proof |
+   | 150 randomised trees | identical |
+   | CVE-2012-2459 odd-leaf behaviour | both differentiate `[A,B,C]` from `[A,B,C,C]` |
+
+   **Measured through the binding:**
+
+   | Leaves | Build (Python) | Build (native) | | Verify (Python) | Verify (native) | |
+   |---|---|---|---|---|---|---|
+   | 1,000 | 2.16 ms | **0.76 ms** | 2.9× | 22.67 µs | **8.84 µs** | 2.6× |
+   | 10,000 | 45.13 ms | **11.38 ms** | 4.0× | 39.39 µs | **12.15 µs** | 3.2× |
+   | 50,000 | 219.86 ms | **51.66 ms** | 4.3× | 39.71 µs | **12.97 µs** | 3.1× |
+
+   These are lower than the pure-Rust figures above (9.2× on build) because crossing the
+   FFI boundary means marshalling a Python list of hex strings into `Vec<String>`. The
+   marshalling is real work and it is counted here. Quoting the pure-Rust number as
+   though a Python caller would see it would be wrong.
+
+   Build:
+
+   ```bash
+   cd rust/py && python -m maturin build --release
+   pip install ../target/wheels/aetherproof_native-*.whl
+   ```
+
+   Still to do: exposing `Signer`, `Verifier`, `Receipt`, and `Session` through the
+   extension so the high-level API can use it. The primitives are bound and verified;
+   the object layer is not.
 
 5. **Keep 0.4.x alive as the pure-Python line** for environments that cannot build a
    native extension.
@@ -195,7 +242,7 @@ A verifier must fail closed. Add an `isinstance` check in the constructor.
 | 1. `aetherproof-core`: 128-byte format, Ed25519, injective preimage | Rust suite green; byte-identical to `rust-legacy-v0.2.0` output |
 | 2. Merkle session tree in Rust — **done** | Inclusion proofs match Python's for identical input — pinned vector tests |
 | 3. ML-DSA-65 second slot — **done** | Ed25519-only receipts still verify; hybrid verifies both |
-| 4. PyO3 bindings | Full 568-test Python suite green against the Rust core |
+| 4. PyO3 bindings — **primitives done** | Full Python suite green with the extension installed: 569 passed |
 | 5. Wheels + release | Linux / macOS / Windows; `pip install aetherproof` unchanged |
 
 Step 4 is the real gate. If the existing suite does not pass unmodified against the

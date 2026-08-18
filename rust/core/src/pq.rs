@@ -30,6 +30,10 @@
 //! readable by old verifiers.
 
 use crate::{RECEIPT_SIZE, SIGNED_PREFIX};
+
+/// Re-exported so binding crates use exactly this version of the FIPS 204
+/// implementation rather than resolving their own.
+pub use fips204;
 use fips204::ml_dsa_65;
 use fips204::traits::{SerDes, Signer as PqSigner, Verifier as PqVerifier};
 
