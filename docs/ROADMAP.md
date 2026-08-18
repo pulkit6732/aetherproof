@@ -99,9 +99,16 @@ will be exactly one, in Rust, and Python will call it.
    | | Rust | Python | Rust | Python | |
    | 1,000 | **0.78 ms** | 2.59 ms | **5.72 µs** | 26.72 µs | 10 |
    | 10,000 | **7.00 ms** | 32.47 ms | **5.95 µs** | 39.32 µs | 14 |
-   | 50,000 | **40.46 ms** | 374.10 ms | **7.58 µs** | 48.15 µs | 16 |
+   | 50,000 | **28.16 ms** | 102.71 ms | **3.93 µs** | 17.17 µs | 16 |
 
-   Rust is 3.3–9.2× faster on build and 4.7–6.6× on verification.
+   Rust is **3.6× faster on build** and **4.4× on verification** at 50,000 leaves.
+
+**These figures replace earlier ones that were wrong.** The first measurement ran
+Python's build inside a loop that also generated proofs for three tree sizes, and
+the memory pressure inflated it to 374 ms — quoted as a 9.2× advantage. Measured in
+isolation across seven runs, Python's median is 102.71 ms (range 101.5–104.6) and
+Rust's is 28.16 ms (range 27.5–29.6). A benchmark that flatters you is a benchmark
+you measured wrong.
 
    **A defect found and fixed during this work, recorded because the first version was
    worse than Python:** the initial port encoded hex with `format!("{b:02x}")` per byte,
