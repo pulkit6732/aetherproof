@@ -68,7 +68,7 @@ fn inclusion_proof(leaf_hashes: Vec<String>, index: usize) -> PyResult<Vec<(Stri
 fn verify_inclusion(leaf_hash: &str, proof: Vec<(String, String)>, root: &str) -> bool {
     let mut steps = Vec::with_capacity(proof.len());
     for (side, hash) in proof {
-        match core::merkle::Side::from_str(&side) {
+        match core::merkle::Side::parse(&side) {
             Some(s) => steps.push(core::merkle::ProofStep { side: s, hash }),
             None => return false,
         }
@@ -280,7 +280,11 @@ impl PySecureSigner {
     fn __repr__(&self) -> String {
         format!(
             "<SecureSigner {}>",
-            if self.inner.is_live() { "live" } else { "destroyed" }
+            if self.inner.is_live() {
+                "live"
+            } else {
+                "destroyed"
+            }
         )
     }
 
@@ -349,7 +353,10 @@ fn ct_eq_str(a: &str, b: &str) -> bool {
 
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add("__doc__", "Native core for AetherProof. Optional; the pure-Python package works without it.")?;
+    m.add(
+        "__doc__",
+        "Native core for AetherProof. Optional; the pure-Python package works without it.",
+    )?;
     m.add("RECEIPT_SIZE", core::RECEIPT_SIZE)?;
     m.add("SIGNED_PREFIX", core::SIGNED_PREFIX)?;
     m.add("LEAF_PREFIX", core::merkle::LEAF_PREFIX)?;

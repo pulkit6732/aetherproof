@@ -109,8 +109,7 @@ pub fn attach(core: &[u8], sk: &ml_dsa_65::PrivateKey) -> Result<Vec<u8>, PqErro
 
 /// True if `data` carries a well-formed post-quantum trailer.
 pub fn has_trailer(data: &[u8]) -> bool {
-    data.len() >= RECEIPT_SIZE + PQ_HEADER_LEN
-        && data[PQ_HEADER_OFF..PQ_HEADER_OFF + 8] == PQ_MAGIC
+    data.len() >= RECEIPT_SIZE + PQ_HEADER_LEN && data[PQ_HEADER_OFF..PQ_HEADER_OFF + 8] == PQ_MAGIC
 }
 
 /// Extract the post-quantum signature bytes from a hybrid receipt.
@@ -213,7 +212,10 @@ mod tests {
         let (core, vk) = core_receipt();
         let kp = PqKeypair::generate().unwrap();
         let hybrid = attach(&core, &kp.private).unwrap();
-        assert!(verify_pq(&hybrid, &kp.public), "ML-DSA signature must verify");
+        assert!(
+            verify_pq(&hybrid, &kp.public),
+            "ML-DSA signature must verify"
+        );
         assert!(
             verify_hybrid(&hybrid, &vk, &kp.public),
             "hybrid verification must accept a correctly signed receipt"
@@ -246,7 +248,10 @@ mod tests {
         let kp = PqKeypair::generate().unwrap();
         let mut hybrid = attach(&core, &kp.private).unwrap();
         hybrid[16] ^= 0xFF; // flip a byte inside the signed prefix
-        assert!(!crate::verify(hybrid[..RECEIPT_SIZE].try_into().unwrap(), &vk));
+        assert!(!crate::verify(
+            hybrid[..RECEIPT_SIZE].try_into().unwrap(),
+            &vk
+        ));
         assert!(!verify_pq(&hybrid, &kp.public));
         assert!(!verify_hybrid(&hybrid, &vk, &kp.public));
     }

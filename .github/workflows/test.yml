@@ -1,0 +1,131 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest pytest-cov
+
+      # The pure-Python package must pass on its own. The native extension is
+      # optional, and tests that need it skip when it is absent — so this job
+      # proves the package does not depend on it.
+      - name: Run suite without the native extension
+        run: python -m pytest tests/ -q
+
+      - name: Confirm the package does not import the extension
+        shell: bash
+        run: |
+          if grep -rn "_native" aetherproof/; then
+            echo "::error::aetherproof imports the native extension; it must stay optional"
+            exit 1
+          fi
+          echo "confirmed: package is independent of the extension"
+
+  rust:
+    name: rust core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/**/Cargo.lock') }}
+
+      - name: Build
+        working-directory: rust
+        run: cargo build --release --workspace
+
+      - name: Test
+        working-directory: rust
+        run: cargo test --release --workspace
+
+      - name: Adversarial probe (must find no panic and no fail-open path)
+        working-directory: rust
+        run: cargo run --release --example adversarial
+
+      - name: Fuzz campaign (350,000 adversarial inputs)
+        working-directory: rust
+        run: cargo run --release --example fuzz
+
+      - name: Security audit (zeroization, fail-closed, key validation)
+        working-directory: rust
+        run: cargo run --release --example security_audit
+
+      - name: Clippy
+        working-directory: rust
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Formatting
+        working-directory: rust
+        run: cargo fmt --all --check
+
+  native-equivalence:
+    name: native equivalence on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . maturin pytest
+
+      - name: Build and install the native extension
+        working-directory: rust/py
+        run: |
+          python -m maturin build --release --out dist
+          python -m pip install --find-links dist --force-reinstall aetherproof-native
+
+      # The point of this job: with the extension present, the two
+      # implementations must agree exactly, and the existing suite must be
+      # unaffected.
+      - name: Equivalence and security suites
+        run: python -m pytest tests/test_native_equivalence.py tests/test_native_security.py -q
+
+      - name: Full suite with the extension installed
+        run: python -m pytest tests/ -q

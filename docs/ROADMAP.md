@@ -301,6 +301,51 @@ A verifier must fail closed. Add an `isinstance` check in the constructor.
 
 ---
 
+## Continuous integration and wheels
+
+Two workflows, in `.github/workflows/`.
+
+### `test.yml` — runs on every push and pull request
+
+| Job | What it proves |
+|---|---|
+| `python` — 3.9/3.11/3.13 × Linux/macOS/Windows | the pure-Python package passes **without** the extension, and `grep -rn "_native" aetherproof/` finds nothing, so the dependency really is optional |
+| `rust` | build, test, clippy `-D warnings`, `cargo fmt --check`, plus the adversarial probe, the 350,000-input fuzz campaign, and the security audit as blocking gates |
+| `native-equivalence` — 3 platforms | builds the extension and requires the two implementations to agree, then runs the full suite with it installed |
+
+Running the adversarial and fuzz campaigns in CI rather than by hand is the point:
+a security property nobody re-checks decays into a claim.
+
+### `wheels.yml` — runs on a `v*` tag
+
+Builds for **six targets** — Linux x86_64 and aarch64, macOS x86_64 and aarch64,
+Windows x64 and x86 — plus an sdist. Then a `verify` job installs the built wheel
+with `--only-binary :all:` on each platform and re-runs the equivalence and full
+suites **against the artifact that would ship**, not against a local build. Publish
+runs only if that passes, via PyPI trusted publishing, so no API token is stored in
+the repository.
+
+Wheels are published together. A partial release is worse than none: `pip install`
+would fetch a wheel on some machines and fall back to a source build on others,
+which needs a Rust toolchain the user never agreed to install.
+
+### What is verified and what is not
+
+**Verified on this machine:** every gate `test.yml` runs passes locally — 59 Rust
+tests, clippy with `-D warnings` clean, `cargo fmt --check` clean, 0 panics and 0
+fail-open paths, 0 forgeries across 350,000 fuzz inputs, security audit PASS, and
+642 Python tests with the extension installed.
+
+**Not verified:** the Linux and macOS wheels. This machine has only
+`x86_64-pc-windows-gnu` and `x86_64-unknown-none` installed as Rust targets, so
+those builds cannot be produced or tested here. The workflow is written and its
+YAML parses, but **no CI run has executed it**. Until one has, the cross-platform
+claim is a configuration, not a result, and should be described that way.
+
+The Windows wheel is real and tested: 934 KB, `aetherproof_native-0.5.0-cp313-cp313-win_amd64.whl`.
+
+---
+
 ## Sequencing
 
 | Step | Gate |
@@ -309,7 +354,7 @@ A verifier must fail closed. Add an `isinstance` check in the constructor.
 | 2. Merkle session tree in Rust — **done** | Inclusion proofs match Python's for identical input — pinned vector tests |
 | 3. ML-DSA-65 second slot — **done** | Ed25519-only receipts still verify; hybrid verifies both |
 | 4. PyO3 bindings — **primitives done** | Full Python suite green with the extension installed: 569 passed |
-| 5. Wheels + release | Linux / macOS / Windows; `pip install aetherproof` unchanged |
+| 5. Wheels + release — **CI built, unrun** | Linux / macOS / Windows; `pip install aetherproof` unchanged |
 
 Step 4 is the real gate. If the existing suite does not pass unmodified against the
 Rust core, the binding is wrong and the release does not ship.

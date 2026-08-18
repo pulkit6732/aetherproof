@@ -300,11 +300,17 @@ mod tests {
         // asserting equality on the Result.
         assert!(matches!(
             SecureSigner::from_seed(&[0u8; 31]),
-            Err(SecureError::BadKeyLength { expected: 32, got: 31 })
+            Err(SecureError::BadKeyLength {
+                expected: 32,
+                got: 31
+            })
         ));
         assert!(matches!(
             SecureSigner::from_seed(&[]),
-            Err(SecureError::BadKeyLength { expected: 32, got: 0 })
+            Err(SecureError::BadKeyLength {
+                expected: 32,
+                got: 0
+            })
         ));
     }
 
@@ -320,7 +326,10 @@ mod tests {
         let s = SecureSigner::generate().unwrap();
         let v = SecureVerifier::from_public_key(&s.public_key().unwrap()).unwrap();
         for len in [0usize, 1, 32, 63, 65, 128] {
-            assert!(!v.verify(b"m", &vec![0u8; len]), "len {len} must not verify");
+            assert!(
+                !v.verify(b"m", &vec![0u8; len]),
+                "len {len} must not verify"
+            );
         }
     }
 
@@ -342,7 +351,10 @@ mod tests {
         let s = SecureSigner::generate().unwrap();
         let v = SecureVerifier::from_public_key(&s.public_key().unwrap()).unwrap();
         for len in [0usize, 1, 127, 129, 256] {
-            assert!(!v.verify_receipt(&vec![0u8; len]), "len {len} must not verify");
+            assert!(
+                !v.verify_receipt(&vec![0u8; len]),
+                "len {len} must not verify"
+            );
         }
     }
 
@@ -354,8 +366,16 @@ mod tests {
         assert!(!ct_eq(b"abc", b"ab"));
         assert!(!ct_eq(b"", b"a"));
         // differing in the first byte and the last must both be caught
-        assert!(!ct_eq(&[0u8; 32], &{ let mut a = [0u8; 32]; a[0] = 1; a }));
-        assert!(!ct_eq(&[0u8; 32], &{ let mut a = [0u8; 32]; a[31] = 1; a }));
+        assert!(!ct_eq(&[0u8; 32], &{
+            let mut a = [0u8; 32];
+            a[0] = 1;
+            a
+        }));
+        assert!(!ct_eq(&[0u8; 32], &{
+            let mut a = [0u8; 32];
+            a[31] = 1;
+            a
+        }));
     }
 
     #[test]

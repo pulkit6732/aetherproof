@@ -56,12 +56,20 @@ impl Side {
     }
 
     /// Parse the wire representation. Anything else is rejected.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "L" => Some(Side::Left),
             "R" => Some(Side::Right),
             _ => None,
         }
+    }
+}
+
+impl std::str::FromStr for Side {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Side::parse(s).ok_or(())
     }
 }
 
@@ -164,7 +172,7 @@ pub fn inclusion_proof(leaf_hashes: &[String], index: usize) -> Option<Vec<Proof
     let mut idx = index;
 
     for level in &levels[..levels.len().saturating_sub(1)] {
-        if idx % 2 == 0 {
+        if idx.is_multiple_of(2) {
             if idx + 1 < level.len() {
                 proof.push(ProofStep {
                     side: Side::Right,
@@ -199,7 +207,9 @@ mod tests {
     use super::*;
 
     fn leaves(n: usize) -> Vec<String> {
-        (0..n).map(|i| hex(Sha256::digest(format!("turn-{i}")))).collect()
+        (0..n)
+            .map(|i| hex(Sha256::digest(format!("turn-{i}"))))
+            .collect()
     }
 
     // ── Cross-language vectors ────────────────────────────────────────────────
@@ -227,14 +237,38 @@ mod tests {
         // leaves sha256("turn-0..n-1"). Sizes chosen to cover powers of two and
         // the odd-promotion cases between them.
         let expected: &[(usize, &str)] = &[
-            (1,  "4dbad8342a2240656b97e52480adaaf7954b2b9813c534a9569af192c53dd3e4"),
-            (2,  "9829f4139335ceb625ac092e88c68fc76eb0a3516be06f74d05e55149ed4cec5"),
-            (3,  "4da490e57bf61c736b1b18abf5318f4ce430193afbdc884073514e7176a217b5"),
-            (4,  "3ca28f3df3ea7fd1c7d0d1a0f7b558138260a5799911b75f899942410afe11ea"),
-            (5,  "3185ed6541a5e9182d5eacf761b7c218ba6ec33fc5c8bf46612063f4d97093a9"),
-            (7,  "61274ffe30d7e97a0d102660b14844b726968d42e10f189c97b9d057d0faa43f"),
-            (8,  "8cd15a64cb8f02430d57b2a9c5a2d98910cfc852ea4bf8991ab69b4c5633b526"),
-            (33, "809e90548dd36c6db0a656aac4c6cb6c443ab66718116e27b329ca2a2d37a429"),
+            (
+                1,
+                "4dbad8342a2240656b97e52480adaaf7954b2b9813c534a9569af192c53dd3e4",
+            ),
+            (
+                2,
+                "9829f4139335ceb625ac092e88c68fc76eb0a3516be06f74d05e55149ed4cec5",
+            ),
+            (
+                3,
+                "4da490e57bf61c736b1b18abf5318f4ce430193afbdc884073514e7176a217b5",
+            ),
+            (
+                4,
+                "3ca28f3df3ea7fd1c7d0d1a0f7b558138260a5799911b75f899942410afe11ea",
+            ),
+            (
+                5,
+                "3185ed6541a5e9182d5eacf761b7c218ba6ec33fc5c8bf46612063f4d97093a9",
+            ),
+            (
+                7,
+                "61274ffe30d7e97a0d102660b14844b726968d42e10f189c97b9d057d0faa43f",
+            ),
+            (
+                8,
+                "8cd15a64cb8f02430d57b2a9c5a2d98910cfc852ea4bf8991ab69b4c5633b526",
+            ),
+            (
+                33,
+                "809e90548dd36c6db0a656aac4c6cb6c443ab66718116e27b329ca2a2d37a429",
+            ),
         ];
         for (n, want) in expected {
             assert_eq!(
@@ -249,9 +283,18 @@ mod tests {
     fn inclusion_proof_matches_python_vector() {
         // aetherproof/core/session.py::inclusion_proof(leaves(8), 3)
         let want: &[(Side, &str)] = &[
-            (Side::Left,  "561f3f9028b884e7c55456d6ee3f9c05668e14d378f757e87cf5e028b031a175"),
-            (Side::Left,  "9829f4139335ceb625ac092e88c68fc76eb0a3516be06f74d05e55149ed4cec5"),
-            (Side::Right, "6e1e6ed81fdb93857e2a0e021f872e9b7d29a778f85a24558a69d854671754d6"),
+            (
+                Side::Left,
+                "561f3f9028b884e7c55456d6ee3f9c05668e14d378f757e87cf5e028b031a175",
+            ),
+            (
+                Side::Left,
+                "9829f4139335ceb625ac092e88c68fc76eb0a3516be06f74d05e55149ed4cec5",
+            ),
+            (
+                Side::Right,
+                "6e1e6ed81fdb93857e2a0e021f872e9b7d29a778f85a24558a69d854671754d6",
+            ),
         ];
         let l = leaves(8);
         let got = inclusion_proof(&l, 3).expect("index in range");
@@ -401,9 +444,11 @@ mod tests {
 
     #[test]
     fn side_wire_format_roundtrips() {
-        assert_eq!(Side::from_str("L"), Some(Side::Left));
-        assert_eq!(Side::from_str("R"), Some(Side::Right));
-        assert_eq!(Side::from_str("x"), None);
+        assert_eq!(Side::parse("L"), Some(Side::Left));
+        assert_eq!(Side::parse("R"), Some(Side::Right));
+        assert_eq!(Side::parse("x"), None);
+        assert_eq!("L".parse::<Side>(), Ok(Side::Left));
+        assert!("z".parse::<Side>().is_err());
         assert_eq!(Side::Left.as_str(), "L");
         assert_eq!(Side::Right.as_str(), "R");
     }
