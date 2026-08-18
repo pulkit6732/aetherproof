@@ -16,6 +16,7 @@ dependencies = [
  "ed25519-dalek",
  "fips204",
  "getrandom",
+ "sha2",
 ]
 
 [[package]]

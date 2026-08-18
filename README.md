@@ -361,9 +361,9 @@ AetherProof exists in two languages. Both are live and both are in this reposito
 | Receipt | **128 bytes, fixed-width binary** | 646 bytes JSON |
 | Signature | Ed25519 (`ed25519-dalek` 2.x) | Ed25519 (`cryptography`) |
 | AetherOS kernel wire compatibility | **yes** | no |
-| Session Merkle proofs | no | **yes** |
+| Session Merkle proofs | **yes** | **yes** |
 | Signed extensions (v1.2), key rotation | no | **yes** |
-| Tests | 30 | 568 (93% coverage) |
+| Tests | 45 | 568 (93% coverage) |
 | Distribution | source | PyPI |
 
 The Rust core defines the original 128-byte wire format, byte-identical to the
@@ -372,7 +372,7 @@ library and CLI.
 
 ```bash
 cd rust/
-cargo test --release            # 30 passed
+cargo test --release            # 45 passed
 cargo run --release --example bench
 ```
 
