@@ -4,14 +4,14 @@
 
 # AetherProof
 
-**Cryptographic receipts for AI output.**Prove a model's output has not been
+**Cryptographic receipts for AI output.** Prove a model's output has not been
 modified - no server, no account, verifiable offline forever.
 
 ```bash
 pip install aetherproof
 ```
 
-> **Not a developer?**Start with the [plain-language guide](docs/GETTING-STARTED.md)
+> **Not a developer?** Start with the [plain-language guide](docs/GETTING-STARTED.md)
 > - first receipt in three steps, no code.
 
 ---
@@ -107,7 +107,7 @@ preimage = build_preimage(r)                 # see the full version below
 pub.verify(bytes.fromhex(r["signature"]), preimage)     # raises if invalid
 ```
 
-> **Do not ship the snippet above.**It omits `log_sequence`, `hw_evidence`, the
+> **Do not ship the snippet above.** It omits `log_sequence`, `hw_evidence`, the
 > v1.2 extension commitment, and the v1.3 `receipt_id` and `signing_key_id`, so it
 > rejects every receipt the current version produces. The complete verifier - 21
 > lines, tested on every commit against real receipts - is in
@@ -132,7 +132,7 @@ independent witness, which does not exist yet.
 
 | Not proven | Why | |---|---| | That the named model produced the output | it signs a `(model, output)` pair you supply | | That the timestamp is truthful | it is your own clock - bound, not externally anchored | | That the signing key is held securely | a software key on disk unless you set a passphrase | | That it survives a quantum adversary | Python is Ed25519 only; ML-DSA-65 is in the Rust core |
 
-**Where it does not fit at all:**detecting deepfakes or unsigned AI content. A
+**Where it does not fit at all:** detecting deepfakes or unsigned AI content. A
 scammer never signs, so there is nothing to verify.
 
 Full list: [docs/CLAIMS.md](docs/CLAIMS.md).
@@ -179,7 +179,7 @@ Setup and post-quantum usage: [docs/INTEGRATION.md](docs/INTEGRATION.md#path-c--
 
 ## License
 
-**Apache-2.0.**Use it, deploy it, fork it, embed it in a commercial product - no
+**Apache-2.0.** Use it, deploy it, fork it, embed it in a commercial product - no
 copyleft obligation. The receipt format and the offline verifier are meant to be
 copied freely; a proof layer nobody can adopt is not a proof layer.
 

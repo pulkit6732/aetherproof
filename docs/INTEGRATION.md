@@ -103,7 +103,7 @@ aetherproof sign model.onnx output.txt
 aetherproof verify receipt.json --output output.txt
 ```
 
-**Understand what this does and does not give you.**Signing an artifact today
+**Understand what this does and does not give you.** Signing an artifact today
 proves it has not changed *since today*. It says nothing about whether it was
 altered before you signed it. If that distinction matters - legacy archives,
 evidence, anything where the gap between creation and signing is long - signing
@@ -199,7 +199,7 @@ assert hybrid[:128] == receipt          # true, by test
 You received a receipt and a public key. You do not want to install this project to
 check it.
 
-**You do not have to.**Verification needs `cryptography` and 21 lines. No network,
+**You do not have to.** Verification needs `cryptography` and 21 lines. No network,
 no account, no special hardware, and it keeps working if this project is abandoned.
 The full verifier is in the README under *How offline verification actually works*.
 
@@ -232,15 +232,15 @@ randomised trees, and cross-verification in both directions.
 
 **Environment variables.**| | | |---|---| | `AETHERPROOF_HOME` | where keys and the log live | | `AETHERPROOF_STRICT=1` | a receipt failure raises instead of returning `None` | | `AETHERPROOF_DISABLE=1` | no-op every call - for test suites | | `AETHERPROOF_KEY_PASSPHRASE` | encrypt the key at rest |
 
-**Back up your private key.**Losing it means you can no longer issue receipts under
+**Back up your private key.** Losing it means you can no longer issue receipts under
 that identity. Already-issued receipts keep verifying, because verification needs
 only the public key.
 
-**Concurrency.**The log is SQLite in WAL mode with `BEGIN IMMEDIATE`. Verified
+**Concurrency.** The log is SQLite in WAL mode with `BEGIN IMMEDIATE`. Verified
 intact at 128 threads and 12 processes, and after hard-killing writers mid-write.
 Throughput ~1,400 receipts/sec.
 
-**Key rotation.**Receipts carry `signing_key_id`, so a verifier does one lookup
+**Key rotation.** Receipts carry `signing_key_id`, so a verifier does one lookup
 rather than trying every key you hold. Rotating never invalidates old receipts.
 
 ---
@@ -254,13 +254,13 @@ Full list in `docs/CLAIMS.md`. The three that change design decisions:
    10,000 outputs passes every check here. This is unsolvable locally - it needs an
    independent witness, which is not built.
 
-2. **The timestamp is the signer's own clock.**Bound at signing, not externally
+2. **The timestamp is the signer's own clock.** Bound at signing, not externally
    anchored. If you need a third party to attest the time, this does not do that.
 
-3. **It does not prove which model ran.**It signs a `(model, output)` pair you
+3. **It does not prove which model ran.** It signs a `(model, output)` pair you
    supply. There is no inference attestation.
 
-**Where it does not fit at all:**detecting deepfakes or unsigned AI content. A
+**Where it does not fit at all:** detecting deepfakes or unsigned AI content. A
 scammer never signs, so there is nothing to verify. That is detection - a different
 technology needing serious compute - and this project does not do it.
 

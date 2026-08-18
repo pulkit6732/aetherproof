@@ -16,7 +16,7 @@ depends on whether you can see the weights.**| | Local / self-hosted (Llama, cus
 
 `model_weight_root` requires reading the weights. With GPT-4o or Grok, **the
 weights live on the provider's servers - you never see them, so you cannot hash
-them.**No client-side tool can. Anyone claiming to "cryptographically prove the
+them.** No client-side tool can. Anyone claiming to "cryptographically prove the
 cloud model ran" is overstating it, and a sharp auditor will reject that.
 
 What a cloud receipt *does* prove is the part **you are liable for**: the exact

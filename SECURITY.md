@@ -6,23 +6,23 @@
 
 Report privately, not in a public issue.
 
-- **GitHub:**open a [private security advisory](https://github.com/pulkit6732/aetherproof/security/advisories/new)
-- **Email:**pulkitsrivastavae@gmail.com
+- **GitHub:** open a [private security advisory](https://github.com/pulkit6732/aetherproof/security/advisories/new)
+- **Email:** pulkitsrivastavae@gmail.com
 
 Please include what you did, what happened, and what you expected. A proof of
 concept helps more than a description. If you have a patch, send it - but a report
 without one is still welcome.
 
-**What to expect:**an acknowledgement within 7 days and an assessment within 30.
+**What to expect:** an acknowledgement within 7 days and an assessment within 30.
 This is a single-maintainer project, not a company with an on-call rota; that is
 the honest timeline rather than a flattering one. If a report is genuinely
 critical and you have had no reply in 7 days, email again and say so.
 
-**Disclosure.**Coordinated. Agree a date with the maintainer, default 90 days from
+**Disclosure.** Coordinated. Agree a date with the maintainer, default 90 days from
 report or the day a fix ships, whichever comes first. Credit is given unless you
 ask otherwise.
 
-**No bounty programme.**There is no money behind this project to fund one. Saying
+**No bounty programme.** There is no money behind this project to fund one. Saying
 so up front is fairer than letting you find out after the work.
 
 ## Supported versions
@@ -56,11 +56,11 @@ A report against any of these is a real vulnerability:
 
 Listed here rather than left for you to find:
 
-1. **`Verifier.__init__` in the Python package validates nothing.**It is type-hinted
+1. **`Verifier.__init__` in the Python package validates nothing.** It is type-hinted
    `Ed25519PublicKey` and accepts any object. Passing the wrong type - for example
    `Verifier(signer.get_public_key())`, where `get_public_key()` already returns a
    `Verifier` - produces a verifier that returns `True` for every signature. **A
-   verifier must fail closed.**Fixed in the Rust `SecureVerifier`, which rejects
+   verifier must fail closed.** Fixed in the Rust `SecureVerifier`, which rejects
    malformed key material at construction. The Python fix is scheduled for 0.5.0.
    *Workaround: pass a real `Ed25519PublicKey`, or use `SecureVerifier`.*
 
@@ -68,7 +68,7 @@ Listed here rather than left for you to find:
    compile in the development environment, so known-vulnerability status of the 45
    crates involved is unverified.
 
-3. **No external security review has ever been done.**Every adversarial test in this
+3. **No external security review has ever been done.** Every adversarial test in this
    repository was written by whoever wrote the code it tests. That finds
    implementation mistakes and does not find design blind spots.
 

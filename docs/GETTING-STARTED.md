@@ -2,7 +2,7 @@
 
 # Getting started with AetherProof
 
-**Who this is for:**anyone who needs to prove an AI's answer wasn't changed
+**Who this is for:** anyone who needs to prove an AI's answer wasn't changed
 afterwards. You do not need to be a programmer. If you can copy and paste a line
 into a terminal, you can use this.
 
@@ -21,8 +21,8 @@ AetherProof gives you a **receipt**. It's a small file that acts like a wax seal
 if even one character of the answer changes, the seal breaks and anyone can see
 it broke.
 
-**What it proves:**this exact text existed at this time and has not been altered.
-**What it does not prove:**that the AI was telling the truth. A receipt for a
+**What it proves:** this exact text existed at this time and has not been altered.
+**What it does not prove:** that the AI was telling the truth. A receipt for a
 wrong answer is still a valid receipt for a wrong answer. It proves the *record*,
 not the *content*.
 
@@ -98,7 +98,7 @@ That is the entire point. (For scripts: it exits `0` when valid, `1` when not.)
 
 There are two files that matter:
 
-| File | What it is | Can you share it? | |---|---|---| | `signing_key.pem` | Your **private**key - the wax stamp | **Never.**Anyone with this can forge your receipts. | | `signing_key.pub` | Your **public**key - the shape of the seal | Yes. Share it freely; people need it to check your receipts. |
+| File | What it is | Can you share it? | |---|---|---| | `signing_key.pem` | Your **private**key - the wax stamp | **Never.** Anyone with this can forge your receipts. | | `signing_key.pub` | Your **public**key - the shape of the seal | Yes. Share it freely; people need it to check your receipts. |
 
 Both live in a folder called `.aetherproof` inside your home directory.
 
@@ -124,7 +124,7 @@ Someone hands you a receipt and claims an AI produced a certain text. You need:
 aetherproof verify ap_xxxx.json --output the-text-they-gave-you.txt
 ```
 
-**No internet needed. No account. No permission from us.**That is deliberate -
+**No internet needed. No account. No permission from us.** That is deliberate -
 if checking a receipt required our servers, then our servers would be the thing
 you had to trust, and the whole point would be gone.
 
@@ -150,22 +150,22 @@ The receipt labels this honestly as `api_attested` rather than pretending.
 
 ## Common questions
 
-**Do I need to be online?**Only to install. Making and checking receipts works completely offline.
+**Do I need to be online?** Only to install. Making and checking receipts works completely offline.
 
-**Does my text get uploaded anywhere?**No. Nothing leaves your computer. Receipts store a *fingerprint* of your text
+**Does my text get uploaded anywhere?** No. Nothing leaves your computer. Receipts store a *fingerprint* of your text
 (a hash), never the text itself - so a receipt can be shared without revealing
 what it covers.
 
-**What if I have thousands of AI answers?**See [Sealing a whole conversation](#sealing-a-whole-conversation) below.
+**What if I have thousands of AI answers?** See [Sealing a whole conversation](#sealing-a-whole-conversation) below.
 
-**Can I prove the AI's answer was correct?**No, and be wary of anything claiming otherwise. This proves the record is
+**Can I prove the AI's answer was correct?** No, and be wary of anything claiming otherwise. This proves the record is
 unaltered, not that the content is true.
 
-**What if AetherProof disappears?**Receipts use standard, public cryptography (SHA-256 and Ed25519). Any programmer
+**What if AetherProof disappears?** Receipts use standard, public cryptography (SHA-256 and Ed25519). Any programmer
 can check one with ordinary tools and no AetherProof code at all - the README has
 a 20-line example. That's on purpose.
 
-**Where are my files?**In `.aetherproof` in your home directory. To put them elsewhere, set
+**Where are my files?** In `.aetherproof` in your home directory. To put them elsewhere, set
 `AETHERPROOF_HOME` to a folder path.
 
 ---
@@ -245,4 +245,4 @@ losing a receipt is bad, but crashing a production job over one is worse. Set
 - **What this can and cannot prove:**[CLAIMS.md](CLAIMS.md) - a deliberately
   honest list, including the limitations.
 - **All commands:**`aetherproof --help`
-- **Bugs and questions:**https://github.com/pulkit6732/aetherproof/issues
+- **Bugs and questions:** https://github.com/pulkit6732/aetherproof/issues

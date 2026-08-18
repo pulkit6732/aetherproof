@@ -24,14 +24,14 @@ security fix: the old `"|".join(...)` was non-injective, so a `|` inside any fie
 could shift boundaries and let two different receipts share one preimage (and thus
 one signature). Length-prefixing closes that.
 
-**Why this matters for your extension:**appending `signed_extensions_hash` as one
+**Why this matters for your extension:** appending `signed_extensions_hash` as one
 more length-prefixed field is now provably unambiguous. There is no delimiter to
 collide with, so Profile A is clean by construction. This strengthens your
 preferred direction.
 
 ## Positions on the six questions
 
-**Q1 - Version identifier for Profile A.**Yes: **receipt `1.2`**. The preimage already carries `receipt_version` as its first
+**Q1 - Version identifier for Profile A.** Yes: **receipt `1.2`**. The preimage already carries `receipt_version` as its first
 field, and the verifier is version-aware, so a `1.2` verifier appends the extra
 `signed_extensions_hash` field to the preimage and a `1.1` verifier does not. This
 is exactly the "receipt-version-aware verifier" you flagged - and with the
@@ -49,7 +49,7 @@ disclosure, which is worse for privacy-sensitive context (e.g. `evidence_refs`).
 For v0.1 with a single extension the two collapse to the same bytes, so this costs
 nothing now and avoids a breaking change later.
 
-**Q3 - `parent_event_id`: event, receipt, or either?****Either, with a typed prefix.**Use `evt:<id>` / `rcpt:<receipt_id>` (mirroring
+**Q3 - `parent_event_id`: event, receipt, or either?****Either, with a typed prefix.** Use `evt:<id>` / `rcpt:<receipt_id>` (mirroring
 your `sha256:` convention). Agent chains in practice reference both a prior
 *receipt* (the cryptographic parent) and a prior *runtime event* (the causal
 parent) - forcing one loses information. A typed prefix keeps it unambiguous and
@@ -60,7 +60,7 @@ layer needs to distinguish "an autonomous agent produced this" from "a human
 operator did" - that distinction is load-bearing for EU AI Act human-oversight
 claims, so it should be in the signed context, not inferred.
 
-**Q5 - Standardize Profile B (legacy chained binding) now?****Informative, not normative.**Keep it in the spec as an implementation note for
+**Q5 - Standardize Profile B (legacy chained binding) now?****Informative, not normative.** Keep it in the spec as an implementation note for
 sites pinned to v1.1, but mark Profile A (native v1.2) as the normative,
 recommended profile. Rationale: now that v1.1's preimage itself just changed for
 the security fix, anyone adopting agent-chain context is already re-tooling their
@@ -68,7 +68,7 @@ verifier - so they should land on the clean v1.2 rather than carry the chained
 binding's extra artifact and its separate verification path indefinitely. Profile
 B stays available, never load-bearing.
 
-**Q6 - Initial stable `purpose` enum.**Start narrow and registry-bound, exactly as you have it. Proposed v0.1 stable set:
+**Q6 - Initial stable `purpose` enum.** Start narrow and registry-bound, exactly as you have it. Proposed v0.1 stable set:
 `generate`, `classify`, `retrieve`, `tool_call`, `policy_decision`, `summarize`,
 `route`. Unknown-but-syntactically-valid -> schema-valid, `UNSUPPORTED_PURPOSE` from
 a semantics-requiring verifier (your model is right). Everything else goes through
@@ -80,11 +80,11 @@ To set expectations honestly: AetherProof is the open-source R0/L2 base; the
 agent-chain / multi-hop receipt work is **Signet Layer 3**(model identity + agent
 chain receipts) on its roadmap. So the right sequencing is:
 
-1. **Now (AetherProof v1.2):**land the *single-receipt* extension mechanism -
+1. **Now (AetherProof v1.2):** land the *single-receipt* extension mechanism -
    `signed_extensions_hash` in the preimage, the JCS+SHA-256 commitment, the
    replay fixture, and the registry. This is small, self-contained, and a clean
    addition to the current injective preimage.
-2. **Signet L3 (next):**the *multi-hop* aggregation - `pipeline_receipt_root`,
+2. **Signet L3 (next):** the *multi-hop* aggregation - `pipeline_receipt_root`,
    `hop_receipts[]`, Merkle path, tampered-hop identification - builds on the v1.2
    extension primitive. The IETF companion doc you outlined maps onto Signet's
    planned `draft-srivastava-rats-ai-workload-attestation`, so let's align the

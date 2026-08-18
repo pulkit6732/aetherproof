@@ -19,7 +19,7 @@ all**- the math is open. Here is the exact process.
    output itself wasn't changed.
 
 ### The steps
-1. **Rebuild the signed message.**The receipt is signed over a canonical,
+1. **Rebuild the signed message.** The receipt is signed over a canonical,
    length-prefixed preimage of its fields (version, model root, model-root-type,
    input commitment, output hash, timestamp, log sequence, hardware evidence, log
    anchor). The encoding is injective, so no two distinct receipts can share a

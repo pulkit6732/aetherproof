@@ -33,13 +33,13 @@ Every claim in §1 is an **integrity**claim: *what is in the log is authentic,
 ordered, and unmodified.* That is a different statement from the one an auditor,
 a regulator, or an opposing lawyer actually asks:
 
-> *"Show me the record of this decision."* -> **integrity.**AetherProof answers this.
-> *"Show me that you logged* ***all****the decisions."* -> **completeness.**Nothing here answers this.
+> *"Show me the record of this decision."* -> **integrity.** AetherProof answers this.
+> *"Show me that you logged* ***all****the decisions."* -> **completeness.** Nothing here answers this.
 
 The gap is not academic, and it is not closed by anything in this repository.
 
 **A deployer who logs 9,000 of 10,000 inferences - omitting the 1,000 that would
-embarrass them - passes every check in §1.**The log is perfectly append-only.
+embarrass them - passes every check in §1.** The log is perfectly append-only.
 Every signature verifies. Every hash chains. The record is cryptographically
 sound and evidentially worthless, because the omitted rows were never written and
 nothing in a self-operated log can attest to what is absent.
@@ -49,14 +49,14 @@ table rather than a footnote. It is the same problem in its simplest form: a
 shorter self-consistent chain is indistinguishable from a chain that was always
 that length.
 
-**Why this cannot be fixed locally.**Detecting an omission requires comparing
+**Why this cannot be fixed locally.** Detecting an omission requires comparing
 the log against something the log's operator does not control. Any purely local
 mechanism is computed by the same party who chose what to record, so it inherits
 that choice. Closing it requires an independent party - a witness who retains
 signed log heads, or an exogenous record (a provider's usage report) to reconcile
 against. Both are out of scope here and belong to Signet.
 
-**What to say when asked.**Not *"our logs are complete"* - that is unprovable
+**What to say when asked.** Not *"our logs are complete"* - that is unprovable
 with this tool. Say: *"every record we produce is tamper-evident and offline
 verifiable by you, without trusting our servers. We do not claim, and no
 single-operator log can claim, that no record was withheld; that requires an
@@ -69,7 +69,7 @@ the gap themselves discounts everything else in the document.
 
 ## 3. Mapping to the questions a security review asks
 
-**Read this table with §2a in mind.**Every row answers an *integrity* question.
+**Read this table with §2a in mind.** Every row answers an *integrity* question.
 No row answers a *completeness* question, and several of these regulations are
 ultimately asking a completeness question - so the "residual gap" column is doing
 real work and should be quoted alongside the claim, never dropped from it.

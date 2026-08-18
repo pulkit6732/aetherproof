@@ -44,7 +44,7 @@ survived a `destroy()` that reported success. Caught only because the test reads
 through a raw pointer to the original address rather than trusting that "dropped"
 means "erased".
 
-**2. `ct_eq` was not constant-time.**The loop never short-circuits in the source.
+**2. `ct_eq` was not constant-time.** The loop never short-circuits in the source.
 LLVM introduced one anyway. At 400 rounds x 200,000 iterations with the buffer
 address held fixed, a difference in byte 0 ran 3.55% faster than one in byte 63
 against a 0.11% noise floor - the direction a short-circuit produces. Delegating to
@@ -106,12 +106,12 @@ Tier 1 item 4 and 5 in `RESEARCH.md` §6b, and it has not moved.
 
 Listed plainly, because an unstated gap is a claim.
 
-1. **Linux and macOS wheels have never been built.**This machine has only
+1. **Linux and macOS wheels have never been built.** This machine has only
    `x86_64-pc-windows-gnu` and `x86_64-unknown-none` installed. `wheels.yml` is
    written and its YAML parses; **no CI run has executed it**. The cross-platform
    claim is a configuration, not a result.
-2. **`cargo audit` did not run.**Dependency vulnerability status is unknown.
-3. **No external security review.**Every adversarial test here was written by the
+2. **`cargo audit` did not run.** Dependency vulnerability status is unknown.
+3. **No external security review.** Every adversarial test here was written by the
    same process that wrote the code being tested. That finds implementation
    mistakes - it found three - and it does not find design blind spots.
 4. **`inclusion_proof` is O(n), not O(log n)**, in both implementations: it rebuilds
@@ -124,32 +124,32 @@ Listed plainly, because an unstated gap is a claim.
 6. **Completeness remains unsolved**, and is unsolvable locally. Somebody who logs
    9,000 of 10,000 outputs passes every check in this repository. That requires an
    external witness, which is SIGNET, which has 0 lines of code.
-7. **Phase 0 customer validation has never been run.**Every market framing that
+7. **Phase 0 customer validation has never been run.** Every market framing that
    died, died on a fact one conversation would have surfaced.
 
 ## 6. Assessment
 
-**What is genuinely good.**The adversarial discipline is the real asset - not the
+**What is genuinely good.** The adversarial discipline is the real asset - not the
 cryptography, which is standard by design. Three defects were found and fixed
 because the tests were built to fail rather than to pass, and one published number
 was corrected because it was re-measured rather than re-quoted. A repository whose
 own test suite blocks a README from overclaiming ML-DSA, and which I could not
 satisfy without making the guard *stricter*, is unusual.
 
-**What is oversold if anyone quotes it carelessly.**Nothing currently in the docs,
+**What is oversold if anyone quotes it carelessly.** Nothing currently in the docs,
 as of this commit - but the 9.2x figure was live for several hours, and the
 152-byte hybrid claim was live much longer. Both were wrong in the flattering
 direction. That is the failure mode this project has to keep watching for.
 
-**The binding constraint is not engineering.**Five roadmap steps closed in one
+**The binding constraint is not engineering.** Five roadmap steps closed in one
 session with real tests behind each. Meanwhile the two papers that could invalidate
 the novelty claim are still unread, and no customer conversation has ever happened.
 Effort is going into the part that was already strong.
 
-**Highest-value next actions, in order:**1. **Read TOPLOC and Ambient.**Either could collapse the compact-commitment
+**Highest-value next actions, in order:**1. **Read TOPLOC and Ambient.** Either could collapse the compact-commitment
    framing. Nothing else in the strategy is stable until they are read.
-2. **Run CI once.**The wheel matrix is currently an assertion.
-3. **Add `cargo audit` to CI.**It is the one security check that was attempted and
+2. **Run CI once.** The wheel matrix is currently an assertion.
+3. **Add `cargo audit` to CI.** It is the one security check that was attempted and
    failed.
 4. Cache Merkle levels - turns O(n) proof generation into O(log n).
 5. Route the high-level Python API through the extension.

@@ -30,9 +30,9 @@ r = Receipt(
 # extensions is folded into the signing preimage - tampering any field breaks it.
 ```
 
-- **Empty extensions -> the receipt stays v1.1, byte-identical.**No impact on
+- **Empty extensions -> the receipt stays v1.1, byte-identical.** No impact on
   existing receipts or verifiers.
-- **Non-empty -> v1.2.**Per-extension SHA-256 commitments (RFC 8785 JCS
+- **Non-empty -> v1.2.** Per-extension SHA-256 commitments (RFC 8785 JCS
   canonicalization) are aggregated and appended to the injective preimage, so a
   namespace can be disclosed or omitted without breaking the others.
 

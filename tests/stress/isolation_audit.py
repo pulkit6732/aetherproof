@@ -1,6 +1,6 @@
 """Fault-isolation and extreme-stress audit.
 
-Design rule for this file: **no verdict is a literal.**Every pass/fail is
+Design rule for this file: **no verdict is a literal.** Every pass/fail is
 derived from a value computed at runtime, and the raw evidence (counts, timings,
 exception text) is printed alongside so the verdict can be re-derived by hand.
 

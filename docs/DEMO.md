@@ -15,23 +15,23 @@ quietly rewrite the record of it, without it being caught - offline, by anyone.*
 > and `pip install aetherproof` does **not**work yet (not published to PyPI).
 > Pick ONE of these and do it **off camera**:
 
-**Path A - pre-install (fastest).**On the demo laptop, before filming:
+**Path A - pre-install (fastest).** On the demo laptop, before filming:
 1. Install Python 3.9+ (python.org installer; tick "Add to PATH").
 2. Copy the `aetherproof` project folder onto the laptop (USB / download).
 3. In a terminal: `pip install .` from inside that folder.
 4. Verify it works: `aetherproof --help` shows the command table.
 Then record only the *product* (Section 3) - the audience never sees the install.
 
-**Path B - standalone executable (no Python at all).**Build a one-file binary
+**Path B - standalone executable (no Python at all).** Build a one-file binary
 (`pyinstaller --onefile -n aetherproof aetherproof/__main__.py`) on a build
 machine, copy the single `aetherproof.exe` to the laptop, and run it directly.
 This is the honest match for "new laptop, nothing installed." (Ask if you want
 this built.)
 
-**Path C - real install on camera.**Only if the repo is pushed and on PyPI:
+**Path C - real install on camera.** Only if the repo is pushed and on PyPI:
 `pipx install aetherproof`. Still needs Python on the laptop.
 
-**Recommended:**Path A to film today; Path B if "runs on any laptop with zero
+**Recommended:** Path A to film today; Path B if "runs on any laptop with zero
 install" is part of the story.
 
 Also do this off camera before recording, for a clean "first run" look:
@@ -54,7 +54,7 @@ DO show:
   great on-camera beat).
 
 DO NOT show (blur, close, or move off screen):
-- **The private key file contents.**Never `cat ~/.aetherproof/signing_key.pem`.
+- **The private key file contents.** Never `cat ~/.aetherproof/signing_key.pem`.
   You may *say* "the private key stays on this machine," but never display it.
 - Any internal tooling, planning notes, sales material, or private working
   folders that are not part of the open-source package.

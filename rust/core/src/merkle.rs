@@ -5,12 +5,12 @@
 //!
 //! # Two properties the v0.2.x construction did not have
 //!
-//! 1. **No odd-leaf duplication.**Padding an odd level by hashing the last node
+//! 1. **No odd-leaf duplication.** Padding an odd level by hashing the last node
 //!    against itself is the Bitcoin CVE-2012-2459 pattern: `[A,B,C]` and
 //!    `[A,B,C,C]` produce an identical root, so a root does not identify a unique
 //!    leaf set. An unpaired node is promoted to the next level unchanged.
 //!
-//! 2. **Leaf/internal domain separation.**Leaves hash under `0x00`, internal
+//! 2. **Leaf/internal domain separation.** Leaves hash under `0x00`, internal
 //!    nodes under `0x01`, so an internal node cannot be presented as a leaf.
 //!
 //! # Encoding note, and why it looks odd

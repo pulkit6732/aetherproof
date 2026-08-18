@@ -11,7 +11,7 @@ If a change would break that invariant, it does not merge.
 
 ## Ground rules
 
-1. **Tests are the gate, not assertions.**Every behavioral change ships with a
+1. **Tests are the gate, not assertions.** Every behavioral change ships with a
    test. Security-relevant changes go in `tests/security/` and must encode the
    actual attack (see the existing preimage-injectivity / extension tests).
 2. **The signing preimage is sacred.**`Receipt.canonical_message()` /
@@ -20,7 +20,7 @@ If a change would break that invariant, it does not merge.
    and new receipts can never collide. The encoding is **injective**(length-prefixed) - keep it that way.
 3. **No new runtime dependencies**without discussion. The verifier must stay
    runnable with only `cryptography`.
-4. **Honesty over marketing.**Don't claim a property the code doesn't have
+4. **Honesty over marketing.** Don't claim a property the code doesn't have
    (byte counts, hardware roots, compliance). `docs/CLAIMS.md` is the
    proves / does-not-prove boundary.
 

@@ -2,7 +2,7 @@
 
 # v0.4.0 - concurrency, key custody, session proofs, headless API
 
-**If you are running 0.2.x, upgrade.**The transparency log's hash chain forked at
+**If you are running 0.2.x, upgrade.** The transparency log's hash chain forked at
 **two**concurrent writers - silently, with every row written and no exception raised.
 An auditor running the integrity check on such a log gets `False` and concludes
 tampering, when two threads merely wrote at once. Details below.
@@ -44,7 +44,7 @@ Two related races closed with it:
 - `issue_receipt()` failed **29 of 32**concurrent calls. The sequence is inside the
   signing preimage, so it now re-signs against the new head with a bounded retry.
 
-**Throughput: 112 -> 1406 receipts/sec.**Profiling showed connection churn was two thirds
+**Throughput: 112 -> 1406 receipts/sec.** Profiling showed connection churn was two thirds
 of every append; the journal mode is now set once and connections are cached per thread.
 
 ---
@@ -54,10 +54,10 @@ of every append; the journal mode is now set once and connections are cached per
 - **Merkle odd-leaf duplication (CVE-2012-2459 pattern).**`root([A,B,C])` equalled
   `root([A,B,C,C])`, so a model directory's root did not identify a unique file set.
   Now RFC 6962 domain separation, odd node promoted rather than duplicated.
-- **`api_attested_root` was forgeable.**A non-injective `"|".join` let a caller smuggle
+- **`api_attested_root` was forgeable.** A non-injective `"|".join` let a caller smuggle
   `|system_fingerprint:...` into `model_id` and produce the same root as an honest call
   that really carried that fingerprint. Now length-prefixed.
-- **`model_weight_root` ignored filenames.**Two directories holding identical bytes under
+- **`model_weight_root` ignored filenames.** Two directories holding identical bytes under
   different names produced the same root; renaming `weights.bin` to `config.json` was
   invisible. Leaves now commit to path and content.
 - **`receipt_id` collided**for receipts issued in the same millisecond - it was derived
@@ -68,7 +68,7 @@ of every append; the journal mode is now set once and connections are cached per
 
 ## Interoperability fix (issue #1)
 
-Reported by **Aleksey Safonov ([@safal207](https://github.com/safal207))**on 2026-06-24.
+Reported by **Aleksey Safonov ([@safal207](https://github.com/safal207))** on 2026-06-24.
 
 The `signed_extensions` aggregate sorted **namespace keys**while the specification sorted
 the resulting **commitments**. With two or more extensions those orders diverge, so two
@@ -101,7 +101,7 @@ previously left free:
 
 | Field | Why | |---|---| | `receipt_id` | was rewritable on a standalone receipt file without breaking the signature | | `signing_key_id` | identifies the signing key, so a verifier holding many keys picks the right one in one lookup instead of trying each in turn (measured: 38 trial verifications across 50 keys -> 1) |
 
-**v1.1 and v1.2 receipts still verify, byte-exact.**The legacy preimage builders are
+**v1.1 and v1.2 receipts still verify, byte-exact.** The legacy preimage builders are
 retained verification-only. A fix that invalidated receipts already in an auditor's hands
 would be worse than the defect it closed.
 
@@ -156,7 +156,7 @@ def ask(prompt): ...
 
 | Env var | Effect | |---|---| | `AETHERPROOF_HOME` | where key, log and receipts live | | `AETHERPROOF_KEY_PASSPHRASE` | encrypts the key at rest | | `AETHERPROOF_DISABLE=1` | every call becomes a no-op | | `AETHERPROOF_STRICT=1` | raise on failure instead of degrading |
 
-**Failure policy:**by default a receipt failure returns `None` and your work proceeds - a
+**Failure policy:** by default a receipt failure returns `None` and your work proceeds - a
 pipeline losing a receipt is bad, a pipeline crashing over one is worse. `STRICT=1` inverts
 that where a missing receipt *is* the failure.
 
@@ -177,7 +177,7 @@ that where a missing receipt *is* the failure.
 
 ## CLI
 
-- **The model file is now optional.**Cloud users (ChatGPT, Claude, Gemini) cannot download
+- **The model file is now optional.** Cloud users (ChatGPT, Claude, Gemini) cannot download
   weights, so requiring a model path made the tool unusable for most of its actual users.
   Without one the receipt is tiered `name_only` rather than implying the weights were checked.
 - **`sign --input FILE`**binds the prompt as well as the answer. Previously
@@ -201,7 +201,7 @@ that where a missing receipt *is* the failure.
 
 **568 passing, coverage 48% -> 93%.**| Suite | What it covers | |---|---| | unit + regression | every defect above, each failing against 0.2.x | | `tests/stress/full_audit.py` | 31 adversarial checks - concurrency, tamper, crypto, input, session, key | | `tests/stress/isolation_audit.py` | 18 probes - break one component, verify the others independently | | `tests/stress/industrial_stress.py` | 7 multi-**process**probes - 12-process fleet, 20k sustained, hard-kill (`os._exit(9)`) recovery, 50k-turn session | | `tests/test_independent_verification.py` | the documented offline procedure, run against a real CLI receipt in a process where importing `aetherproof` is **blocked**|
 
-**Fault isolation: 10/10.**Delete the log and signing still works; corrupt it and offline
+**Fault isolation: 10/10.** Delete the log and signing still works; corrupt it and offline
 verification is unaffected; destroy the private key and old receipts still verify; corrupt
 the public key and it fails closed; one bad receipt among five leaves the other four
 independently provable.
