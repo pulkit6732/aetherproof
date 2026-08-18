@@ -17,6 +17,8 @@ dependencies = [
  "fips204",
  "getrandom",
  "sha2",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]

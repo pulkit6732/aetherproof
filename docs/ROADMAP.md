@@ -19,14 +19,14 @@ This document records where each implementation stands and what 0.5.0 does about
 | Session Merkle proofs | **yes** | **yes** |
 | Signed extensions (v1.2) | no | **yes** |
 | Key rotation / `signing_key_id` | no | **yes** |
-| Tests | 45 | 568 (93% coverage) |
+| Tests | 59 | 642 |
 | Distribution | source | PyPI |
 
 Both are live. The Rust workspace builds clean and passes its full suite:
 
 ```
 cargo build --release   # Finished in ~15s
-cargo test  --release   # 45 passed; 0 failed
+cargo test  --release   # 59 passed; 0 failed
 ```
 
 ### Measured, same machine, 20,000 operations each
@@ -215,6 +215,72 @@ will be exactly one, in Rust, and Python will call it.
 
 5. **Keep 0.4.x alive as the pure-Python line** for environments that cannot build a
    native extension.
+
+### Security layer — BUILT, `rust/core/src/secure.rs`
+
+Secrets live in Rust, are wiped on release, and never round-trip through
+immutable Python memory.
+
+**The gap this closes, demonstrated before it was built:** the plain binding
+takes a signing key as a Python `bytes` object. Those are immutable, so the caller
+cannot wipe one, and garbage collection does not overwrite the allocation. Reading
+the key back out of process memory after use is a four-line script.
+
+`SecureSigner` generates the key inside Rust; only public keys and signatures come
+back out. `SecureVerifier` rejects malformed key material at construction rather
+than producing an object that accepts everything later — the failure the pure-Python
+`Verifier` has.
+
+**Two real defects were found by testing this layer, both in code written for it:**
+
+1. **Zeroization did not zeroize.** `self.seed.take()` moves the array out of the
+   `Option` and wipes the *moved copy*; the original storage kept the key. Caught by
+   a test that reads through a raw pointer to the original address instead of
+   trusting that "dropped" means "erased". Fixed by wiping in place before clearing.
+
+2. **`ct_eq` was not constant-time.** The hand-rolled `diff |= x ^ y` loop never
+   short-circuits in the source, and LLVM introduced one anyway. Measured at 400
+   rounds × 200,000 iterations with the buffer address held fixed: a difference in
+   byte 0 ran **3.55% faster** than one in byte 63, against a **0.11%** noise floor —
+   the direction a short-circuit produces. Now delegated to `subtle`, which uses
+   volatile reads and optimisation barriers:
+
+   | | Before | After |
+   |---|---|---|
+   | Position skew | 3.55% | **0.40%** |
+   | Noise floor | 0.11% | 0.10% |
+   | Direction | faster at byte 0 | indistinguishable |
+   | Cost per call | ~4 ns | ~435 ns |
+
+   The 100× slowdown is the price of the barriers that stop vectorisation. For a
+   64-byte MAC comparison it is not a meaningful cost, and the earlier figure was
+   measuring an operation that leaked.
+
+**Adversarial testing, before and after:**
+
+| Probe | Result |
+|---|---|
+| Panic probes on attacker-controlled input (25 cases) | 0 panics |
+| Fail-open probes | 0 fail-open |
+| Fuzz: 200,000 parser + 150,000 verifier iterations | 0 panics, 0 forgeries |
+| Zeroization verified by scanning process memory | key absent after `destroy()` and after `Drop` |
+| Malformed public keys (0/1/16/31/33/64/128 bytes) | all rejected at construction |
+| Wrong signature lengths (0/1/32/63/65/128/4096) | all rejected |
+| Every single-byte flip in a 128-byte receipt | all rejected |
+
+`SecureSigner` has no `Debug`, `Display`, `Clone`, or serialisation. A key that can
+be printed reaches a log file; a key that can be cloned has an untracked second copy
+no `destroy()` will find. `__repr__` reports only live or destroyed.
+
+Bound to Python as `SecureSigner`, `SecureVerifier`, `ct_eq`, and `ct_eq_str`, with
+`SecureSigner` usable as a context manager so the key is wiped on block exit —
+including when the block exits by exception. Covered by
+`tests/test_native_security.py` (24 tests).
+
+**Limits, stated because a security layer that oversells itself is worse than none:**
+it does not defend against an attacker who can already read process memory while the
+signer is alive, and it does not stop the OS paging the key to disk — that needs
+`mlock`, which is platform-specific and not done.
 
 ### Not in scope
 

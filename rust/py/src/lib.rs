@@ -184,6 +184,167 @@ fn pq_has_trailer(data: &[u8]) -> bool {
     core::pq::has_trailer(data)
 }
 
+// ── Security layer ───────────────────────────────────────────────────────────
+
+/// An Ed25519 signing key held inside Rust and wiped when released.
+///
+/// The secret never crosses into Python. `generate()` produces it here, signing
+/// happens here, and only public keys and signatures come back out. A Python
+/// `bytes` object holding a key cannot be wiped — it is immutable, and garbage
+/// collection does not overwrite it — so a key that round-trips through Python
+/// stays readable in the heap long after its last use.
+#[pyclass(name = "SecureSigner", unsendable)]
+struct PySecureSigner {
+    inner: core::secure::SecureSigner,
+}
+
+#[pymethods]
+impl PySecureSigner {
+    /// Generate a fresh key from operating-system entropy.
+    #[new]
+    fn new() -> PyResult<Self> {
+        core::secure::SecureSigner::generate()
+            .map(|inner| Self { inner })
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// Adopt an existing 32-byte seed.
+    ///
+    /// The caller's copy cannot be wiped by this object. Prefer the constructor
+    /// where the key does not already exist.
+    #[staticmethod]
+    fn from_seed(seed: &[u8]) -> PyResult<Self> {
+        core::secure::SecureSigner::from_seed(seed)
+            .map(|inner| Self { inner })
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// True while the key is still usable.
+    #[getter]
+    fn is_live(&self) -> bool {
+        self.inner.is_live()
+    }
+
+    /// The 32-byte Ed25519 public key.
+    fn public_key<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyBytes>> {
+        self.inner
+            .public_key()
+            .map(|k| PyBytes::new(py, &k))
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// Sign a message, returning the 64-byte signature.
+    fn sign<'p>(&self, py: Python<'p>, message: &[u8]) -> PyResult<Bound<'p, PyBytes>> {
+        self.inner
+            .sign(message)
+            .map(|s| PyBytes::new(py, &s))
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// Produce a signed 128-byte receipt without the key leaving Rust.
+    fn sign_receipt<'p>(
+        &self,
+        py: Python<'p>,
+        pid: u32,
+        binary: &[u8],
+        memory_hash: u64,
+        syscall_count: u32,
+    ) -> PyResult<Bound<'p, PyBytes>> {
+        self.inner
+            .sign_receipt(pid, binary, memory_hash, syscall_count)
+            .map(|r| PyBytes::new(py, &r))
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// Overwrite the key now rather than waiting for collection.
+    fn destroy(&mut self) {
+        self.inner.destroy();
+    }
+
+    /// Usable as a context manager so the key is wiped on block exit.
+    fn __enter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __exit__(
+        &mut self,
+        _t: Option<Bound<'_, PyAny>>,
+        _v: Option<Bound<'_, PyAny>>,
+        _b: Option<Bound<'_, PyAny>>,
+    ) -> bool {
+        self.inner.destroy();
+        false
+    }
+
+    /// No key material, deliberately. A repr that shows a secret ends up in logs.
+    fn __repr__(&self) -> String {
+        format!(
+            "<SecureSigner {}>",
+            if self.inner.is_live() { "live" } else { "destroyed" }
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
+/// A verifier carrying only public material, which fails closed.
+#[pyclass(name = "SecureVerifier")]
+#[derive(Clone)]
+struct PySecureVerifier {
+    inner: core::secure::SecureVerifier,
+}
+
+#[pymethods]
+impl PySecureVerifier {
+    /// Build from a 32-byte Ed25519 public key.
+    ///
+    /// Malformed key material is rejected here rather than producing an object
+    /// that accepts everything at verification time.
+    #[new]
+    fn new(public_key: &[u8]) -> PyResult<Self> {
+        core::secure::SecureVerifier::from_public_key(public_key)
+            .map(|inner| Self { inner })
+            .map_err(|e| PyValueError::new_err(format!("{e:?}")))
+    }
+
+    /// Verify a signature over a message.
+    fn verify(&self, message: &[u8], signature: &[u8]) -> bool {
+        self.inner.verify(message, signature)
+    }
+
+    /// Verify a 128-byte receipt.
+    fn verify_receipt(&self, data: &[u8]) -> bool {
+        self.inner.verify_receipt(data)
+    }
+
+    /// The public key bytes.
+    fn public_key<'p>(&self, py: Python<'p>) -> Bound<'p, PyBytes> {
+        PyBytes::new(py, &self.inner.public_key())
+    }
+
+    fn __repr__(&self) -> String {
+        "<SecureVerifier>".to_string()
+    }
+}
+
+/// Constant-time byte equality.
+///
+/// `==` on Python bytes short-circuits, so the time it takes reveals how long a
+/// shared prefix was. Use this when comparing a supplied digest or MAC against
+/// the expected value.
+#[pyfunction]
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    core::secure::ct_eq(a, b)
+}
+
+/// Constant-time comparison of two strings, for hex digests and Merkle roots.
+#[pyfunction]
+fn ct_eq_str(a: &str, b: &str) -> bool {
+    core::secure::ct_eq_str(a, b)
+}
+
 // ── Module ───────────────────────────────────────────────────────────────────
 
 #[pymodule]
@@ -209,5 +370,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pq_attach, m)?)?;
     m.add_function(wrap_pyfunction!(pq_verify, m)?)?;
     m.add_function(wrap_pyfunction!(pq_has_trailer, m)?)?;
+
+    m.add_class::<PySecureSigner>()?;
+    m.add_class::<PySecureVerifier>()?;
+    m.add_function(wrap_pyfunction!(ct_eq, m)?)?;
+    m.add_function(wrap_pyfunction!(ct_eq_str, m)?)?;
     Ok(())
 }

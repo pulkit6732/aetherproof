@@ -363,7 +363,7 @@ AetherProof exists in two languages. Both are live and both are in this reposito
 | AetherOS kernel wire compatibility | **yes** | no |
 | Session Merkle proofs | **yes** | **yes** |
 | Signed extensions (v1.2), key rotation | no | **yes** |
-| Tests | 45 | 568 (93% coverage) |
+| Tests | 59 | 642 |
 | Distribution | source | PyPI |
 
 The Rust core defines the original 128-byte wire format, byte-identical to the
@@ -372,7 +372,7 @@ library and CLI.
 
 ```bash
 cd rust/
-cargo test --release            # 45 passed
+cargo test --release            # 59 passed
 cargo run --release --example bench
 ```
 
