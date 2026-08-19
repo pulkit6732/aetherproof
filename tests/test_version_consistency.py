@@ -8,6 +8,8 @@ invisible until it is published, which is the worst time to find it.
 
 import re
 import sys
+
+import pytest
 from pathlib import Path
 
 import aetherproof
@@ -29,18 +31,30 @@ def test_dunder_version_matches_pyproject():
     )
 
 
-def test_installed_metadata_matches_when_available():
-    """If the package is installed, its recorded version must agree too."""
-    if sys.version_info < (3, 8):
-        return
+def test_installed_metadata_is_not_ahead_of_the_source():
+    """Installed metadata may lag the source tree, but must never lead it.
+
+    During development the source is bumped before anything is reinstalled, so an
+    editable install legitimately reports the previous version. That is normal and
+    must not fail, or the check gets ignored and then deleted.
+
+    Metadata *ahead* of the source is different: it means the working tree is
+    older than what is installed, so tests are not exercising the code that would
+    ship.
+    """
     from importlib import metadata
 
     try:
         installed = metadata.version("aetherproof")
     except metadata.PackageNotFoundError:
-        return  # running from a source tree that was never installed
-    assert installed == aetherproof.__version__, (
-        f"installed metadata says {installed}, package says {aetherproof.__version__}"
+        pytest.skip("not installed; running from a source tree")
+
+    def parts(v):
+        return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+
+    assert parts(installed) <= parts(aetherproof.__version__), (
+        f"installed metadata is {installed} but the source says "
+        f"{aetherproof.__version__}; the working tree is behind what is installed"
     )
 
 

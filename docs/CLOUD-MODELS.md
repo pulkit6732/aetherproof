@@ -2,7 +2,9 @@
 
 # Local models and cloud APIs
 
-**AetherProof - Pulkit Kr Srivastava | Apache-2.0**What can be bound for a model you run yourself, what can be bound for a model behind
+**AetherProof - Pulkit Kr Srivastava | Apache-2.0**
+
+What can be bound for a model you run yourself, what can be bound for a model behind
 someone else's API, and why those are different guarantees.
 
 ---
@@ -10,7 +12,16 @@ someone else's API, and why those are different guarantees.
 ## The two cases
 
 This is the most important distinction in AetherProof. **What can be proven
-depends on whether you can see the weights.**| | Local / self-hosted (Llama, custom, on-prem) | Cloud API (GPT-4o, Claude, Grok, DeepSeek, Gemini...) | |---|---|---| | Who holds the weights | **You**| The provider | | Can you hash the weights? | **Yes**| **No - ever**| | `model_root_type` | `artifact_hash` | `api_attested` | | Proves the exact model ran? | **Yes**| **No**(only the provider can attest that) | | Proves input + output unaltered? | Yes | **Yes**| | Proves *which model the API claimed* + when? | Yes | **Yes**|
+depends on whether you can see the weights.**
+
+| | Local / self-hosted (Llama, custom, on-prem) | Cloud API (GPT-4o, Claude, Grok, DeepSeek, Gemini...) |
+|---|---|---|
+| Who holds the weights | **You** | The provider |
+| Can you hash the weights? | **Yes** | **No - ever** |
+| `model_root_type` | `artifact_hash` | `api_attested` |
+| Proves the exact model ran? | **Yes** | **No** (only the provider can attest that) |
+| Proves input + output unaltered? | Yes | **Yes** |
+| Proves *which model the API claimed* + when? | Yes | **Yes** |
 
 ### Why a cloud receipt can't prove the weights - and why that's honest
 
@@ -72,7 +83,7 @@ r.signature = signer.sign(r.signing_bytes())
 ReceiptLog().append(r)
 ```
 
-This works for **any**OpenAI-compatible or Anthropic-style provider - OpenAI,
+This works for **any** OpenAI-compatible or Anthropic-style provider - OpenAI,
 Azure OpenAI, DeepSeek, xAI/Grok, Mistral, Together, Groq, etc. (tested across 17
 model families in `tests/security/test_cloud_models_matrix.py`).
 
@@ -88,8 +99,8 @@ weights ran," the answer is:
 
 In a real dispute (a wrongful denial, a bad summary), the fight is almost never
 "was it GPT-4o or GPT-4-turbo" - it's **"did the AI actually output this, or was
-the record edited afterward?"**AetherProof answers that completely, for any cloud
+the record edited afterward?"** AetherProof answers that completely, for any cloud
 model, with zero provider cooperation. The model-identity gap upgrades to a real
 hardware root only when the provider signs their infrastructure (AWS Bedrock +
-Nitro, future) - at which point **Signet**imports that signature and the tier
+Nitro, future) - at which point **Signet** imports that signature and the tier
 graduates `api_attested -> hardware-rooted`, with no change to the receipt format.

@@ -52,7 +52,9 @@ That's the whole installation.
 
 Say an AI just answered a question for you.
 
-**Step 1 - save the question and the answer as two text files.**`question.txt`
+**Step 1 - save the question and the answer as two text files.**
+
+`question.txt`
 ```
 What was our Q3 refund policy?
 ```
@@ -62,7 +64,9 @@ What was our Q3 refund policy?
 Refunds were accepted within 30 days with a receipt.
 ```
 
-**Step 2 - make the receipt.**```
+**Step 2 - make the receipt.**
+
+```
 aetherproof sign --input question.txt answer.txt
 ```
 
@@ -74,7 +78,9 @@ somewhere safe, like any other important document.
 > stronger receipt. Most people using a cloud AI don't have that file, and that
 > is fine - see [When you use a cloud AI](#when-you-use-a-cloud-ai-chatgpt-claude-gemini).
 
-**Step 3 - check it any time, forever.**```
+**Step 3 - check it any time, forever.**
+
+```
 aetherproof verify <path-to-your-receipt> --output answer.txt
 ```
 
@@ -98,7 +104,10 @@ That is the entire point. (For scripts: it exits `0` when valid, `1` when not.)
 
 There are two files that matter:
 
-| File | What it is | Can you share it? | |---|---|---| | `signing_key.pem` | Your **private**key - the wax stamp | **Never.** Anyone with this can forge your receipts. | | `signing_key.pub` | Your **public**key - the shape of the seal | Yes. Share it freely; people need it to check your receipts. |
+| File | What it is | Can you share it? |
+|---|---|---|
+| `signing_key.pem` | Your **private** key - the wax stamp | **Never.** Anyone with this can forge your receipts. |
+| `signing_key.pub` | Your **public** key - the shape of the seal | Yes. Share it freely; people need it to check your receipts. |
 
 Both live in a folder called `.aetherproof` inside your home directory.
 
@@ -135,14 +144,14 @@ It will still work in twenty years, whether or not this project still exists.
 ## When you use a cloud AI (ChatGPT, Claude, Gemini)
 
 You cannot download those models. They live on the provider's computers. So
-AetherProof **cannot**prove which model produced the text, and it will not claim
+AetherProof **cannot** prove which model produced the text, and it will not claim
 to. Anyone telling you otherwise is overstating what is possible.
 
 What it *does* prove is the part you're actually responsible for: the exact
 question you sent, the exact answer you acted on, when it happened, and that none
 of it was altered afterwards. In a real dispute the argument is almost never
 "was it GPT-4 or GPT-4-turbo" - it's **"did the AI actually say this, or was the
-record edited later?"**That question AetherProof answers completely.
+record edited later?"** That question AetherProof answers completely.
 
 The receipt labels this honestly as `api_attested` rather than pretending.
 
@@ -150,22 +159,28 @@ The receipt labels this honestly as `api_attested` rather than pretending.
 
 ## Common questions
 
-**Do I need to be online?** Only to install. Making and checking receipts works completely offline.
+**Do I need to be online?**
+Only to install. Making and checking receipts works completely offline.
 
-**Does my text get uploaded anywhere?** No. Nothing leaves your computer. Receipts store a *fingerprint* of your text
+**Does my text get uploaded anywhere?**
+No. Nothing leaves your computer. Receipts store a *fingerprint* of your text
 (a hash), never the text itself - so a receipt can be shared without revealing
 what it covers.
 
-**What if I have thousands of AI answers?** See [Sealing a whole conversation](#sealing-a-whole-conversation) below.
+**What if I have thousands of AI answers?**
+See [Sealing a whole conversation](#sealing-a-whole-conversation) below.
 
-**Can I prove the AI's answer was correct?** No, and be wary of anything claiming otherwise. This proves the record is
+**Can I prove the AI's answer was correct?**
+No, and be wary of anything claiming otherwise. This proves the record is
 unaltered, not that the content is true.
 
-**What if AetherProof disappears?** Receipts use standard, public cryptography (SHA-256 and Ed25519). Any programmer
+**What if AetherProof disappears?**
+Receipts use standard, public cryptography (SHA-256 and Ed25519). Any programmer
 can check one with ordinary tools and no AetherProof code at all - the README has
 a 20-line example. That's on purpose.
 
-**Where are my files?** In `.aetherproof` in your home directory. To put them elsewhere, set
+**Where are my files?**
+In `.aetherproof` in your home directory. To put them elsewhere, set
 `AETHERPROOF_HOME` to a folder path.
 
 ---
@@ -173,7 +188,7 @@ a 20-line example. That's on purpose.
 ## Sealing a whole conversation
 
 Making one receipt per message gets unwieldy fast. Instead you can seal an entire
-conversation with a **single**signature, then later prove any one message from it
+conversation with a **single** signature, then later prove any one message from it
 without revealing the others.
 
 That last part matters for privacy: if a regulator asks about message 457, you can
@@ -200,7 +215,7 @@ single message takes about ten short numbers rather than the whole transcript.
 ## Protecting your key
 
 By default the private key is stored unprotected, relying on your computer's file
-permissions. **On Windows those permissions do not meaningfully protect it**- we
+permissions. **On Windows those permissions do not meaningfully protect it** - we
 tested this rather than assumed it.
 
 To protect the key with a password, set this before using AetherProof:
@@ -214,7 +229,7 @@ $env:AETHERPROOF_KEY_PASSPHRASE = "choose something long"
 ```
 
 The key is then encrypted on disk. **If you forget this password the key cannot be
-recovered**- but, again, receipts you already made stay verifiable, because
+recovered** - but, again, receipts you already made stay verifiable, because
 checking only needs the public key.
 
 Set it before your first use, or the key will already have been created
@@ -232,7 +247,12 @@ from aetherproof.auto import sign
 sign(prompt="...", output="...", model_id="gpt-4o")
 ```
 
-| Setting | What it does | |---|---| | `AETHERPROOF_HOME` | Where keys and receipts are stored | | `AETHERPROOF_KEY_PASSPHRASE` | Password-protects the key | | `AETHERPROOF_DISABLE=1` | Turns receipt-making off entirely | | `AETHERPROOF_STRICT=1` | Fail loudly instead of continuing quietly |
+| Setting | What it does |
+|---|---|
+| `AETHERPROOF_HOME` | Where keys and receipts are stored |
+| `AETHERPROOF_KEY_PASSPHRASE` | Password-protects the key |
+| `AETHERPROOF_DISABLE=1` | Turns receipt-making off entirely |
+| `AETHERPROOF_STRICT=1` | Fail loudly instead of continuing quietly |
 
 By default, if a receipt can't be written the rest of your program carries on -
 losing a receipt is bad, but crashing a production job over one is worse. Set
@@ -242,7 +262,7 @@ losing a receipt is bad, but crashing a production job over one is worse. Set
 
 ## Getting help
 
-- **What this can and cannot prove:**[CLAIMS.md](CLAIMS.md) - a deliberately
+- **What this can and cannot prove:** [CLAIMS.md](CLAIMS.md) - a deliberately
   honest list, including the limitations.
-- **All commands:**`aetherproof --help`
+- **All commands:** `aetherproof --help`
 - **Bugs and questions:** https://github.com/pulkit6732/aetherproof/issues

@@ -2,7 +2,9 @@
 
 # Integration guide
 
-**AetherProof - Pulkit Kr Srivastava | Apache-2.0**How to add AetherProof to something that already exists, in the smallest number of
+**AetherProof - Pulkit Kr Srivastava | Apache-2.0**
+
+How to add AetherProof to something that already exists, in the smallest number of
 steps that actually work. Each section is a real situation, not a feature tour.
 
 Every snippet here runs. Where a thing is not built yet, it says so instead of
@@ -12,10 +14,12 @@ showing you code that will not import.
 
 ## Pick your path in one question
 
-**Do you control the code that produces the AI output?**- **Yes**-> [Path A](#path-a--you-call-the-model). Three lines.
-- **No, I only have the output afterwards**-> [Path B](#path-b--you-only-have-the-output).
-- **Yes, and the key must not sit in Python memory**-> [Path C](#path-c--secrets-that-get-wiped).
-- **I only need to check someone else's receipt**-> [Path D](#path-d--verify-only).
+**Do you control the code that produces the AI output?**
+
+- **Yes** -> [Path A](#path-a--you-call-the-model). Three lines.
+- **No, I only have the output afterwards** -> [Path B](#path-b--you-only-have-the-output).
+- **Yes, and the key must not sit in Python memory** -> [Path C](#path-c--secrets-that-get-wiped).
+- **I only need to check someone else's receipt** -> [Path D](#path-d--verify-only).
 
 ---
 
@@ -130,7 +134,7 @@ python -m maturin build --release
 pip install ../target/wheels/aetherproof_native-*.whl
 ```
 
-Needs a Rust toolchain ([rustup.rs](https://rustup.rs)). It is **optional**- the
+Needs a Rust toolchain ([rustup.rs](https://rustup.rs)). It is **optional** - the
 `aetherproof` package does not import it and behaves identically without it.
 
 ### C2. Use it
@@ -180,9 +184,17 @@ hybrid = _native.pq_attach(receipt, priv_pq)     # 128-byte core untouched
 assert _native.pq_verify(hybrid, pub_pq)
 ```
 
-**Know the cost before you turn this on:**| | Ed25519 | ML-DSA-65 | |---|---|---| | Signature | 64 B | **3,309 B**| | Full receipt | 128 B | **3,453 B**| | Public key | 32 B | 1,952 B | | Sign | 18.84 µs | 787.83 µs (**42x**) | | Verify | 22.77 µs | 177.59 µs (7.8x) |
+**Know the cost before you turn this on:**
 
-A hybrid receipt is **27x larger**than a plain one. There is no compact
+| | Ed25519 | ML-DSA-65 |
+|---|---|---|
+| Signature | 64 B | **3,309 B** |
+| Full receipt | 128 B | **3,453 B** |
+| Public key | 32 B | 1,952 B |
+| Sign | 18.84 µs | 787.83 µs (**42x**) |
+| Verify | 22.77 µs | 177.59 µs (7.8x) |
+
+A hybrid receipt is **27x larger** than a plain one. There is no compact
 post-quantum option: 3,309 bytes is the FIPS 204 signature size, and no framing
 choice shrinks it. Turn this on when you need it, not by default.
 
@@ -217,7 +229,11 @@ aetherproof verify receipt.json --output output.txt --quiet   # exit 0 or 1
 
 ## Choosing between the two implementations
 
-| Use | When | |---|---| | **Python**(`pip install aetherproof`) | default; no toolchain needed; the whole feature set | | **Rust core**(`rust/`) | 128-byte receipts, kernel wire compatibility, post-quantum, secret wiping, constant-time comparison | | **Both**(extension installed) | Python API unchanged, 2.9-4.3x faster Merkle work |
+| Use | When |
+|---|---|
+| **Python** (`pip install aetherproof`) | default; no toolchain needed; the whole feature set |
+| **Rust core** (`rust/`) | 128-byte receipts, kernel wire compatibility, post-quantum, secret wiping, constant-time comparison |
+| **Both** (extension installed) | Python API unchanged, 2.9-4.3x faster Merkle work |
 
 They are verified to agree: `tests/test_native_equivalence.py` holds them to
 identical output across 17 tree sizes, every proof index in 10 tree sizes, 150
@@ -227,10 +243,17 @@ randomised trees, and cross-verification in both directions.
 
 ## Operational notes
 
-**Where things live.**`~/.aetherproof/` holds `signing_key.pem`, `signing_key.pub`,
+**Where things live.** `~/.aetherproof/` holds `signing_key.pem`, `signing_key.pub`,
 `log.db`, and `receipts/`. Override with `AETHERPROOF_HOME`.
 
-**Environment variables.**| | | |---|---| | `AETHERPROOF_HOME` | where keys and the log live | | `AETHERPROOF_STRICT=1` | a receipt failure raises instead of returning `None` | | `AETHERPROOF_DISABLE=1` | no-op every call - for test suites | | `AETHERPROOF_KEY_PASSPHRASE` | encrypt the key at rest |
+**Environment variables.**
+
+| | |
+|---|---|
+| `AETHERPROOF_HOME` | where keys and the log live |
+| `AETHERPROOF_STRICT=1` | a receipt failure raises instead of returning `None` |
+| `AETHERPROOF_DISABLE=1` | no-op every call - for test suites |
+| `AETHERPROOF_KEY_PASSPHRASE` | encrypt the key at rest |
 
 **Back up your private key.** Losing it means you can no longer issue receipts under
 that identity. Already-issued receipts keep verifying, because verification needs
@@ -249,7 +272,7 @@ rather than trying every key you hold. Rotating never invalidates old receipts.
 
 Full list in `docs/CLAIMS.md`. The three that change design decisions:
 
-1. **Integrity, not completeness.***"Show me the record of this decision"* is
+1. **Integrity, not completeness.** *"Show me the record of this decision"* is
    answered. *"Show me that you logged them all"* is not. Someone who logs 9,000 of
    10,000 outputs passes every check here. This is unsolvable locally - it needs an
    independent witness, which is not built.

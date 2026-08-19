@@ -7,12 +7,14 @@ machine, what to put on camera, what to keep off camera, the exact beats
 (CLI + the interactive UI), and the narration. The whole film is ~2 minutes.
 
 The one thing the audience must believe: **you cannot change an AI's output, or
-quietly rewrite the record of it, without it being caught - offline, by anyone.**---
+quietly rewrite the record of it, without it being caught - offline, by anyone.**
+
+---
 
 ## 0. PREPARE THE LAPTOP (do this BEFORE recording)
 
 >  A brand-new laptop has **no Python**, so nothing here runs out of the box,
-> and `pip install aetherproof` does **not**work yet (not published to PyPI).
+> and `pip install aetherproof` does **not** work yet (not published to PyPI).
 > Pick ONE of these and do it **off camera**:
 
 **Path A - pre-install (fastest).** On the demo laptop, before filming:
@@ -44,13 +46,13 @@ mkdir demo && cd demo        # work in a clean folder
 
 ## 1. SCREEN HYGIENE - what to show and what NOT to show
 
-It is a **security**product; sloppy screen = lost trust. Before recording:
+It is a **security** product; sloppy screen = lost trust. Before recording:
 
 DO show:
 - A clean terminal, large font, dark theme.
 - The receipt JSON, the green VALID panel, the red OUTPUT MODIFIED / FAILED lines.
 - The `aetherproof` interactive menu.
-- That verification is **offline**(you can unplug Wi-Fi and it still works - a
+- That verification is **offline** (you can unplug Wi-Fi and it still works - a
   great on-camera beat).
 
 DO NOT show (blur, close, or move off screen):
@@ -67,12 +69,12 @@ DO NOT show (blur, close, or move off screen):
 
 ## 2. WHAT YOU'RE DEMONSTRATING (the three beats)
 
-1. **Sign**- put a receipt on an AI output.
-2. **Tamper the output**- the receipt catches it.
-3. **Tamper the log**- the transparency log catches that too.
+1. **Sign** - put a receipt on an AI output.
+2. **Tamper the output** - the receipt catches it.
+3. **Tamper the log** - the transparency log catches that too.
 
-Film the **interactive UI**for beats 1-2 (looks friendly, non-technical), and
-drop to the **CLI**for the log-tamper beat (beat 3) because it's the most
+Film the **interactive UI** for beats 1-2 (looks friendly, non-technical), and
+drop to the **CLI** for the log-tamper beat (beat 3) because it's the most
 technical and convincing. You can do the whole thing in the CLI if you prefer
 speed - both scripts are below.
 
@@ -82,19 +84,35 @@ speed - both scripts are below.
 
 ### Take 1 - the friendly UI (beats 1 and 2)
 
-| # | On camera | You type / do | What's visible | Narration (one line) | |---|---|---|---|---| | 1 | Terminal, clean folder | `aetherproof` | The ASCII logo + the menu (Sign / Verify / ...) | "This is AetherProof - it puts a tamper-proof receipt on any AI output." | | 2 | Menu | arrow to **Sign an AI output**, Enter | Model picker appears | "I'll sign an output. Pick the model that produced it." | | 3 | Model picker | choose **GPT-4o**(or Custom...) | Prompt: paste the output | - | | 4 | Paste prompt | type/paste: `The patient shows no signs of malignancy.` then blank line | 4-step progress bar runs | "It hashes the output, signs it, and logs it." | | 5 | Success panel | (nothing) | Green **RECEIPT SIGNED**panel: receipt id, output hash, log entry #000001, saved path | "Here's the receipt - proof this exact text came from this model." | | 6 | "Next" prompt | choose **Verify this receipt**| Green **VALID**panel | "Anyone can verify it - offline, with just the public key." | | 7 | (optional, strong) | unplug Wi-Fi / turn it off, verify again | Still VALID | "No internet. No server. It still verifies." |
+| # | On camera | You type / do | What's visible | Narration (one line) |
+|---|---|---|---|---|
+| 1 | Terminal, clean folder | `aetherproof` | The ASCII logo + the menu (Sign / Verify / ...) | "This is AetherProof - it puts a tamper-proof receipt on any AI output." |
+| 2 | Menu | arrow to **Sign an AI output**, Enter | Model picker appears | "I'll sign an output. Pick the model that produced it." |
+| 3 | Model picker | choose **GPT-4o** (or Custom...) | Prompt: paste the output | - |
+| 4 | Paste prompt | type/paste: `The patient shows no signs of malignancy.` then blank line | 4-step progress bar runs | "It hashes the output, signs it, and logs it." |
+| 5 | Success panel | (nothing) | Green **RECEIPT SIGNED** panel: receipt id, output hash, log entry #000001, saved path | "Here's the receipt - proof this exact text came from this model." |
+| 6 | "Next" prompt | choose **Verify this receipt** | Green **VALID** panel | "Anyone can verify it - offline, with just the public key." |
+| 7 | (optional, strong) | unplug Wi-Fi / turn it off, verify again | Still VALID | "No internet. No server. It still verifies." |
 
 ### Take 2 - tamper the output (beat 2, the kill shot)
 
 Switch to a terminal in the same `demo` folder.
 
-| # | On camera | You type | What's visible | Narration | |---|---|---|---|---| | 8 | terminal | `RID=$(ls receipts/*.json \| head -1 \| xargs -n1 basename \| sed 's/.json//')` | (nothing) | "Here's the output file the AI produced..." | | 9 | open the output file in an editor | change `no signs` -> `signs` and save | the edited text | "...and here's an attacker editing it - flipping the diagnosis." | | 10 | terminal | `aetherproof verify receipts/$RID.json --output <the file>` | red **OUTPUT MODIFIED - the output file does not match this receipt**| "Caught. The receipt is intact, but the output was changed - and verification fails." |
+| # | On camera | You type | What's visible | Narration |
+|---|---|---|---|---|
+| 8 | terminal | `RID=$(ls receipts/*.json \| head -1 \| xargs -n1 basename \| sed 's/.json//')` | (nothing) | "Here's the output file the AI produced..." |
+| 9 | open the output file in an editor | change `no signs` -> `signs` and save | the edited text | "...and here's an attacker editing it - flipping the diagnosis." |
+| 10 | terminal | `aetherproof verify receipts/$RID.json --output <the file>` | red **OUTPUT MODIFIED - the output file does not match this receipt** | "Caught. The receipt is intact, but the output was changed - and verification fails." |
 
 > Pause ~1.5s on the red line. That frame is the pitch.
 
 ### Take 3 - tamper the log (beat 3, for the technical viewer)
 
-| # | On camera | You type | What's visible | Narration | |---|---|---|---|---| | 11 | terminal | sign two more outputs (any text), then `aetherproof log verify` | green "Log integrity verified - 3 receipts... no gaps." | "Every receipt also goes into an append-only log." | | 12 | terminal | run the delete-then-renumber (one line below) | (nothing) | "Now I delete a record from the log and renumber the rest to hide the gap..." | | 13 | terminal | `aetherproof log verify` | red **Log integrity check FAILED**| "...and the log still catches it. You can't quietly rewrite history." |
+| # | On camera | You type | What's visible | Narration |
+|---|---|---|---|---|
+| 11 | terminal | sign two more outputs (any text), then `aetherproof log verify` | green "Log integrity verified - 3 receipts... no gaps." | "Every receipt also goes into an append-only log." |
+| 12 | terminal | run the delete-then-renumber (one line below) | (nothing) | "Now I delete a record from the log and renumber the rest to hide the gap..." |
+| 13 | terminal | `aetherproof log verify` | red **Log integrity check FAILED** | "...and the log still catches it. You can't quietly rewrite history." |
 
 The attack line (paste as-is):
 ```bash
@@ -114,10 +132,10 @@ aetherproof verify receipts/$RID.json --output thefile.txt --quiet | jq .valid  
 
 ## 4. RECORDING SETUP
 
-- **Font:**18-22pt, dark theme, terminal width ~90 columns so text is legible in playback.
-- **The UI menu needs a screen recorder**(OBS / QuickTime / Xbox Game Bar) - the
+- **Font:** 18-22pt, dark theme, terminal width ~90 columns so text is legible in playback.
+- **The UI menu needs a screen recorder** (OBS / QuickTime / Xbox Game Bar) - the
   arrow-key menu is interactive and won't capture as plain text.
-- **The CLI-only beats**can use **asciinema**for a crisp, copy-pasteable cast:
+- **The CLI-only beats** can use **asciinema** for a crisp, copy-pasteable cast:
   `asciinema rec demo.cast` -> run the commands -> `Ctrl-D` -> `asciinema upload demo.cast`.
 - Hide the cursor blink distractions; type at a calm pace; let panels finish drawing.
 - Total runtime target: **90-120 seconds**.
@@ -147,6 +165,6 @@ rm -rf ~/.aetherproof
 
 ## 7. HONEST FRAMING (so you don't overclaim on camera)
 Say: "proves the output wasn't changed and the record wasn't rewritten, verifiable
-offline." Do **not**say it proves the model actually ran, or that the key is in
+offline." Do **not** say it proves the model actually ran, or that the key is in
 hardware - that's the next layer (Signet). The full proves / does-not-prove
 matrix is in `CLAIMS.md`; keep claims at that level and the demo stays bulletproof.

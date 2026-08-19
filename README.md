@@ -26,7 +26,9 @@ Today that argument is unwinnable in both directions. You cannot prove you did n
 edit a text file, and they cannot prove you did. Screenshots prove nothing. Logs you
 control prove nothing, because you control them.
 
-**AetherProof turns that into arithmetic that either checks or does not.**---
+**AetherProof turns that into arithmetic that either checks or does not.**
+
+---
 
 ## Use it
 
@@ -78,7 +80,7 @@ aetherproof verify receipt.json --output output.txt
 aetherproof                                   # interactive menu
 ```
 
-**More recipes:**[docs/INTEGRATION.md](docs/INTEGRATION.md) - pick a path by one
+**More recipes:** [docs/INTEGRATION.md](docs/INTEGRATION.md) - pick a path by one
 question, every snippet tested.
 
 ---
@@ -117,20 +119,33 @@ pub.verify(bytes.fromhex(r["signature"]), preimage)     # raises if invalid
 
 ## What it proves
 
-| Claim | Mechanism | |---|---| | This exact output was not modified after signing | `output_hash` inside the signed preimage | | The receipt itself was not altered | Ed25519 over a length-prefixed canonical preimage | | It was signed by the holder of a specific key | Ed25519 verify, no other input | | A claimed time and log position were fixed at signing | both inside the preimage | | The local log was not edited, reordered, or truncated in the middle | key-free hash chain | | A specific turn belongs to a sealed session | Merkle inclusion proof, revealing no other turn | | Anyone can check all of it offline, forever | receipt + public key, nothing else |
+| Claim | Mechanism |
+|---|---|
+| This exact output was not modified after signing | `output_hash` inside the signed preimage |
+| The receipt itself was not altered | Ed25519 over a length-prefixed canonical preimage |
+| It was signed by the holder of a specific key | Ed25519 verify, no other input |
+| A claimed time and log position were fixed at signing | both inside the preimage |
+| The local log was not edited, reordered, or truncated in the middle | key-free hash chain |
+| A specific turn belongs to a sealed session | Merkle inclusion proof, revealing no other turn |
+| Anyone can check all of it offline, forever | receipt + public key, nothing else |
 
 ---
 
-## What it does **not**prove
+## What it does **not** prove
 
 Read this before citing anything above.
 
-**Integrity, not completeness.***"Show me the record of this decision"* is answered.
+**Integrity, not completeness.** *"Show me the record of this decision"* is answered.
 *"Show me that you logged them all"* is not. Someone who logs 9,000 of 10,000
 outputs passes every check here. That cannot be fixed locally - it needs an
 independent witness, which does not exist yet.
 
-| Not proven | Why | |---|---| | That the named model produced the output | it signs a `(model, output)` pair you supply | | That the timestamp is truthful | it is your own clock - bound, not externally anchored | | That the signing key is held securely | a software key on disk unless you set a passphrase | | That it survives a quantum adversary | Python is Ed25519 only; ML-DSA-65 is in the Rust core |
+| Not proven | Why |
+|---|---|
+| That the named model produced the output | it signs a `(model, output)` pair you supply |
+| That the timestamp is truthful | it is your own clock - bound, not externally anchored |
+| That the signing key is held securely | a software key on disk unless you set a passphrase |
+| That it survives a quantum adversary | Python is Ed25519 only; ML-DSA-65 is in the Rust core |
 
 **Where it does not fit at all:** detecting deepfakes or unsigned AI content. A
 scammer never signs, so there is nothing to verify.
@@ -141,11 +156,18 @@ Full list: [docs/CLAIMS.md](docs/CLAIMS.md).
 
 ## Two implementations
 
-| | Rust - `rust/` | Python - `aetherproof/` | |---|---|---| | Receipt | **128 B fixed binary**| 646 B JSON | | Post-quantum | **ML-DSA-65 (FIPS 204)**| none | | Secret zeroization, constant-time compare | **yes**| no | | `unsafe` in production | **zero, compiler-enforced**| n/a | | Tests | 59 | 642 (93% coverage) | | Distribution | source + CI wheels | PyPI |
+| | Rust - `rust/` | Python - `aetherproof/` |
+|---|---|---|
+| Receipt | **128 B fixed binary** | 646 B JSON |
+| Post-quantum | **ML-DSA-65 (FIPS 204)** | none |
+| Secret zeroization, constant-time compare | **yes** | no |
+| `unsafe` in production | **zero, compiler-enforced** | n/a |
+| Tests | 59 | 642 (93% coverage) |
+| Distribution | source + CI wheels | PyPI |
 
 Measured, 50,000 leaves, medians of seven isolated runs: Rust builds a Merkle tree
-in **28.16 ms**against Python's 102.71 ms (3.6x) and verifies a proof in
-**3.93 µs**against 17.17 µs (4.4x).
+in **28.16 ms** against Python's 102.71 ms (3.6x) and verifies a proof in
+**3.93 µs** against 17.17 µs (4.4x).
 
 The Rust core is optional. `aetherproof` does not import it and behaves identically
 without it - enforced in CI. See [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -173,7 +195,22 @@ Setup and post-quantum usage: [docs/INTEGRATION.md](docs/INTEGRATION.md#path-c--
 
 ## Documentation
 
-| | | |---|---| | [INTEGRATION.md](docs/INTEGRATION.md) | **start here**- pick a path by one question | | [GETTING-STARTED.md](docs/GETTING-STARTED.md) | first receipt, no code | | [CLAIMS.md](docs/CLAIMS.md) | what this proves and what it does not | | [VERIFICATION.md](docs/VERIFICATION.md) | the offline verifier, in full | | [CLOUD-MODELS.md](docs/CLOUD-MODELS.md) | local weights vs an API you do not control | | [AGENT-CHAIN.md](docs/AGENT-CHAIN.md) | binding agent context (receipt v1.2) | | [SECURITY.md](SECURITY.md) | reporting a vulnerability, threat model, known issues | | [ROADMAP.md](docs/ROADMAP.md) | 0.5.0 - Rust core, bindings, post-quantum | | [ANALYSIS.md](docs/ANALYSIS.md) | measured assessment, including what is unverified | | [CONTRIBUTING.md](CONTRIBUTING.md) | extension and spec workflow | | [RELEASE-NOTES-0.4.0.md](docs/RELEASE-NOTES-0.4.0.md) | what changed in 0.4.0 | | [agent-chain-context-response.md](docs/agent-chain-context-response.md) | the v1.2 design discussion, from issue #1 | | [DEMO.md](docs/DEMO.md) | recording a walkthrough |
+| | |
+|---|---|
+| [INTEGRATION.md](docs/INTEGRATION.md) | **start here** - pick a path by one question |
+| [GETTING-STARTED.md](docs/GETTING-STARTED.md) | first receipt, no code |
+| [CLAIMS.md](docs/CLAIMS.md) | what this proves and what it does not |
+| [VERIFICATION.md](docs/VERIFICATION.md) | the offline verifier, in full |
+| [CLOUD-MODELS.md](docs/CLOUD-MODELS.md) | local weights vs an API you do not control |
+| [AGENT-CHAIN.md](docs/AGENT-CHAIN.md) | binding agent context (receipt v1.2) |
+| [SECURITY.md](SECURITY.md) | reporting a vulnerability, threat model, known issues |
+| [ROADMAP.md](docs/ROADMAP.md) | 0.5.x - Rust core, bindings, post-quantum |
+| [ANALYSIS.md](docs/ANALYSIS.md) | measured assessment, including what is unverified |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | extension and spec workflow |
+| [RELEASE-NOTES-0.5.1.md](docs/RELEASE-NOTES-0.5.1.md) | what changed in 0.5.1 |
+| [RELEASE-NOTES-0.4.0.md](docs/RELEASE-NOTES-0.4.0.md) | what changed in 0.4.0 |
+| [agent-chain-context-response.md](docs/agent-chain-context-response.md) | the v1.2 design discussion, from issue #1 |
+| [DEMO.md](docs/DEMO.md) | recording a walkthrough |
 
 ---
 
@@ -185,4 +222,4 @@ copied freely; a proof layer nobody can adopt is not a proof layer.
 
 *Versions up to 0.2.2 were AGPL-3.0-or-later. From 0.3.0 onward: Apache-2.0.*
 
-Security issues: **[SECURITY.md](SECURITY.md)**- please do not open a public issue.
+Security issues: **[SECURITY.md](SECURITY.md)** - please do not open a public issue.

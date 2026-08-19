@@ -2,11 +2,13 @@
 
 # Agent-chain context (receipt v1.2)
 
-**AetherProof - Pulkit Kr Srivastava | Apache-2.0**---
+**AetherProof - Pulkit Kr Srivastava | Apache-2.0**
+
+---
 
 ## Binding context to a receipt
 
-A receipt can optionally commit to **namespaced runtime context**- which agent
+A receipt can optionally commit to **namespaced runtime context** - which agent
 action, run, or policy decision an output belongs to - *inside* the signature.
 This binds a receipt to the exact decision it was issued for, so a valid receipt
 can't be replayed in a different context.
@@ -38,4 +40,4 @@ r = Receipt(
 
 This is the AetherProof side of the [agent-chain context spec](https://github.com/pulkit6732/aetherproof/issues/1).
 Multi-hop pipeline aggregation (signing each hop, identifying a tampered hop) is
-**Signet Layer 3**and builds on this primitive.
+**Signet Layer 3** and builds on this primitive.

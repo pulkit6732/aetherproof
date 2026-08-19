@@ -2,7 +2,9 @@
 
 # Roadmap
 
-**AetherProof - Pulkit Kr Srivastava**AetherProof has two implementations sharing one problem: proving that a specific
+**AetherProof - Pulkit Kr Srivastava**
+
+AetherProof has two implementations sharing one problem: proving that a specific
 AI output was produced, unaltered, at a claimed time, verifiable by anyone offline.
 
 This document records where each implementation stands and what 0.5.0 does about it.
@@ -11,7 +13,16 @@ This document records where each implementation stands and what 0.5.0 does about
 
 ## Current state
 
-| | Rust (`rust-legacy`, tag `rust-legacy-v0.2.0`) | Python (`main`, 0.4.0) | |---|---|---| | Receipt | **128 bytes, fixed-width binary**| 646 bytes JSON | | Signature | Ed25519 (`ed25519-dalek` 2.x) | Ed25519 (`cryptography`) | | Kernel wire compatibility | **yes**| no | | Session Merkle proofs | **yes**| **yes**| | Signed extensions (v1.2) | no | **yes**| | Key rotation / `signing_key_id` | no | **yes**| | Tests | 59 | 642 | | Distribution | source | PyPI |
+| | Rust (`rust-legacy`, tag `rust-legacy-v0.2.0`) | Python (`main`, 0.4.0) |
+|---|---|---|
+| Receipt | **128 bytes, fixed-width binary** | 646 bytes JSON |
+| Signature | Ed25519 (`ed25519-dalek` 2.x) | Ed25519 (`cryptography`) |
+| Kernel wire compatibility | **yes** | no |
+| Session Merkle proofs | **yes** | **yes** |
+| Signed extensions (v1.2) | no | **yes** |
+| Key rotation / `signing_key_id` | no | **yes** |
+| Tests | 59 | 642 |
+| Distribution | source | PyPI |
 
 Both are live. The Rust workspace builds clean and passes its full suite:
 
@@ -22,7 +33,11 @@ cargo test  --release   # 59 passed; 0 failed
 
 ### Measured, same machine, 20,000 operations each
 
-| Operation | Rust | Python | Ratio | |---|---|---|---| | Sign (build + sign) | **18.84 µs**| 53,091/s | 45.38 µs | 22,034/s | **2.4x**| | Verify | **22.77 µs**| 43,910/s | 101.69 µs | 9,834/s | **4.5x**| | Receipt size | **128 B**| 646 B | **5.05x**|
+| Operation | Rust | Python | Ratio |
+|---|---|---|---|
+| Sign (build + sign) | **18.84 µs** | 53,091/s | 45.38 µs | 22,034/s | **2.4x** |
+| Verify | **22.77 µs** | 43,910/s | 101.69 µs | 9,834/s | **4.5x** |
+| Receipt size | **128 B** | 646 B | **5.05x** |
 
 At 100,000 receipts that size difference is 12.8 MB against 64.6 MB.
 
@@ -47,7 +62,9 @@ Both are real losses. 0.5.0 exists to recover them without giving up what was ga
 
 ## 0.5.0 - Rust core, Python surface
 
-**Principle: one implementation of the signing preimage, in Rust, bound into Python.** The most serious defect ever found in this project was a non-injective preimage
+**Principle: one implementation of the signing preimage, in Rust, bound into Python.**
+
+The most serious defect ever found in this project was a non-injective preimage
 encoding (fields joined with `|`, so two different receipts could produce identical
 signing bytes - a signature for one forged the other). It was fixed by
 length-prefixing every field as `<len>:<field>`, with a permanent regression test.
@@ -57,10 +74,12 @@ will be exactly one, in Rust, and Python will call it.
 
 ### Scope
 
-1. **Move the wire format and crypto into `aetherproof-core`.** Restore the 128-byte fixed-width receipt as the canonical on-disk form. Keep JSON
+1. **Move the wire format and crypto into `aetherproof-core`.**
+   Restore the 128-byte fixed-width receipt as the canonical on-disk form. Keep JSON
    as an export format, not the source of truth.
 
-2. **Session Merkle tree in Rust - BUILT, `rust/core/src/merkle.rs`.** RFC 6962 domain separation (`0x00` leaves, `0x01` nodes), no odd-leaf duplication
+2. **Session Merkle tree in Rust - BUILT, `rust/core/src/merkle.rs`.**
+   RFC 6962 domain separation (`0x00` leaves, `0x01` nodes), no odd-leaf duplication
    (CVE-2012-2459 class - an unpaired node is promoted, never hashed against itself),
    and inclusion proofs.
 
@@ -75,10 +94,16 @@ will be exactly one, in Rust, and Python will call it.
    what every session seal issued to date already uses, and changing it would silently
    invalidate them.
 
-   **Measured, same machine:**| Leaves | Build tree | | Verify proof | | Siblings | |---|---|---|---|---|---| | | Rust | Python | Rust | Python | |
-   | 1,000 | **0.78 ms**| 2.59 ms | **5.72 µs**| 26.72 µs | 10 | | 10,000 | **7.00 ms**| 32.47 ms | **5.95 µs**| 39.32 µs | 14 | | 50,000 | **28.16 ms**| 102.71 ms | **3.93 µs**| 17.17 µs | 16 |
+   **Measured, same machine:**
 
-   Rust is **3.6x faster on build**and **4.4x on verification**at 50,000 leaves.
+   | Leaves | Build tree | | Verify proof | | Siblings |
+   |---|---|---|---|---|---|
+   | | Rust | Python | Rust | Python | |
+   | 1,000 | **0.78 ms** | 2.59 ms | **5.72 µs** | 26.72 µs | 10 |
+   | 10,000 | **7.00 ms** | 32.47 ms | **5.95 µs** | 39.32 µs | 14 |
+   | 50,000 | **28.16 ms** | 102.71 ms | **3.93 µs** | 17.17 µs | 16 |
+
+   Rust is **3.6x faster on build** and **4.4x on verification** at 50,000 leaves.
 
 **These figures replace earlier ones that were wrong.** The first measurement ran
 Python's build inside a loop that also generated proofs for three tree sizes, and
@@ -95,12 +120,13 @@ you measured wrong.
    redundant clones gave a 19-38x improvement. A Rust port that loses to Python is not
    a port worth shipping, and the benchmark is what caught it.
 
-   **Known limitation, both implementations:**`inclusion_proof` rebuilds the whole tree
+   **Known limitation, both implementations:** `inclusion_proof` rebuilds the whole tree
    per call, so generating a proof is O(n) rather than O(log n). At 50,000 leaves that is
    45 ms per proof in Rust and 324 ms in Python. Caching the levels for repeated proofs
    against one sealed session is the obvious fix and is not done yet.
 
-3. **ML-DSA-65 (FIPS 204) as a second signature slot - BUILT, `rust/core/src/pq.rs`.** Not a replacement for Ed25519 - a hybrid. The 128-byte core is untouched; a trailer
+3. **ML-DSA-65 (FIPS 204) as a second signature slot - BUILT, `rust/core/src/pq.rs`.**
+   Not a replacement for Ed25519 - a hybrid. The 128-byte core is untouched; a trailer
    is appended carrying an ML-DSA-65 signature over the *same* signed prefix, so there
    is one signed message rather than two that could disagree.
 
@@ -113,7 +139,21 @@ you measured wrong.
    [144..]     pq_sig         ML-DSA-65 over core[0..64]
    ```
 
-   **Measured, not estimated:**| | Bytes | |---|---| | Core receipt (Ed25519 only) | 128 | | Trailer header | 16 | | ML-DSA-65 signature | **3,309**| | **Hybrid receipt total**| **3,453**| | ML-DSA-65 public key | 1,952 | | Operation | Time | Rate | |---|---|---| | ML-DSA sign | 787.83 µs | 1,269/s | | ML-DSA verify | 177.59 µs | 5,631/s | | Hybrid verify (both) | 231.85 µs | 4,313/s |
+   **Measured, not estimated:**
+
+   | | Bytes |
+   |---|---|
+   | Core receipt (Ed25519 only) | 128 |
+   | Trailer header | 16 |
+   | ML-DSA-65 signature | **3,309** |
+   | **Hybrid receipt total** | **3,453** |
+   | ML-DSA-65 public key | 1,952 |
+
+   | Operation | Time | Rate |
+   |---|---|---|
+   | ML-DSA sign | 787.83 µs | 1,269/s |
+   | ML-DSA verify | 177.59 µs | 5,631/s |
+   | Hybrid verify (both) | 231.85 µs | 4,313/s |
 
    **A 152-byte Ed25519+ML-DSA hybrid receipt is not achievable.** An ML-DSA-65
    signature is 3,309 bytes by the standard; no framing choice makes it smaller. Any
@@ -131,7 +171,9 @@ you measured wrong.
    predates the trailer still accepts the receipt, and hybrid verification fails
    closed when the trailer is absent.
 
-4. **PyO3 bindings - BUILT, `rust/py/`.****Additive, never substitutive.** The `aetherproof` package does not import the
+4. **PyO3 bindings - BUILT, `rust/py/`.**
+
+   **Additive, never substitutive.** The `aetherproof` package does not import the
    extension, does not require it, and behaves identically whether or not it is
    present. `grep -rn "_native" aetherproof/` returns nothing. That is the property
    that makes this safe: an optional module the package never touches cannot break it.
@@ -144,13 +186,25 @@ you measured wrong.
    second place for the signing preimage to drift, which is the defect class this
    project already fixed once.
 
-   **Equivalence is enforced permanently**by `tests/test_native_equivalence.py`
+   **Equivalence is enforced permanently** by `tests/test_native_equivalence.py`
    (49 tests, skipped when the extension is absent):
 
-   | Checked | Result | |---|---| | Leaf and node primitives | identical | | Roots over 17 sizes, including odd-promotion cases | identical | | Every proof for every index across 10 tree sizes | identical | | Proofs cross-verified in both directions | each verifier accepts the other's proof | | 150 randomised trees | identical | | CVE-2012-2459 odd-leaf behaviour | both differentiate `[A,B,C]` from `[A,B,C,C]` |
+   | Checked | Result |
+   |---|---|
+   | Leaf and node primitives | identical |
+   | Roots over 17 sizes, including odd-promotion cases | identical |
+   | Every proof for every index across 10 tree sizes | identical |
+   | Proofs cross-verified in both directions | each verifier accepts the other's proof |
+   | 150 randomised trees | identical |
+   | CVE-2012-2459 odd-leaf behaviour | both differentiate `[A,B,C]` from `[A,B,C,C]` |
 
-   **Measured through the binding:**| Leaves | Build (Python) | Build (native) | | Verify (Python) | Verify (native) | |
-   |---|---|---|---|---|---|---| | 1,000 | 2.16 ms | **0.76 ms**| 2.9x | 22.67 µs | **8.84 µs**| 2.6x | | 10,000 | 45.13 ms | **11.38 ms**| 4.0x | 39.39 µs | **12.15 µs**| 3.2x | | 50,000 | 219.86 ms | **51.66 ms**| 4.3x | 39.71 µs | **12.97 µs**| 3.1x |
+   **Measured through the binding:**
+
+   | Leaves | Build (Python) | Build (native) | | Verify (Python) | Verify (native) | |
+   |---|---|---|---|---|---|---|
+   | 1,000 | 2.16 ms | **0.76 ms** | 2.9x | 22.67 µs | **8.84 µs** | 2.6x |
+   | 10,000 | 45.13 ms | **11.38 ms** | 4.0x | 39.39 µs | **12.15 µs** | 3.2x |
+   | 50,000 | 219.86 ms | **51.66 ms** | 4.3x | 39.71 µs | **12.97 µs** | 3.1x |
 
    These are lower than the pure-Rust figures above (9.2x on build) because crossing the
    FFI boundary means marshalling a Python list of hex strings into `Vec<String>`. The
@@ -168,7 +222,7 @@ you measured wrong.
    extension so the high-level API can use it. The primitives are bound and verified;
    the object layer is not.
 
-5. **Keep 0.4.x alive as the pure-Python line**for environments that cannot build a
+5. **Keep 0.4.x alive as the pure-Python line** for environments that cannot build a
    native extension.
 
 ### Security layer - BUILT, `rust/core/src/secure.rs`
@@ -186,7 +240,9 @@ back out. `SecureVerifier` rejects malformed key material at construction rather
 than producing an object that accepts everything later - the failure the pure-Python
 `Verifier` has.
 
-**Two real defects were found by testing this layer, both in code written for it:**1. **Zeroization did not zeroize.**`self.seed.take()` moves the array out of the
+**Two real defects were found by testing this layer, both in code written for it:**
+
+1. **Zeroization did not zeroize.** `self.seed.take()` moves the array out of the
    `Option` and wipes the *moved copy*; the original storage kept the key. Caught by
    a test that reads through a raw pointer to the original address instead of
    trusting that "dropped" means "erased". Fixed by wiping in place before clearing.
@@ -194,17 +250,32 @@ than producing an object that accepts everything later - the failure the pure-Py
 2. **`ct_eq` was not constant-time.** The hand-rolled `diff |= x ^ y` loop never
    short-circuits in the source, and LLVM introduced one anyway. Measured at 400
    rounds x 200,000 iterations with the buffer address held fixed: a difference in
-   byte 0 ran **3.55% faster**than one in byte 63, against a **0.11%**noise floor -
+   byte 0 ran **3.55% faster** than one in byte 63, against a **0.11%** noise floor -
    the direction a short-circuit produces. Now delegated to `subtle`, which uses
    volatile reads and optimisation barriers:
 
-   | | Before | After | |---|---|---| | Position skew | 3.55% | **0.40%**| | Noise floor | 0.11% | 0.10% | | Direction | faster at byte 0 | indistinguishable | | Cost per call | ~4 ns | ~435 ns |
+   | | Before | After |
+   |---|---|---|
+   | Position skew | 3.55% | **0.40%** |
+   | Noise floor | 0.11% | 0.10% |
+   | Direction | faster at byte 0 | indistinguishable |
+   | Cost per call | ~4 ns | ~435 ns |
 
    The 100x slowdown is the price of the barriers that stop vectorisation. For a
    64-byte MAC comparison it is not a meaningful cost, and the earlier figure was
    measuring an operation that leaked.
 
-**Adversarial testing, before and after:**| Probe | Result | |---|---| | Panic probes on attacker-controlled input (25 cases) | 0 panics | | Fail-open probes | 0 fail-open | | Fuzz: 200,000 parser + 150,000 verifier iterations | 0 panics, 0 forgeries | | Zeroization verified by scanning process memory | key absent after `destroy()` and after `Drop` | | Malformed public keys (0/1/16/31/33/64/128 bytes) | all rejected at construction | | Wrong signature lengths (0/1/32/63/65/128/4096) | all rejected | | Every single-byte flip in a 128-byte receipt | all rejected |
+**Adversarial testing, before and after:**
+
+| Probe | Result |
+|---|---|
+| Panic probes on attacker-controlled input (25 cases) | 0 panics |
+| Fail-open probes | 0 fail-open |
+| Fuzz: 200,000 parser + 150,000 verifier iterations | 0 panics, 0 forgeries |
+| Zeroization verified by scanning process memory | key absent after `destroy()` and after `Drop` |
+| Malformed public keys (0/1/16/31/33/64/128 bytes) | all rejected at construction |
+| Wrong signature lengths (0/1/32/63/65/128/4096) | all rejected |
+| Every single-byte flip in a 128-byte receipt | all rejected |
 
 `SecureSigner` has no `Debug`, `Display`, `Clone`, or serialisation. A key that can
 be printed reaches a log file; a key that can be cloned has an untracked second copy
@@ -215,7 +286,8 @@ Bound to Python as `SecureSigner`, `SecureVerifier`, `ct_eq`, and `ct_eq_str`, w
 including when the block exits by exception. Covered by
 `tests/test_native_security.py` (24 tests).
 
-**Limits, stated because a security layer that oversells itself is worse than none:** it does not defend against an attacker who can already read process memory while the
+**Limits, stated because a security layer that oversells itself is worse than none:**
+it does not defend against an attacker who can already read process memory while the
 signer is alive, and it does not stop the OS paging the key to disk - that needs
 `mlock`, which is platform-specific and not done.
 
@@ -238,79 +310,67 @@ A verifier must fail closed. Add an `isinstance` check in the constructor.
 
 ---
 
-## Continuous integration and wheels
+## Continuous integration
 
-Two workflows, in `.github/workflows/`.
+One workflow, `.github/workflows/test.yml`, on every push and pull request.
 
-### `test.yml` - runs on every push and pull request
-
-| Job | What it proves | |---|---| | `python` - 3.9/3.11/3.13 x Linux/macOS/Windows | the pure-Python package passes **without**the extension, and `grep -rn "_native" aetherproof/` finds nothing, so the dependency really is optional | | `rust` | build, test, clippy `-D warnings`, `cargo fmt --check`, plus the adversarial probe, the 350,000-input fuzz campaign, and the security audit as blocking gates | | `native-equivalence` - 3 platforms | builds the extension and requires the two implementations to agree, then runs the full suite with it installed |
-
-Running the adversarial and fuzz campaigns in CI rather than by hand is the point:
-a security property nobody re-checks decays into a claim.
-
-### `wheels.yml` - runs on a `v*` tag
-
-Builds for **six targets**- Linux x86_64 and aarch64, macOS x86_64 and aarch64,
-Windows x64 and x86 - plus an sdist. Then a `verify` job installs the built wheel
-with `--only-binary :all:` on each platform and re-runs the equivalence and full
-suites **against the artifact that would ship**, not against a local build. Publish
-runs only if that passes, via PyPI trusted publishing, so no API token is stored in
-the repository.
-
-Wheels are published together. A partial release is worse than none: `pip install`
-would fetch a wheel on some machines and fall back to a source build on others,
-which needs a Rust toolchain the user never agreed to install.
-
-### CI status, as of the first real runs
-
-The workflows were written and their YAML parsed, but they had never executed. On
-the first runs they failed, and this is what is actually known:
-
-| Job | Status |
+| Job | What it proves |
 |---|---|
-| `rust` (build, test, clippy, fmt, adversarial, fuzz, security audit) | passing |
-| `python` on **windows-latest**, 3.9 / 3.11 / 3.13 | passing |
-| `python` on ubuntu and macos | **failing, cause not yet diagnosed** |
-| `native-equivalence` on windows | passing |
-| `native-equivalence` on ubuntu and macos | **failing, cause not yet diagnosed** |
-| `wheels`, all targets | **failing** - maturin exits 1 on the Windows targets, Docker exits 1 on aarch64 |
+| `python` - 3.9/3.11/3.13 x Linux/macOS/Windows | the pure-Python package passes without the extension, and `grep -rn "_native" aetherproof/` finds nothing, so the optional dependency is proven optional |
+| `rust` | build, test, clippy `-D warnings`, `cargo fmt --check`, plus the adversarial probe, the 350,000-input fuzz campaign and the security audit as blocking gates |
+| `native-equivalence` - 3 platforms | builds the extension and requires the two implementations to agree, then runs the full suite with it installed |
 
-The suite passes locally on Windows in a clean virtual environment created the same
-way CI creates one: 569 passed, 3 skipped. It is not a stale-environment artifact,
-and it is not a Python-version problem, because 3.9, 3.11 and 3.13 all fail together
-on the same two operating systems and all pass together on the third.
+Running the adversarial and fuzz campaigns in CI rather than by hand is the point: a
+security property nobody re-checks decays into a claim.
 
-**What was changed in response, and why.** Linux and macOS now report without
-blocking, and the wheel workflow only runs on demand. Leaving a job required while
-nobody knows why it fails means either every release starts red or everyone learns
-to ignore a red tick, and the second is worse than the first. Full tracebacks are
-switched on so the next run produces something to work from.
+### The first runs failed, and what that turned up
 
-This is a known-unknown, recorded rather than hidden. The Python package itself is
-unaffected: it has no platform-specific code, and the failures are in the test
-harness or its environment, not in a code path a user reaches.
+The workflows were committed without ever having run. Every Python job on Linux and
+macOS failed while every Windows job passed, across 3.9, 3.11 and 3.13 alike.
 
-### What is verified and what is not
+The cause was a test, not the package. `tests/test_auto.py` used
+`"Z:/definitely/not/a/real/path"` as a directory that could not be created. On
+Windows `Z:` is an unmapped drive, so creation failed and the assertion held. On
+Linux and macOS `Z:` is a perfectly legal relative directory name, `mkdir` created
+it, signing succeeded, and three tests asserting failure were wrong. The suite was
+green on one platform and red on the others for that reason alone.
 
-**Verified on this machine:** every gate `test.yml` runs passes locally - 59 Rust
-tests, clippy with `-D warnings` clean, `cargo fmt --check` clean, 0 panics and 0
-fail-open paths, 0 forgeries across 350,000 fuzz inputs, security audit PASS, and
-642 Python tests with the extension installed.
+The replacement is a path underneath a regular file, which cannot be created on any
+operating system: POSIX raises `NotADirectoryError`, Windows raises
+`FileExistsError` or `NotADirectoryError`. Nothing can exist beneath a file.
 
-**Not verified:** the Linux and macOS wheels. This machine has only
+A first attempt at handling this marked Linux and macOS `continue-on-error` while
+the cause was unknown. That was a workaround, not a fix, and it has been removed:
+every platform is required again.
+
+### Wheels
+
+There is no wheel workflow. One was written and it never produced a single green
+run: `maturin` exited 1 on the Windows targets and the aarch64 cross-build failed
+in Docker. Rather than keep a broken workflow in the tree looking like
+infrastructure, it has been removed until it can be developed against real runs.
+
+The Windows wheel builds correctly by hand and is 934 KB:
+
+```bash
+cd rust/py && python -m maturin build --release
+pip install ../target/wheels/aetherproof_native-*.whl
+```
+
+Linux and macOS wheels have never been built. This machine has only
 `x86_64-pc-windows-gnu` and `x86_64-unknown-none` installed as Rust targets, so
-those builds cannot be produced or tested here. The workflow is written and its
-YAML parses, but **no CI run has executed it**. Until one has, the cross-platform
-claim is a configuration, not a result, and should be described that way.
-
-The Windows wheel is real and tested: 934 KB, `aetherproof_native-0.5.0-cp313-cp313-win_amd64.whl`.
-
----
+those cannot be produced or tested here. Until a real build exists, there is no
+cross-platform claim to make.
 
 ## Sequencing
 
-| Step | Gate | |---|---| | 1. `aetherproof-core`: 128-byte format, Ed25519, injective preimage | Rust suite green; byte-identical to `rust-legacy-v0.2.0` output | | 2. Merkle session tree in Rust - **done**| Inclusion proofs match Python's for identical input - pinned vector tests | | 3. ML-DSA-65 second slot - **done**| Ed25519-only receipts still verify; hybrid verifies both | | 4. PyO3 bindings - **primitives done**| Full Python suite green with the extension installed: 569 passed | | 5. Wheels + release - **CI built, unrun**| Linux / macOS / Windows; `pip install aetherproof` unchanged |
+| Step | Gate |
+|---|---|
+| 1. `aetherproof-core`: 128-byte format, Ed25519, injective preimage | Rust suite green; byte-identical to `rust-legacy-v0.2.0` output |
+| 2. Merkle session tree in Rust - **done** | Inclusion proofs match Python's for identical input - pinned vector tests |
+| 3. ML-DSA-65 second slot - **done** | Ed25519-only receipts still verify; hybrid verifies both |
+| 4. PyO3 bindings - **primitives done** | Full Python suite green with the extension installed: 569 passed |
+| 5. Wheels + release - **CI built, unrun** | Linux / macOS / Windows; `pip install aetherproof` unchanged |
 
 Step 4 is the real gate. If the existing suite does not pass unmodified against the
 Rust core, the binding is wrong and the release does not ship.

@@ -2,7 +2,9 @@
 
 # Security policy
 
-**AetherProof - Pulkit Kr Srivastava**## Reporting a vulnerability
+**AetherProof - Pulkit Kr Srivastava**
+
+## Reporting a vulnerability
 
 Report privately, not in a public issue.
 
@@ -27,7 +29,12 @@ so up front is fairer than letting you find out after the work.
 
 ## Supported versions
 
-| Version | Supported | |---|---| | 0.4.x | yes - current PyPI release | | 0.5.x dev (`main`) | yes | | 0.2.x, 0.3.x | no | | Rust `rust-legacy` branch | no |
+| Version | Supported |
+|---|---|
+| 0.4.x | yes - current PyPI release |
+| 0.5.x dev (`main`) | yes |
+| 0.2.x, 0.3.x | no |
+| Rust `rust-legacy` branch | no |
 
 ## What AetherProof protects, and what it does not
 
@@ -42,7 +49,8 @@ A report against any of these is a real vulnerability:
 - Two different receipts producing the same signing preimage
 - Two different leaf sets producing the same Merkle root
 - An inclusion proof validating for a leaf that is not in the tree
-- A verifier returning true for input it should reject - **fail-open of any kind**- A panic, hang, or unbounded allocation from attacker-controlled input
+- A verifier returning true for input it should reject - **fail-open of any kind**
+- A panic, hang, or unbounded allocation from attacker-controlled input
 - Secret key material reachable through the public API, a `repr`, an error
   message, or memory that should have been wiped
 - Timing that depends on secret data
@@ -50,7 +58,16 @@ A report against any of these is a real vulnerability:
 
 ### Out of scope - documented limits, not bugs
 
-| Not a vulnerability | Why | |---|---| | **A log missing entries verifies fine**| AetherProof proves integrity, not completeness. Someone who logs 9,000 of 10,000 outputs passes every check. This cannot be fixed locally - it needs an independent witness, which is not built. See `docs/CLAIMS.md`. | | **Dropping the most recent log entries is undetected**| The same problem in its simplest form. A shorter chain is internally consistent. | | **The timestamp can be wrong**| It is the signer's own clock, bound at signing but not externally anchored. No RFC 3161 or eIDAS authority is involved. | | **A receipt does not prove which model ran**| It signs a `(model, output)` pair the caller supplies. There is no inference attestation. | | **Ed25519 is not post-quantum**| Known. ML-DSA-65 exists in the Rust core as an opt-in second slot; the Python package is Ed25519 only. | | **The private key is a file on disk**| Unless you set `AETHERPROOF_KEY_PASSPHRASE`. There is no HSM, TPM, or TEE integration. | | **Reading a live process's memory recovers a key**| Nothing in userspace prevents this. `SecureSigner` wipes the key on release, which is a different guarantee. | | **The OS pages a key to swap**| Would need `mlock`. Not implemented. |
+| Not a vulnerability | Why |
+|---|---|
+| **A log missing entries verifies fine** | AetherProof proves integrity, not completeness. Someone who logs 9,000 of 10,000 outputs passes every check. This cannot be fixed locally - it needs an independent witness, which is not built. See `docs/CLAIMS.md`. |
+| **Dropping the most recent log entries is undetected** | The same problem in its simplest form. A shorter chain is internally consistent. |
+| **The timestamp can be wrong** | It is the signer's own clock, bound at signing but not externally anchored. No RFC 3161 or eIDAS authority is involved. |
+| **A receipt does not prove which model ran** | It signs a `(model, output)` pair the caller supplies. There is no inference attestation. |
+| **Ed25519 is not post-quantum** | Known. ML-DSA-65 exists in the Rust core as an opt-in second slot; the Python package is Ed25519 only. |
+| **The private key is a file on disk** | Unless you set `AETHERPROOF_KEY_PASSPHRASE`. There is no HSM, TPM, or TEE integration. |
+| **Reading a live process's memory recovers a key** | Nothing in userspace prevents this. `SecureSigner` wipes the key on release, which is a different guarantee. |
+| **The OS pages a key to swap** | Would need `mlock`. Not implemented. |
 
 ### Known unfixed issues
 
@@ -64,7 +81,7 @@ Listed here rather than left for you to find:
    malformed key material at construction. The Python fix is scheduled for 0.5.0.
    *Workaround: pass a real `Ed25519PublicKey`, or use `SecureVerifier`.*
 
-2. **`cargo audit` has not been run**against the Rust dependency graph. It failed to
+2. **`cargo audit` has not been run** against the Rust dependency graph. It failed to
    compile in the development environment, so known-vulnerability status of the 45
    crates involved is unverified.
 
@@ -76,7 +93,17 @@ Listed here rather than left for you to find:
 
 Each of these is a CI gate, not a claim in a document:
 
-| Property | How it is enforced | |---|---| | No `unsafe` in production Rust | `#![cfg_attr(not(test), forbid(unsafe_code))]` - the compiler refuses to build it | | No panic on hostile input | 26-case adversarial probe, plus a 350,000-iteration fuzz campaign, both blocking in CI | | No forgery | 150,000 randomised verifier inputs, all rejected | | Injective signing preimage | every field length-prefixed as `<len>:<field>`; regression test `test_preimage_injectivity.py` | | No Merkle odd-leaf collision | unpaired nodes promoted, never duplicated (CVE-2012-2459 class); tested in both languages | | Leaf/node domain separation | leaves hash under `0x00`, internal nodes under `0x01` | | Keys wiped on release | in-place zeroization, verified by scanning process memory after `destroy()` and after `Drop` | | Constant-time comparison | `subtle`, measured at 0.40% position skew against a 0.10% noise floor | | Verifier fails closed | malformed keys rejected at construction; wrong signature and receipt lengths rejected |
+| Property | How it is enforced |
+|---|---|
+| No `unsafe` in production Rust | `#![cfg_attr(not(test), forbid(unsafe_code))]` - the compiler refuses to build it |
+| No panic on hostile input | 26-case adversarial probe, plus a 350,000-iteration fuzz campaign, both blocking in CI |
+| No forgery | 150,000 randomised verifier inputs, all rejected |
+| Injective signing preimage | every field length-prefixed as `<len>:<field>`; regression test `test_preimage_injectivity.py` |
+| No Merkle odd-leaf collision | unpaired nodes promoted, never duplicated (CVE-2012-2459 class); tested in both languages |
+| Leaf/node domain separation | leaves hash under `0x00`, internal nodes under `0x01` |
+| Keys wiped on release | in-place zeroization, verified by scanning process memory after `destroy()` and after `Drop` |
+| Constant-time comparison | `subtle`, measured at 0.40% position skew against a 0.10% noise floor |
+| Verifier fails closed | malformed keys rejected at construction; wrong signature and receipt lengths rejected |
 
 Reproduce them:
 
@@ -93,9 +120,17 @@ cargo run --release --example security_audit   # zeroization, fail-closed, key v
 No algorithm is implemented here. AetherProof composes standard primitives from
 established libraries:
 
-| Purpose | Primitive | Library | |---|---|---| | Signing | Ed25519 | `ed25519-dalek` (Rust), `cryptography` (Python) | | Post-quantum signing | ML-DSA-65, FIPS 204 | `fips204` (Rust only) | | Hashing | SHA-256 | `sha2` (Rust), `hashlib` (Python) | | Constant-time comparison | - | `subtle` | | Zeroization | - | `zeroize` | | Model root hashing | FNV-1a | in-repo - **non-cryptographic, used only as a fast content identifier, never as a security boundary**|
+| Purpose | Primitive | Library |
+|---|---|---|
+| Signing | Ed25519 | `ed25519-dalek` (Rust), `cryptography` (Python) |
+| Post-quantum signing | ML-DSA-65, FIPS 204 | `fips204` (Rust only) |
+| Hashing | SHA-256 | `sha2` (Rust), `hashlib` (Python) |
+| Constant-time comparison | - | `subtle` |
+| Zeroization | - | `zeroize` |
+| Model root hashing | FNV-1a | in-repo - **non-cryptographic, used only as a fast content identifier, never as a security boundary** |
 
-If you find a reason FNV-1a is load-bearing anywhere it should not be, that **is**in scope.
+If you find a reason FNV-1a is load-bearing anywhere it should not be, that **is**
+in scope.
 
 ## Reporting something that is not a vulnerability
 

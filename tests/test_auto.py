@@ -33,6 +33,24 @@ def isolated_home(tmp_path, monkeypatch):
 
 # ── zero-setup signing ───────────────────────────────────────────────────────
 
+@pytest.fixture
+def unusable_home(tmp_path):
+    """An AETHERPROOF_HOME that cannot be created on any operating system.
+
+    These tests previously used "Z:/definitely/not/a/real/path". On Windows Z: is
+    an unmapped drive, so creation failed and the test passed. On Linux and macOS
+    "Z:" is a perfectly legal relative directory name, so mkdir succeeded, signing
+    worked, and the assertion that it fails was wrong. The suite was green on
+    Windows and red everywhere else for exactly this reason.
+
+    Placing the target beneath a regular file fails on every platform: POSIX
+    raises NotADirectoryError, Windows raises FileExistsError or NotADirectoryError.
+    Nothing can be created underneath a regular file.
+    """
+    blocker = tmp_path / "this-is-a-file-not-a-directory"
+    blocker.write_text("blocks directory creation beneath it", encoding="utf-8")
+    return str(blocker / "home")
+
 def test_sign_works_with_no_configuration():
     r = auto.sign(prompt="what is 2+2?", output="4")
     assert r is not None
@@ -97,14 +115,14 @@ def test_disabled_session_records_nothing(monkeypatch):
     assert s.seal is None
 
 
-def test_failure_is_swallowed_by_default(monkeypatch):
-    monkeypatch.setenv("AETHERPROOF_HOME", "Z:/definitely/not/a/real/path")
+def test_failure_is_swallowed_by_default(monkeypatch, unusable_home):
+    monkeypatch.setenv("AETHERPROOF_HOME", unusable_home)
     auto.reset()
     assert auto.sign(output="x") is None       # must not raise
 
 
-def test_strict_mode_raises_instead(monkeypatch):
-    monkeypatch.setenv("AETHERPROOF_HOME", "Z:/definitely/not/a/real/path")
+def test_strict_mode_raises_instead(monkeypatch, unusable_home):
+    monkeypatch.setenv("AETHERPROOF_HOME", unusable_home)
     monkeypatch.setenv("AETHERPROOF_STRICT", "1")
     auto.reset()
     with pytest.raises(Exception):
@@ -232,8 +250,8 @@ def test_decorator_passes_the_return_value_through_untouched():
     assert f() is sentinel
 
 
-def test_decorator_failure_never_changes_the_caller_result(monkeypatch):
-    monkeypatch.setenv("AETHERPROOF_HOME", "Z:/nope")
+def test_decorator_failure_never_changes_the_caller_result(monkeypatch, unusable_home):
+    monkeypatch.setenv("AETHERPROOF_HOME", unusable_home)
     auto.reset()
 
     @auto.receipted()

@@ -2,7 +2,9 @@
 
 # Offline verification
 
-**AetherProof - Pulkit Kr Srivastava | Apache-2.0**How a receipt is checked without installing this project, without a network, and
+**AetherProof - Pulkit Kr Srivastava | Apache-2.0**
+
+How a receipt is checked without installing this project, without a network, and
 without trusting whoever produced it.
 
 ---
@@ -10,12 +12,12 @@ without trusting whoever produced it.
 ## The mechanism
 
 You can prove a receipt is genuine with **no internet and no AetherProof code at
-all**- the math is open. Here is the exact process.
+all** - the math is open. Here is the exact process.
 
 ### What you need (the three inputs)
-1. **The receipt**(`ap_xxxx.json`) - the signed claim.
-2. **The public key**(`ap_xxxx.pub`, a PEM file) - shipped beside the receipt.
-3. **(Optional) the original output file**- only if you also want to prove the
+1. **The receipt** (`ap_xxxx.json`) - the signed claim.
+2. **The public key** (`ap_xxxx.pub`, a PEM file) - shipped beside the receipt.
+3. **(Optional) the original output file** - only if you also want to prove the
    output itself wasn't changed.
 
 ### The steps
@@ -24,10 +26,10 @@ all**- the math is open. Here is the exact process.
    input commitment, output hash, timestamp, log sequence, hardware evidence, log
    anchor). The encoding is injective, so no two distinct receipts can share a
    preimage (and thus a signature).
-2. **Check the Ed25519 signature**of that preimage against the public key. If it
+2. **Check the Ed25519 signature** of that preimage against the public key. If it
    verifies, the receipt's contents are exactly what was signed - a single
    changed bit fails this check.
-3. **(Optional) Re-hash the output file**with SHA-256 (raw bytes, streamed) and
+3. **(Optional) Re-hash the output file** with SHA-256 (raw bytes, streamed) and
    compare to the receipt's `output_hash`. If they match, the output is unchanged.
 
 ### The one-command way
