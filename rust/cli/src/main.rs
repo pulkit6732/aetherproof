@@ -4,18 +4,26 @@
 //! aetherproof CLI - generate, verify, benchmark, and self-test AetherProof receipts.
 //!
 //! Commands
-//!   verify   <receipt.bin>                       verify a 128-byte receipt
-//!   generate --binary <file> [--pid N]            generate + sign a receipt, print + save
-//!            [--memory-hash H] [--syscall-count N]
+//!   verify   <receipt.bin> (--pubkey <file> | --demo)       verify a 128-byte receipt
+//!   generate --binary <file> (--key <file> | --demo) [--pid N]
+//!            [--memory-hash H] [--syscall-count N]          generate + sign a receipt
 //!            [--out receipt.bin]
 //!   self-test                                     run all internal correctness checks
 //!   bench    [--count N]                          measure receipts/second (default 50000)
+//!
+//! Keys: `--key` is a file holding a 32-byte Ed25519 seed (e.g. `openssl rand 32 > key`);
+//! `--pubkey` is the 32-byte public key that `generate` writes next to the receipt
+//! as `<out>.pub`. The built-in demo key is public, so it is refused unless `--demo`
+//! is passed, and everything it signs is labelled as proving nothing.
 
 use aetherproof_core::{
     dev_signing_key, dev_verifying_key, fnv1a, from_bytes, generate, tamper_probe, to_bytes,
-    verify, RECEIPT_SIZE,
+    verify, SigningKey, VerifyingKey, RECEIPT_SIZE,
 };
 use std::{env, fs, process, time::Instant};
+
+const DEMO_WARNING: &str =
+    "WARNING: using the PUBLIC demo key. Anyone can forge receipts for it; this proves nothing.";
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -40,13 +48,32 @@ fn main() {
 // ── verify ─────────────────────────────────────────────────────────────────────
 
 fn cmd_verify(args: &[String]) {
-    if args.is_empty() {
-        eprintln!("usage: aetherproof verify <receipt.bin>");
-        process::exit(1);
+    let mut path: Option<String> = None;
+    let mut pubkey: Option<String> = None;
+    let mut demo = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--pubkey" => {
+                pubkey = Some(flag_value(args, i, "--pubkey"));
+                i += 1;
+            }
+            "--demo" => demo = true,
+            other if other.starts_with("--") => {
+                eprintln!("error: unknown flag '{other}'");
+                process::exit(1);
+            }
+            other => path = Some(other.to_string()),
+        }
+        i += 1;
     }
+    let path = path.unwrap_or_else(|| {
+        eprintln!("usage: aetherproof verify <receipt.bin> (--pubkey <file> | --demo)");
+        process::exit(1);
+    });
+    let vk = verifying_key(pubkey.as_deref(), demo);
 
-    let path = &args[0];
-    let raw = fs::read(path).unwrap_or_else(|e| {
+    let raw = fs::read(&path).unwrap_or_else(|e| {
         eprintln!("error: cannot read '{path}': {e}");
         process::exit(2);
     });
@@ -66,10 +93,74 @@ fn cmd_verify(args: &[String]) {
         }
     };
 
-    let vk = dev_verifying_key();
     let valid = verify(data, &vk);
-    print_receipt_table(&receipt, valid);
+    print_receipt_table(&receipt, valid, demo);
     process::exit(if valid { 0 } else { 1 });
+}
+
+// ── keys ───────────────────────────────────────────────────────────────────────
+
+fn flag_value(args: &[String], i: usize, flag: &str) -> String {
+    args.get(i + 1).cloned().unwrap_or_else(|| {
+        eprintln!("error: {flag} needs a value");
+        process::exit(1);
+    })
+}
+
+fn read_32(path: &str, what: &str) -> [u8; 32] {
+    let raw = fs::read(path).unwrap_or_else(|e| {
+        eprintln!("error: cannot read {what} '{path}': {e}");
+        process::exit(2);
+    });
+    raw.as_slice().try_into().unwrap_or_else(|_| {
+        eprintln!(
+            "error: {what} '{path}' must be exactly 32 bytes, got {}",
+            raw.len()
+        );
+        process::exit(2);
+    })
+}
+
+fn key_choice_or_exit(file: Option<&str>, demo: bool, flag: &str) {
+    match (file, demo) {
+        (Some(_), true) => {
+            eprintln!("error: pass either {flag} or --demo, not both");
+            process::exit(1);
+        }
+        (None, false) => {
+            eprintln!(
+                "error: {flag} <file> is required. The built-in demo key is public and proves nothing; \
+                 pass --demo only for testing."
+            );
+            process::exit(1);
+        }
+        _ => {}
+    }
+}
+
+fn signing_key(file: Option<&str>, demo: bool) -> SigningKey {
+    key_choice_or_exit(file, demo, "--key");
+    match file {
+        Some(f) => SigningKey::from_bytes(&read_32(f, "signing key")),
+        None => {
+            eprintln!("{DEMO_WARNING}");
+            dev_signing_key()
+        }
+    }
+}
+
+fn verifying_key(file: Option<&str>, demo: bool) -> VerifyingKey {
+    key_choice_or_exit(file, demo, "--pubkey");
+    match file {
+        Some(f) => VerifyingKey::from_bytes(&read_32(f, "public key")).unwrap_or_else(|_| {
+            eprintln!("error: '{f}' is not a valid Ed25519 public key");
+            process::exit(2);
+        }),
+        None => {
+            eprintln!("{DEMO_WARNING}");
+            dev_verifying_key()
+        }
+    }
 }
 
 // ── generate ───────────────────────────────────────────────────────────────────
@@ -80,10 +171,17 @@ fn cmd_generate(args: &[String]) {
     let mut memory_hash: u64 = 0;
     let mut syscall_count: u32 = 0;
     let mut out_path: String = "receipt.bin".to_string();
+    let mut key_path: Option<String> = None;
+    let mut demo = false;
 
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
+            "--key" => {
+                key_path = Some(flag_value(args, i, "--key"));
+                i += 1;
+            }
+            "--demo" => demo = true,
             "--binary" => {
                 i += 1;
                 binary_path = Some(args[i].clone());
@@ -116,30 +214,34 @@ fn cmd_generate(args: &[String]) {
         eprintln!("error: --binary <file> is required");
         process::exit(1);
     });
+    let sk = signing_key(key_path.as_deref(), demo);
 
     let binary = fs::read(&path).unwrap_or_else(|e| {
         eprintln!("error: cannot read '{path}': {e}");
         process::exit(2);
     });
 
-    let sk = dev_signing_key();
     let receipt = generate(pid, &binary, memory_hash, syscall_count, &sk);
     let bytes = to_bytes(&receipt);
 
     // Verify immediately to catch signing bugs.
-    let vk = dev_verifying_key();
+    let vk = sk.verifying_key();
     let valid = verify(&bytes, &vk);
 
-    print_receipt_table(&receipt, valid);
+    print_receipt_table(&receipt, valid, demo);
 
-    fs::write(&out_path, bytes).unwrap_or_else(|e| {
-        eprintln!("error: cannot write '{out_path}': {e}");
-        process::exit(2);
-    });
+    let pub_path = format!("{out_path}.pub");
+    for (p, data) in [(&out_path, &bytes[..]), (&pub_path, &vk.to_bytes()[..])] {
+        fs::write(p, data).unwrap_or_else(|e| {
+            eprintln!("error: cannot write '{p}': {e}");
+            process::exit(2);
+        });
+    }
 
     println!("\nreceipt saved -> {out_path}  ({RECEIPT_SIZE} bytes)");
+    println!("public key    -> {pub_path}  (verify with: aetherproof verify {out_path} --pubkey {pub_path})");
     println!(
-        "binary_hash   = 0x{:016X}  (FNV-1a of {} bytes)",
+        "binary_hash   = 0x{:016X}  (FNV-1a of {} bytes; a checksum, NOT a cryptographic hash)",
         fnv1a(&binary),
         binary.len()
     );
@@ -252,7 +354,7 @@ fn cmd_self_test() {
     println!("{pass} passed  {fail} failed");
 
     if fail == 0 {
-        println!("\nAll tests pass - EU AI Act §13(3)(c) compliant receipt engine verified.");
+        println!("\nAll self-tests pass (run with the public demo key; tests only).");
         process::exit(0);
     } else {
         process::exit(1);
@@ -324,7 +426,7 @@ fn cmd_bench(args: &[String]) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-fn print_receipt_table(r: &aetherproof_core::Receipt, valid: bool) {
+fn print_receipt_table(r: &aetherproof_core::Receipt, valid: bool, demo: bool) {
     println!("┌─────────────────────────────────────────────────────────┐");
     println!("│  AetherProof Receipt - AI Execution Audit               │");
     println!("├─────────────────────────────────────────────────────────┤");
@@ -350,11 +452,16 @@ fn print_receipt_table(r: &aetherproof_core::Receipt, valid: bool) {
     }
     println!("...                          │");
     println!("├─────────────────────────────────────────────────────────┤");
-    if valid {
-        println!("│   VALID - Ed25519 verified - EU AI Act §13(3)(c)     │");
-    } else {
-        println!("│   INVALID - signature does not match receipt contents  │");
-    }
+    let verdict = match (valid, demo) {
+        (true, false) => "VALID - Ed25519 signature verified",
+        (true, true) => "VALID SIGNATURE - DEMO KEY - PROVES NOTHING",
+        (false, _) => "INVALID - signature does not match receipt contents",
+    };
+    println!("│   {verdict:<54}│");
+    println!(
+        "│   {:<54}│",
+        "hashes are FNV-1a-64 checksums, not cryptographic"
+    );
     println!("└─────────────────────────────────────────────────────────┘");
 }
 
@@ -367,18 +474,23 @@ fn parse_u64_hex_or_dec(s: &str) -> u64 {
 }
 
 fn print_help() {
-    println!("AetherProof - cryptographic AI execution audit (EU AI Act §13(3)(c))");
+    println!("AetherProof - signed AI execution receipts (legacy 128-byte format)");
     println!();
     println!("USAGE:");
-    println!("  aetherproof verify   <receipt.bin>");
-    println!("  aetherproof generate --binary <file> [--pid N] [--memory-hash H]");
-    println!("                       [--syscall-count N] [--out receipt.bin]");
+    println!("  aetherproof verify   <receipt.bin> (--pubkey <file> | --demo)");
+    println!("  aetherproof generate --binary <file> (--key <file> | --demo) [--pid N]");
+    println!("                       [--memory-hash H] [--syscall-count N] [--out receipt.bin]");
     println!("  aetherproof self-test");
     println!("  aetherproof bench    [--count N]          (default 50000)");
     println!();
+    println!("KEYS:");
+    println!("  --key     file with a 32-byte Ed25519 seed (e.g. openssl rand 32 > agent.key)");
+    println!("  --pubkey  32-byte public key; generate writes it to <out>.pub");
+    println!("  --demo    use the PUBLIC built-in key (testing only; proves nothing)");
+    println!();
     println!("EXAMPLES:");
-    println!("  aetherproof generate --binary model.onnx --pid 1");
-    println!("  aetherproof verify receipt.bin");
+    println!("  aetherproof generate --binary model.onnx --key agent.key --pid 1");
+    println!("  aetherproof verify receipt.bin --pubkey receipt.bin.pub");
     println!("  aetherproof self-test");
     println!("  aetherproof bench --count 100000");
 }

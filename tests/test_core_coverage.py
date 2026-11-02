@@ -392,8 +392,11 @@ def test_issue_receipt_writes_both_receipt_and_pubkey(tmp_path):
         log.close()
 
 
-def test_issue_receipt_leaves_no_orphan_files_when_the_log_rejects(tmp_path):
+def test_issue_receipt_leaves_no_orphan_files_when_the_log_rejects(tmp_path, monkeypatch):
     """The commit point is log.append; a failure there must roll the files back."""
+    from aetherproof.core import keystore
+    sleeps = []
+    monkeypatch.setattr(keystore.time, "sleep", sleeps.append)   # keep the test fast; record the backoff
     log = ReceiptLog(db_path=str(tmp_path / "log.db"))
     rdir = tmp_path / "r"
     try:
@@ -410,7 +413,8 @@ def test_issue_receipt_leaves_no_orphan_files_when_the_log_rejects(tmp_path):
         with pytest.raises(RuntimeError, match="could not reserve"):
             issue_receipt(s, log, model_weight_root="a" * 64,
                           output_hash="c" * 64, receipts_dir=rdir)
-        assert calls["n"] == 16                      # bounded retry
+        assert calls["n"] == keystore._MAX_SEQUENCE_ATTEMPTS          # bounded retry
+        assert len(sleeps) == calls["n"] and all(0 <= t <= keystore._BACKOFF_CAP_S for t in sleeps)   # jittered, capped backoff
         assert list(rdir.glob("*.json")) == []       # nothing left behind
         assert list(rdir.glob("*.pub")) == []
         log.append = real_append

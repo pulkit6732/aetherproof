@@ -49,7 +49,12 @@ pub enum SecureError {
 /// The secret is never returned by any method. Only public material and
 /// signatures leave this type.
 pub struct SecureSigner {
-    seed: Option<[u8; 32]>,
+    // A plain array plus a flag, not `Option<[u8; 32]>`: assigning `None` may or
+    // may not rewrite the payload bytes depending on codegen, which made the
+    // wipe untestable and its effect build-dependent. The array always stays in
+    // place, so `destroy()` provably overwrites the only copy this type holds.
+    seed: [u8; 32],
+    live: bool,
 }
 
 impl SecureSigner {
@@ -59,7 +64,7 @@ impl SecureSigner {
     pub fn generate() -> Result<Self, SecureError> {
         let mut seed = [0u8; 32];
         getrandom::getrandom(&mut seed).map_err(|_| SecureError::EntropyFailure)?;
-        Ok(Self { seed: Some(seed) })
+        Ok(Self { seed, live: true })
     }
 
     /// Adopt an existing 32-byte seed.
@@ -71,19 +76,23 @@ impl SecureSigner {
             expected: 32,
             got: seed.len(),
         })?;
-        Ok(Self { seed: Some(arr) })
+        Ok(Self {
+            seed: arr,
+            live: true,
+        })
     }
 
     fn key(&self) -> Result<SigningKey, SecureError> {
-        self.seed
-            .as_ref()
-            .map(SigningKey::from_bytes)
-            .ok_or(SecureError::Destroyed)
+        if self.live {
+            Ok(SigningKey::from_bytes(&self.seed))
+        } else {
+            Err(SecureError::Destroyed)
+        }
     }
 
     /// True while the key is still usable.
     pub fn is_live(&self) -> bool {
-        self.seed.is_some()
+        self.live
     }
 
     /// The 32-byte Ed25519 public key. Safe to publish.
@@ -119,17 +128,12 @@ impl SecureSigner {
     /// Every subsequent operation returns [`SecureError::Destroyed`]. Calling
     /// this twice is not an error.
     pub fn destroy(&mut self) {
-        // Zeroize *in place* before clearing the Option.
-        //
-        // `self.seed.take()` moves the array out and wipes the moved copy,
-        // leaving the original storage untouched - the key survives. That was a
-        // real defect here, caught by `seed_is_actually_overwritten_not_just_dropped`,
-        // which reads through a raw pointer to the original address rather than
-        // trusting that "dropped" means "erased".
-        if let Some(s) = self.seed.as_mut() {
-            s.zeroize();
-        }
-        self.seed = None;
+        // Zeroize *in place*. An earlier version moved the seed out with
+        // `Option::take()` and wiped only the moved copy, leaving the original
+        // storage untouched - the key survived. `seed_is_actually_overwritten_not_just_dropped`
+        // reads the storage itself to catch that class of defect.
+        self.seed.zeroize();
+        self.live = false;
     }
 }
 
@@ -270,19 +274,19 @@ mod tests {
 
     #[test]
     fn seed_is_actually_overwritten_not_just_dropped() {
-        // Take a raw pointer to the seed, destroy, then read through it. This is
-        // the only way to show the bytes were overwritten rather than merely
-        // made unreachable.
+        // Read the storage itself after destroy: the bytes must be overwritten,
+        // not merely made unreachable. The seed is a plain array that stays in
+        // place, so this needs no unsafe code. (The previous version read
+        // through a pointer taken from a shared borrow after `destroy(&mut self)`,
+        // which is undefined behaviour; rustc 1.98 returned the stale value and
+        // the test failed although the key had been wiped.)
         let mut s = SecureSigner::from_seed(&[0xAB; 32]).unwrap();
-        let ptr = s.seed.as_ref().unwrap().as_ptr();
-        unsafe {
-            assert_eq!(*ptr, 0xAB, "seed present before destroy");
-        }
+        assert_eq!(s.seed, [0xAB; 32], "seed present before destroy");
         s.destroy();
-        unsafe {
-            // The Option is now None; the bytes it held were zeroized in place.
-            assert_ne!(*ptr, 0xAB, "seed must not survive destroy");
-        }
+        assert_eq!(
+            s.seed, [0u8; 32],
+            "seed must be zeroized in place by destroy"
+        );
     }
 
     #[test]

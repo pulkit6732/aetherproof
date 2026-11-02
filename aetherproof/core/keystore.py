@@ -1,8 +1,10 @@
 """Persistent app signing key + receipt issuance (sign, persist, log)."""
 
 import os
+import random
 import secrets
 import stat
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, Tuple
@@ -59,7 +61,10 @@ def __getattr__(name):
 # "protected by a secret".
 PASSPHRASE_ENV = "AETHERPROOF_KEY_PASSPHRASE"
 
-_MAX_SEQUENCE_ATTEMPTS = 16
+# Writers that collide on a sequence slot back off with jitter: retrying at once let the
+# same processes collide again and exhaust 16 attempts with 10 concurrent writers (0.5.2 fix).
+_MAX_SEQUENCE_ATTEMPTS = 64
+_BACKOFF_CAP_S = 0.1
 
 # Namespace for conversation binding. Follows the v1.2 signed-extensions
 # convention from issue #1 (safal207's causal-context proposal), so the
@@ -230,8 +235,9 @@ def issue_receipt(
             committed = True
         except (ValueError, RuntimeError) as e:
             # Slot taken by a concurrent writer. Files are rolled back in the
-            # finally block; loop and re-sign against the new head.
+            # finally block; back off with jitter, then re-sign against the new head.
             last_error = e
+            time.sleep(random.uniform(0, min(_BACKOFF_CAP_S, 0.002 * 2 ** _attempt)))
         finally:
             if not committed:
                 _cleanup(written)

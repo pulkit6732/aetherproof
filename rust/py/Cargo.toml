@@ -1,6 +1,6 @@
 [package]
 name        = "aetherproof-py"
-version     = "0.5.0"
+version     = "0.5.2"
 edition     = "2021"
 authors     = ["Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>"]
 description = "Python bindings for the AetherProof Rust core"
@@ -12,4 +12,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aetherproof-core = { path = "../core" }
-pyo3             = { version = "0.24", features = ["extension-module"] }
+pyo3             = { version = "0.26", features = ["extension-module"] }

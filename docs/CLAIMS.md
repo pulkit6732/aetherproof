@@ -42,7 +42,9 @@ inference itself, and it trusts the operator's key custody and clock.
 | That the most recent entries were not truncated | The chain detects edits/deletions/reorders *within* the log, but with no published or signed log head, dropping the **tail** (the latest N rows) leaves a shorter self-consistent chain that key-free verification cannot distinguish from "those rows were never written" | A signed/published log head or independent witness (Signet) |
 | That rows logged before a chain migration were untouched | The hash chain is computed at migration time; it attests integrity **from migration forward**, not retroactively | A chain built at issuance time from day one (default for any fresh log) |
 | That a maximally thorough forger with database write access cannot rewrite the log | Default log verification is key-free and catches deletion, reordering, content edits, and delete-then-renumber; an attacker who also rewrites each receipt's embedded `log_sequence` and recomputes the whole chain is caught **only** by key-bound signature re-verification | Independent witness cosigners / published log head (Signet) removes the single-machine trust assumption entirely |
-| That the receipt survives a quantum adversary | Signature is Ed25519 only | Hybrid Ed25519 + ML-DSA-65 (Signet) |
+| That the receipt survives a quantum adversary | The Python receipt is signed with Ed25519 only. The optional Rust core has an experimental ML-DSA-65 (FIPS 204) second signature slot (`rust/core/src/pq.rs`); it is not wired into the Python package and has not been independently reviewed | Hybrid Ed25519 + ML-DSA-65 end to end, after review |
+| That the Rust 128-byte receipt binds its model and output | Its `binary_hash` and `memory_hash` are 64-bit FNV-1a checksums, not cryptographic hashes; a collision has been demonstrated. The Ed25519 signature still detects any change to the receipt after signing | A versioned format with a cryptographic hash (e.g. SHA-256) |
+| That a receipt signed with the Rust demo key means anything | `DEV_SIGNING_SEED` is public. From 0.5.2 the CLI refuses it unless `--demo` is passed and labels such receipts "proves nothing" | Externally provisioned keys only (`--key` / `--pubkey`) |
 
 ---
 
@@ -131,7 +133,7 @@ code supports. These are the ones to decline:
 | Tempting claim | Why it is false | The honest version |
 |---|---|---|
 | "Cryptographically proves GPT-4o produced this" | No client-side tool can attest a closed cloud model's weights; only the provider could, and none does | "Proves the exact input, the exact output, the model the API *claimed*, and the time - none of it altered" |
-| "Post-quantum secure" | Signatures are Ed25519 only. There is no ML-DSA in this codebase | "Ed25519 today; hybrid post-quantum is a Signet roadmap item" |
+| "Post-quantum secure" | Python receipts are Ed25519 only. The Rust core's ML-DSA-65 slot is experimental, optional, unreviewed and not used by the Python package | "Ed25519 today; an experimental ML-DSA-65 slot exists in the optional Rust core" |
 | "Complete audit trail" | See §2a - completeness is exactly what is not proven | "Tamper-evident record of each output we produce" |
 | "Immutable log" | It is a local SQLite file. It is tamper-*evident*, not immutable | "Append-only and tamper-evident; alterations are detectable" |
 | "Independently verifiable" *implying a third party vouches* | Anyone can verify the **math** offline, but the log is operator-run | "Verifiable by anyone with the public key; the log itself is not third-party witnessed" |

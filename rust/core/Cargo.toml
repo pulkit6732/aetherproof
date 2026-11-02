@@ -3,9 +3,9 @@ name        = "aetherproof-core"
 version     = "0.1.0"
 edition     = "2021"
 authors     = ["Pulkit Kr Srivastava <pulkitsrivastavae@gmail.com>"]
-description = "Cryptographic AI execution receipt engine - EU AI Act §13(3)(c) compliance"
+description = "Ed25519-signed AI execution receipts (legacy 128-byte format)"
 license     = "Apache-2.0"
-keywords    = ["ai", "compliance", "eu-ai-act", "cryptography", "audit"]
+keywords    = ["ai", "receipts", "ed25519", "cryptography", "audit"]
 categories  = ["cryptography", "security"]
 
 [dependencies]

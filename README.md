@@ -162,12 +162,17 @@ Full list: [docs/CLAIMS.md](docs/CLAIMS.md).
 | Post-quantum | **ML-DSA-65 (FIPS 204)** | none |
 | Secret zeroization, constant-time compare | **yes** | no |
 | `unsafe` in production | **zero, compiler-enforced** | n/a |
-| Tests | 59 | 642 (93% coverage) |
+| Tests (measured 2026-11-02, Windows, Python 3.14) | 59 pass | 646 pass, 1 skipped (93% coverage) with the native extension built; 573 pass, 3 skipped without it |
 | Distribution | source + CI wheels | PyPI |
 
-Measured, 50,000 leaves, medians of seven isolated runs: Rust builds a Merkle tree
-in **28.16 ms** against Python's 102.71 ms (3.6x) and verifies a proof in
-**3.93 µs** against 17.17 µs (4.4x).
+Measured by the author on one machine (2026-08), 50,000 leaves, medians of seven
+isolated runs: Rust built a Merkle tree in **28.16 ms** against Python's 102.71 ms
+(3.6x) and verified a proof in **3.93 µs** against 17.17 µs (4.4x). Not re-run for
+0.5.2; reproduce with `cargo run --release --example bench_merkle` before quoting.
+
+The 128-byte Rust receipt is a legacy format: its hash fields are 64-bit FNV-1a
+checksums, not cryptographic hashes, and the CLI refuses the public demo key
+unless `--demo` is passed. See [docs/CLAIMS.md](docs/CLAIMS.md).
 
 The Rust core is optional. `aetherproof` does not import it and behaves identically
 without it - enforced in CI. See [docs/ROADMAP.md](docs/ROADMAP.md).

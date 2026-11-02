@@ -31,6 +31,14 @@ def test_dunder_version_matches_pyproject():
     )
 
 
+def test_native_extension_version_matches_package():
+    # 0.5.1 shipped with the native wheel still at 0.5.0.
+    for rel in ("rust/py/pyproject.toml", "rust/py/Cargo.toml"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+        assert match and match.group(1) == _pyproject_version(), f"{rel} version must equal pyproject.toml's"
+
+
 def test_installed_metadata_is_not_ahead_of_the_source():
     """Installed metadata may lag the source tree, but must never lead it.
 
