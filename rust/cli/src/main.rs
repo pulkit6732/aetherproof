@@ -183,24 +183,24 @@ fn cmd_generate(args: &[String]) {
             }
             "--demo" => demo = true,
             "--binary" => {
+                binary_path = Some(flag_value(args, i, "--binary"));
                 i += 1;
-                binary_path = Some(args[i].clone());
             }
             "--pid" => {
+                pid = flag_value(args, i, "--pid").parse().unwrap_or(1);
                 i += 1;
-                pid = args[i].parse().unwrap_or(1);
             }
             "--memory-hash" => {
+                memory_hash = parse_u64_hex_or_dec(&flag_value(args, i, "--memory-hash"));
                 i += 1;
-                memory_hash = parse_u64_hex_or_dec(&args[i]);
             }
             "--syscall-count" => {
+                syscall_count = flag_value(args, i, "--syscall-count").parse().unwrap_or(0);
                 i += 1;
-                syscall_count = args[i].parse().unwrap_or(0);
             }
             "--out" => {
+                out_path = flag_value(args, i, "--out");
                 i += 1;
-                out_path = args[i].clone();
             }
             other => {
                 eprintln!("error: unknown flag '{other}'");
