@@ -14,6 +14,8 @@ pip install aetherproof
 > **Not a developer?** Start with the [plain-language guide](docs/GETTING-STARTED.md)
 > - first receipt in three steps, no code.
 
+**Join the Waitlist** 
+https://aetherproof.vercel.app/
 ---
 
 ## The problem
