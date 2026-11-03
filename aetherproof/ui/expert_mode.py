@@ -53,6 +53,28 @@ def _extract_opt(args: List[str], flag: str):
     return args, None
 
 
+def _extract_all(args: List[str], flag: str):
+    # every "<flag> VALUE" pair, for flags that may repeat
+    values = []
+    while flag in args:
+        args, v = _extract_opt(args, flag)
+        if v is None:
+            raise ValueError(f"{flag} needs a value")
+        values.append(v)
+    return args, values
+
+
+def _trusted_keys(paths: List[str]):
+    """Keys to trust, from --pubkey files; default is this machine's own key.
+    Never the .pub sitting next to a receipt: whoever forged the receipt wrote that too."""
+    from aetherproof.core.keystore import home
+    paths = paths or [str(home() / "signing_key.pub")]
+    missing = [p for p in paths if not Path(p).exists()]
+    if missing:
+        raise FileNotFoundError(f"public key not found: {', '.join(missing)}")
+    return [Verifier.from_public_file(p) for p in paths]
+
+
 def _receipt_panel(receipt: Receipt, title: str = None) -> None:
     inner = Table.grid(padding=(0, 2))
     inner.add_column(style="dim", justify="right")
@@ -103,6 +125,12 @@ def run_expert_mode(args: List[str]) -> bool:
             return cmd_export(rest)
         elif command == "tamper":
             return cmd_tamper(rest)
+        elif command == "approve":
+            return cmd_approve(rest)
+        elif command == "reconcile":
+            return cmd_reconcile(rest)
+        elif command == "checkpoint":
+            return cmd_checkpoint(rest)
         else:
             _err(f"Unknown command '{command}'.")
             show_help()
@@ -156,6 +184,24 @@ def show_help() -> None:
 [yellow]tamper[/yellow] <receipt_file>
   Test tamper detection (should FAIL on tampered receipt)
   Example: aetherproof tamper receipt.json
+
+[yellow]approve[/yellow] --action-id ID --actor ARN --operation OP --resource ARN
+        [--params FILE] [--approved-by NAME] [--ref TICKET] [--window MIN] [--quiet]
+  Sign an approval for one agent action. The agent should assume its role
+  with SourceIdentity=ID so CloudTrail tags every call with it.
+  Example: aetherproof approve --action-id chg-2041 --actor arn:aws:sts::1:assumed-role/agent/s
+           --operation s3:DeleteObject --resource arn:aws:s3:::invoices/1042.pdf
+
+[yellow]reconcile[/yellow] <cloudtrail_file> --receipts PATH [--receipts PATH ...]
+        [--pubkey PATH ...] [--agent ARN_PREFIX ...] [--as-of ISO8601] [--quiet]
+  Check each approval against what CloudTrail recorded: matched, conflict,
+  missing or ambiguous. --agent flags that identity's unapproved changes.
+  Exits 1 unless everything matched.
+
+[yellow]checkpoint[/yellow] create [--out FILE] [--tsa URL]
+[yellow]checkpoint[/yellow] verify <file> [--pubkey PATH] [--tsa-root PEM ...] [--quiet]
+  Sign the log head (optionally RFC 3161 time stamped by --tsa). Keep the file
+  outside this machine; verify later to detect deleted or rewritten receipts.
 """
     )
 
@@ -417,6 +463,152 @@ def cmd_export(args: List[str]) -> bool:
         _err(f"Unknown format: {fmt}. Supported: {', '.join(EXPORT_FORMATS)}")
         return False
     return True
+
+
+def cmd_approve(args: List[str]) -> bool:
+    from aetherproof.core.reconcile import ApprovedAction, issue_action_receipt
+
+    args, quiet = _pop_quiet(args)
+    opts = {}
+    for flag in ("--action-id", "--actor", "--operation", "--resource", "--params",
+                 "--approved-by", "--ref", "--window"):
+        args, opts[flag] = _extract_opt(args, flag)
+    required = [f for f in ("--action-id", "--actor", "--operation", "--resource") if not opts[f]]
+    if required:
+        _emit_err(f"approve needs {', '.join(required)}", quiet)
+        return False
+    params = {}
+    if opts["--params"]:
+        try:
+            params = json.loads(Path(opts["--params"]).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            _emit_err(f"Could not read --params: {e}", quiet)
+            return False
+        if not isinstance(params, dict):
+            _emit_err("--params must hold a JSON object", quiet)
+            return False
+    try:
+        window_ms = int(float(opts["--window"] or 15) * 60_000)
+    except ValueError:
+        _emit_err("--window must be a number of minutes", quiet)
+        return False
+
+    action = ApprovedAction(action_id=opts["--action-id"], actor=opts["--actor"],
+                            operation=opts["--operation"], resource=opts["--resource"], params=params,
+                            approved_by=opts["--approved-by"] or "", approval_ref=opts["--ref"] or "")
+    receipt, path = issue_action_receipt(load_or_create_signer(), default_log(), action, window_ms=window_ms)
+    if quiet:
+        print(receipt.to_json())
+        return True
+    _ok(f"Approval signed -> {path}  (logged at #{receipt.log_sequence:06d})")
+    console.print(f"[dim]Window:[/dim] {datetime.fromtimestamp(action.not_before_ms / 1000, timezone.utc).isoformat()}"
+                  f" to {datetime.fromtimestamp(action.not_after_ms / 1000, timezone.utc).isoformat()}")
+    return True
+
+
+def cmd_reconcile(args: List[str]) -> bool:
+    from aetherproof.core.reconcile import load_cloudtrail, reconcile
+
+    args, quiet = _pop_quiet(args)
+    args, receipt_paths = _extract_all(args, "--receipts")
+    args, pubkeys = _extract_all(args, "--pubkey")
+    args, agents = _extract_all(args, "--agent")
+    args, as_of = _extract_opt(args, "--as-of")
+    if not args or not receipt_paths:
+        _emit_err("usage: reconcile <cloudtrail_file> --receipts PATH [--pubkey PATH] [--agent ARN] [--as-of ISO]", quiet)
+        return False
+
+    files = []
+    for p in map(Path, receipt_paths):
+        if p.is_dir():
+            files.extend(sorted(p.glob("*.json")))
+        elif p.exists():
+            files.append(p)
+        else:
+            _emit_err(f"Receipts not found: {p}", quiet)
+            return False
+    try:
+        receipts = [Receipt.from_json(f.read_text(encoding="utf-8")) for f in files]
+        events = load_cloudtrail(args[0])
+        keys = _trusted_keys(pubkeys)
+        as_of_ms = int(datetime.fromisoformat(as_of.replace("Z", "+00:00")).timestamp() * 1000) if as_of else None
+    except (OSError, ValueError, KeyError) as e:
+        _emit_err(str(e), quiet)
+        return False
+
+    report = reconcile(receipts, events, keys, agent_actors=agents, as_of_ms=as_of_ms)
+    if quiet:
+        print(json.dumps(report.to_dict()))
+        return report.ok
+
+    colour = {"matched": "green", "conflict": "red", "missing": "red", "ambiguous": "yellow"}
+    table = Table(show_header=True, header_style="cyan")
+    for col in ("Verdict", "Action", "Events", "Why"):
+        table.add_column(col)
+    for r in report.results:
+        label = r.verdict.upper() + (" (unapproved)" if r.kind == "unapproved_event" else "")
+        table.add_row(f"[{colour[r.verdict]}]{label}[/{colour[r.verdict]}]", r.action_id or r.receipt_id,
+                      ", ".join(r.event_ids) or "-", "; ".join(r.reasons) or f"basis: {r.basis}")
+    console.print(table)
+    c = report.counts()
+    console.print(f"{len(receipts)} approvals, {len(events)} events: "
+                  f"{c['matched']} matched, {c['conflict']} conflict, {c['missing']} missing, {c['ambiguous']} ambiguous")
+    return report.ok
+
+
+def cmd_checkpoint(args: List[str]) -> bool:
+    from aetherproof.core.anchor import Checkpoint, create_checkpoint, verify_checkpoint
+
+    args, quiet = _pop_quiet(args)
+    if not args or args[0] not in ("create", "verify"):
+        _emit_err("usage: checkpoint create [--out FILE] [--tsa URL] | checkpoint verify <file> [--tsa-root PEM]", quiet)
+        return False
+    sub, args = args[0], args[1:]
+    log = default_log()
+
+    if sub == "create":
+        args, out = _extract_opt(args, "--out")
+        args, tsa = _extract_opt(args, "--tsa")
+        try:
+            cp = create_checkpoint(log, load_or_create_signer(), tsa_url=tsa or "")
+            out_path = Path(out or f"checkpoint_{cp.log_size:06d}.json")
+            out_path.write_text(cp.to_json(), encoding="utf-8")
+        except Exception as e:  # TimestampError, empty log, write failure
+            _emit_err(f"Checkpoint failed: {e}", quiet)
+            return False
+        if quiet:
+            print(cp.to_json())
+        else:
+            _ok(f"Checkpoint of {cp.log_size} receipts -> {out_path}"
+                + ("  (time stamped)" if cp.timestamp_token else ""))
+            console.print("[dim]Store it somewhere this machine cannot change: email it, give it to your auditor.[/dim]")
+        return True
+
+    args, pubkeys = _extract_all(args, "--pubkey")
+    args, root_paths = _extract_all(args, "--tsa-root")
+    if not args:
+        _emit_err("usage: checkpoint verify <file> [--pubkey PATH] [--tsa-root PEM ...]", quiet)
+        return False
+    try:
+        from cryptography import x509
+        cp = Checkpoint.from_json(Path(args[0]).read_text(encoding="utf-8"))
+        roots = [x509.load_pem_x509_certificate(Path(p).read_bytes()) for p in root_paths]
+        report = verify_checkpoint(cp, log, _trusted_keys(pubkeys), tsa_roots=roots)
+    except (OSError, ValueError, TypeError) as e:
+        _emit_err(str(e), quiet)
+        return False
+    if quiet:
+        print(json.dumps(report.to_dict()))
+        return report.ok
+    for p in report.problems:
+        _err(p)
+    for n in report.notes:
+        console.print(f"[dim]{n}[/dim]")
+    if report.tsa_time:
+        console.print(f"Independent time: {report.tsa_time} from {report.tsa_subject}")
+    if report.ok:
+        _ok(f"Checkpoint holds - the first {cp.log_size} receipts are all still there, unchanged.")
+    return report.ok
 
 
 def cmd_tamper(args: List[str]) -> bool:
