@@ -104,7 +104,12 @@ class AuditLog:
         if path.exists():
             lines = path.read_text(encoding="utf-8").splitlines()
             if lines:
-                self._prev = json.loads(lines[-1])["hash"]
+                try:
+                    self._prev = json.loads(lines[-1])["hash"]
+                except (ValueError, KeyError):
+                    # a torn last line (crash mid-write) must not stop the API; the chain
+                    # break it leaves stays visible to verify_audit
+                    self._prev = "torn-line"
 
     def write(self, **fields) -> None:
         with self._lock:
@@ -120,7 +125,10 @@ def verify_audit(path: Path) -> Tuple[bool, int, int]:
     prev = "0" * 64
     lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
     for n, line in enumerate(lines, 1):
-        entry = json.loads(line)
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            return False, len(lines), n
         claimed = entry.pop("hash", "")
         if entry.get("prev") != prev or hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest() != claimed:
             return False, len(lines), n

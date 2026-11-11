@@ -103,6 +103,18 @@ def test_every_call_is_audited_and_the_chain_detects_edits(api):
     assert verify_audit(path) == (False, 3, 2)
 
 
+def test_torn_audit_line_is_reported_not_fatal(tmp_path):
+    from aetherproof.server import AuditLog, verify_audit
+    path = tmp_path / "audit.jsonl"
+    log = AuditLog(path)
+    log.write(status=200)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write('{"t": "2026-11-11T10:0')            # crash mid-write
+    again = AuditLog(path)                            # reopening must not raise
+    again.write(status=200)
+    assert verify_audit(path) == (False, 3, 2)
+
+
 def test_status_reports_protections(api):
     st = api("GET", "/api/status")[1]
     assert st["key_protection"] in ("dpapi", "file-permissions-only", "passphrase") and st["audit_intact"]
