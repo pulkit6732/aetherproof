@@ -1,6 +1,7 @@
 """Expert mode subcommands for developers."""
 
 import json
+import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List
@@ -131,6 +132,15 @@ def run_expert_mode(args: List[str]) -> bool:
             return cmd_reconcile(rest)
         elif command == "checkpoint":
             return cmd_checkpoint(rest)
+        elif command == "instruction":
+            return cmd_instruction(rest)
+        elif command == "payouts":
+            return cmd_payouts(rest)
+        elif command == "serve":
+            from aetherproof.server import serve
+            rest, port = _extract_opt(rest, "--port")
+            serve(int(port or 8787))
+            return True
         else:
             _err(f"Unknown command '{command}'.")
             show_help()
@@ -202,6 +212,24 @@ def show_help() -> None:
 [yellow]checkpoint[/yellow] verify <file> [--pubkey PATH] [--tsa-root PEM ...] [--quiet]
   Sign the log head (optionally RFC 3161 time stamped by --tsa). Keep the file
   outside this machine; verify later to detect deleted or rewritten receipts.
+
+[yellow]instruction sign[/yellow] --amount 48500.00 --currency INR (--beneficiary-token fa_X | --ifsc I --account N)
+        --reference LN-1 --approval-ref SAN-1 --approved-by NAME [--purpose P] [--policy V]
+        [--originator ORG] [--valid MIN] [--out FILE] [--quiet]
+  Originator side: sign exactly what was authorised. Logged like a receipt.
+[yellow]instruction verify[/yellow] <instruction.json> --amount A --currency C (--beneficiary-token T | --ifsc I --account N)
+        [--reference REF] [--pubkey PATH] [--replay-db PATH] [--quiet]
+  Executor side, before money moves: exit 0 = allow, 1 = reject. Each instruction
+  is accepted once.
+
+[yellow]payouts reconcile[/yellow] <payouts_file> --instructions DIR [--source razorpayx|generic]
+        [--pubkey PATH] [--as-of ISO8601] [--quiet]
+  After the fact: every instruction paid exactly as authorised, and every payout
+  backed by a valid instruction. Exits 1 unless everything matched.
+
+[yellow]serve[/yellow] [--port 8787]
+  Local API for the AetherProof desktop app: 127.0.0.1 only, bearer token in
+  ~/.aetherproof/api_token.
 """
     )
 
@@ -608,6 +636,157 @@ def cmd_checkpoint(args: List[str]) -> bool:
         console.print(f"Independent time: {report.tsa_time} from {report.tsa_subject}")
     if report.ok:
         _ok(f"Checkpoint holds - the first {cp.log_size} receipts are all still there, unchanged.")
+    return report.ok
+
+
+def _minor_units(amount: str) -> int:
+    """'48500.00' -> 4850000. shortcut: assumes 2-decimal currencies (INR, USD, EUR);
+    add an ISO 4217 exponent table before supporting JPY or BHD."""
+    from decimal import Decimal, InvalidOperation
+    try:
+        d = Decimal(amount)
+    except InvalidOperation:
+        raise ValueError(f"--amount {amount!r} is not a number")
+    if d <= 0 or d.as_tuple().exponent < -2:
+        raise ValueError("--amount must be positive with at most 2 decimals")
+    return int(d * 100)
+
+
+def _beneficiary_opts(args: List[str]):
+    args, token = _extract_opt(args, "--beneficiary-token")
+    args, ifsc = _extract_opt(args, "--ifsc")
+    args, account = _extract_opt(args, "--account")
+    if bool(token) == bool(ifsc and account):
+        raise ValueError("give either --beneficiary-token, or both --ifsc and --account")
+    return args, token or "", ifsc or "", account or ""
+
+
+def cmd_instruction(args: List[str]) -> bool:
+    from aetherproof.core.instruction import (PaymentInstruction, PayoutRequest, ReplayStore,
+                                              bank_beneficiary, sign_instruction, token_beneficiary,
+                                              verify_instruction)
+    from aetherproof.core.keystore import home, issue_receipt
+
+    args, quiet = _pop_quiet(args)
+    if not args or args[0] not in ("sign", "verify"):
+        _emit_err("usage: instruction sign ... | instruction verify <file> ...  (see --help)", quiet)
+        return False
+    sub, args = args[0], args[1:]
+    try:
+        args, amount = _extract_opt(args, "--amount")
+        args, currency = _extract_opt(args, "--currency")
+        args, token, ifsc, account = _beneficiary_opts(args)
+        if not amount or not currency:
+            raise ValueError("--amount and --currency are required")
+        amount_minor = _minor_units(amount)
+    except ValueError as e:
+        _emit_err(str(e), quiet)
+        return False
+
+    if sub == "sign":
+        opts = {}
+        for flag in ("--reference", "--approval-ref", "--approved-by", "--purpose", "--policy",
+                     "--originator", "--valid", "--out"):
+            args, opts[flag] = _extract_opt(args, flag)
+        missing = [f for f in ("--reference", "--approval-ref", "--approved-by") if not opts[f]]
+        if missing:
+            _emit_err(f"instruction sign needs {', '.join(missing)}", quiet)
+            return False
+        try:
+            signer = load_or_create_signer()
+            ins = sign_instruction(
+                signer, originator=opts["--originator"] or "local", amount_minor=amount_minor, currency=currency,
+                beneficiary=token_beneficiary(token) if token else bank_beneficiary(ifsc, account),
+                purpose=opts["--purpose"] or "payout", reference=opts["--reference"],
+                approval_ref=opts["--approval-ref"], approved_by=opts["--approved-by"],
+                policy=opts["--policy"] or "default", validity_ms=int(float(opts["--valid"] or 15) * 60_000))
+            out = Path(opts["--out"]) if opts["--out"] else home() / "instructions" / f"{ins.instruction_id}.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(ins.to_json(), encoding="utf-8")
+            # the log entry makes the instruction part of the checkpointed history
+            issue_receipt(signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
+                          output_hash=ins.digest(), extensions={"org.aetherproof.instruction/v0": {
+                              "instruction_id": ins.instruction_id, "digest": ins.digest()}})
+        except (ValueError, OSError) as e:
+            _emit_err(f"Could not sign instruction: {e}", quiet)
+            return False
+        if quiet:
+            print(ins.to_json())
+        else:
+            _ok(f"Instruction {ins.instruction_id} signed -> {out}")
+            console.print(f"[dim]Executor must set the payout reference to[/dim] {ins.instruction_id}")
+        return True
+
+    args, reference = _extract_opt(args, "--reference")
+    args, pubkeys = _extract_all(args, "--pubkey")
+    args, replay_path = _extract_opt(args, "--replay-db")
+    if not args:
+        _emit_err("usage: instruction verify <instruction.json> --amount A --currency C ...", quiet)
+        return False
+    try:
+        ins = PaymentInstruction.from_json(Path(args[0]).read_text(encoding="utf-8"))
+        replay = ReplayStore(replay_path or str(home() / "replay.db"))
+        decision = verify_instruction(ins, PayoutRequest(amount_minor=amount_minor, currency=currency,
+                                                         reference=reference or "", beneficiary_token=token,
+                                                         ifsc=ifsc, account_number=account),
+                                      _trusted_keys(pubkeys), replay)
+        replay.close()
+    except (OSError, ValueError, TypeError, sqlite3.Error) as e:
+        _emit_err(str(e), quiet)
+        return False
+    if quiet:
+        print(json.dumps(decision.to_dict()))
+    elif decision.allowed:
+        _ok(f"ALLOW {ins.instruction_id} - authorised, unchanged, first use.")
+    else:
+        _err(f"REJECT {ins.instruction_id}: " + "; ".join(decision.reasons))
+    return decision.allowed
+
+
+def cmd_payouts(args: List[str]) -> bool:
+    from aetherproof.core.instruction import PaymentInstruction
+    from aetherproof.core.payouts import load_payouts, reconcile_payouts
+
+    args, quiet = _pop_quiet(args)
+    if not args or args[0] != "reconcile" or len(args) < 2:
+        _emit_err("usage: payouts reconcile <payouts_file> --instructions DIR [--source razorpayx|generic]", quiet)
+        return False
+    args = args[1:]
+    args, ins_paths = _extract_all(args, "--instructions")
+    args, source = _extract_opt(args, "--source")
+    args, pubkeys = _extract_all(args, "--pubkey")
+    args, as_of = _extract_opt(args, "--as-of")
+    if not ins_paths:
+        _emit_err("payouts reconcile needs --instructions DIR", quiet)
+        return False
+    try:
+        files = []
+        for p in map(Path, ins_paths):
+            if not p.exists():
+                raise FileNotFoundError(f"instructions not found: {p}")
+            files.extend(sorted(p.glob("*.json")) if p.is_dir() else [p])
+        instructions = [PaymentInstruction.from_json(f.read_text(encoding="utf-8")) for f in files]
+        payouts = load_payouts(args[0], source or "generic")
+        as_of_ms = int(datetime.fromisoformat(as_of.replace("Z", "+00:00")).timestamp() * 1000) if as_of else None
+        report = reconcile_payouts(instructions, payouts, _trusted_keys(pubkeys), as_of_ms=as_of_ms)
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        _emit_err(str(e), quiet)
+        return False
+    if quiet:
+        print(json.dumps(report.to_dict()))
+        return report.ok
+    colour = {"matched": "green", "conflict": "red", "missing": "red", "ambiguous": "yellow"}
+    table = Table(show_header=True, header_style="cyan")
+    for col in ("Verdict", "Instruction", "Payouts", "Why"):
+        table.add_column(col)
+    for r in report.results:
+        label = r.verdict.upper() + (" (no instruction)" if r.kind == "unapproved_event" else "")
+        table.add_row(f"[{colour[r.verdict]}]{label}[/{colour[r.verdict]}]", r.action_id or "-",
+                      ", ".join(r.event_ids) or "-", "; ".join(r.reasons) or "as authorised")
+    console.print(table)
+    c = report.counts()
+    console.print(f"{len(instructions)} instructions, {len(payouts)} payouts: {c['matched']} matched, "
+                  f"{c['conflict']} conflict, {c['missing']} missing, {c['ambiguous']} ambiguous")
     return report.ok
 
 
