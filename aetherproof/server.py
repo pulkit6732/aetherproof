@@ -110,6 +110,9 @@ class AuditLog:
                     # a torn last line (crash mid-write) must not stop the API; the chain
                     # break it leaves stays visible to verify_audit
                     self._prev = "torn-line"
+            if path.read_bytes()[-1:] not in (b"", b"\n"):
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write("\n")  # never glue the next entry onto a torn line
 
     def write(self, **fields) -> None:
         with self._lock:
