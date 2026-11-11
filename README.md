@@ -4,12 +4,41 @@
 
 # AetherProof
 
-**Cryptographic receipts for AI output.** Prove a model's output has not been
-modified - no server, no account, verifiable offline forever.
+**Proof of authority for money and consequential actions.** The system that approves a
+payout signs exactly what it approved; the system that executes it checks that proof
+before any money moves; afterwards the outcome is matched back to the proof. A stolen
+API credential can still call a payout API. It cannot mint a valid instruction.
+
+| Layer | What it does | Docs |
+|---|---|---|
+| **Signed instructions** | Originator signs amount, currency, beneficiary, validity | [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) |
+| **Payment gate** | Executor verifies before paying; each instruction pays once | same |
+| **Payout verification** | Provider records (RazorpayX, generic CSV/JSON) vs instructions: matched / conflict / missing / pending; payouts with no instruction flagged | same |
+| **Action reconciliation** | AI-agent and cloud actions vs AWS CloudTrail | [RECONCILIATION.md](docs/RECONCILIATION.md) |
+| **Evidence** | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](docs/RECONCILIATION.md) |
+| **Receipts** | The original SDK: signed, offline-verifiable receipts for AI output | below |
 
 ```bash
-pip install aetherproof
+pip install aetherproof            # 0.5.1 on PyPI: receipts only
+pip install -e ".[timestamp]"      # from this branch: everything above
 ```
+
+```bash
+aetherproof instruction sign --amount 48500.00 --currency INR --beneficiary-token fa_123 \
+    --reference LN-1041 --approval-ref SAN-7701 --approved-by credit-ops
+aetherproof instruction verify ~/.aetherproof/instructions/<id>.json \
+    --amount 48500.00 --currency INR --beneficiary-token fa_123      # exit 0 = allow, 1 = reject
+aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions --source razorpayx
+aetherproof serve                                                     # local API for the desktop app
+```
+
+**Desktop app** (`app/`, built with [Rune](https://github.com/anomalyco/rune)): Overview,
+Instructions, Payment gate, Payouts and Evidence screens over the local API. Run
+`aetherproof serve`, then `cargo run --release` in `app/` (Rune checkout at
+`../vendor/rune`, rev `ba5e7c80`). Every screen renders headless for review:
+`aetherproof-app --scene payouts --snap payouts.png`.
+
+![Payouts screen](app/snaps/payouts.png)
 
 > **Not a developer?** Start with the [plain-language guide](docs/GETTING-STARTED.md)
 > - first receipt in three steps, no code.
@@ -202,7 +231,9 @@ Setup and post-quantum usage: [docs/INTEGRATION.md](docs/INTEGRATION.md#path-c--
 
 | | |
 |---|---|
-| [INTEGRATION.md](docs/INTEGRATION.md) | **start here** - pick a path by one question |
+| [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) | signed payment instructions: format, gate, payout checks |
+| [RECONCILIATION.md](docs/RECONCILIATION.md) | agent actions vs CloudTrail, checkpoints, RFC 3161 time |
+| [INTEGRATION.md](docs/INTEGRATION.md) | receipts: pick a path by one question |
 | [GETTING-STARTED.md](docs/GETTING-STARTED.md) | first receipt, no code |
 | [CLAIMS.md](docs/CLAIMS.md) | what this proves and what it does not |
 | [VERIFICATION.md](docs/VERIFICATION.md) | the offline verifier, in full |

@@ -1,0 +1,17 @@
+﻿[package]
+name = "aetherproof-app"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "AetherProof desktop app: sign payment instructions, gate payouts, verify outcomes."
+license = "Apache-2.0"
+
+# Rune is pre-release and pins a `dev` rev. The vendored checkout must be at
+# ba5e7c8069a24c36f95ca90a3058083cd468fcd1 (see HANDOFF). Switch to
+# `git = "https://github.com/anomalyco/rune", rev = "ba5e7c80..."` for CI builds.
+[dependencies]
+rune = { path = "../../vendor/rune/crates/rune" }
+rune-kit = { path = "../../vendor/rune/crates/rune-kit" }
+rune-theme-opencode = { path = "../../vendor/rune/themes/opencode" }
+ureq = { version = "2.12", features = ["json"] }
+serde_json = "1"
