@@ -38,6 +38,11 @@ MAX_ID_LEN = 40
 DEFAULT_VALIDITY_MS = 15 * 60 * 1000
 
 
+def money(minor: int, currency: str = "") -> str:
+    """Human amount for messages: 4850000 -> '48,500.00 INR' (2-decimal currencies)."""
+    return f"{minor / 100:,.2f}{' ' + currency if currency else ''}"
+
+
 def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
 
@@ -250,7 +255,7 @@ def verify_instruction(ins: PaymentInstruction, request: PayoutRequest, public_k
         reasons.append("instruction expired")
 
     if request.amount_minor != ins.amount_minor:
-        reasons.append(f"amount {request.amount_minor} differs from authorised {ins.amount_minor}")
+        reasons.append(f"amount {money(request.amount_minor, ins.currency)} differs from authorised {money(ins.amount_minor, ins.currency)}")
     if request.currency.upper() != ins.currency:
         reasons.append(f"currency {request.currency} differs from authorised {ins.currency}")
     if not beneficiary_matches(ins.beneficiary, token=request.beneficiary_token,

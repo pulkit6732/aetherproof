@@ -44,7 +44,7 @@ def test_paid_as_authorised_is_matched():
 
 
 @pytest.mark.parametrize("payout,needle", [
-    (dict(amount=5_850_000), "paid 5850000"),
+    (dict(amount=5_850_000), "paid 58,500.00 INR, authorised 48,500.00 INR"),
     (dict(fa="fa_attacker"), "different beneficiary"),
     (dict(at=T0 + 17 * 60_000), "outside"),      # window 15 min + 1 min clock tolerance
     (dict(at=T0 - 2 * 60_000), "outside"),

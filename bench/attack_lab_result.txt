@@ -1,0 +1,36 @@
+﻿{
+  "instructions": 100000,
+  "payout_records": 131074,
+  "sign_s": 5.17,
+  "reconcile_s": 7.38,
+  "per_scenario_correct": {
+    "A2": "500/500",
+    "A3": "500/500",
+    "A4": "500/500",
+    "A5": "500/500",
+    "A7": "300/300",
+    "A8": "300/300",
+    "benign": "94900/94900",
+    "failed": "1000/1000",
+    "queued": "1000/1000",
+    "reversed": "500/500"
+  },
+  "false_alarm_rate_benign": "0/94900 = 0.00000%",
+  "A1_direct_payouts_flagged": "2000/2000 (Rs 1 test transfers 500/500)",
+  "A6_forged_instructions": "300/300 rejected, 300/300 payouts flagged",
+  "gate_latency_ms": {
+    "p50": 1.336,
+    "p99": 2.548,
+    "max": 31.42,
+    "n": 20000
+  },
+  "gate_attacks_rejected": {
+    "replay of a used instruction": "2000/2000",
+    "changed amount": "2000/2000",
+    "mule beneficiary": "2000/2000",
+    "expired approval": "2000/2000",
+    "forged with attacker key": "300/300"
+  },
+  "race_8_executors": "1000/1000 paid exactly once, 0 paid twice, 2.59s"
+}
+PASS

@@ -234,8 +234,17 @@ class Api:
             records = [payout_from_row(r, MAPPINGS[source]) for r in rows]
         else:
             raise ApiError(400, "give payouts (a list) or path")
-        report = reconcile_payouts(_load_instructions(), records, self.key)
-        return {"report": report.to_dict(), "payouts": len(records)}
+        instructions = _load_instructions()
+        report = reconcile_payouts(instructions, records, self.key).to_dict()
+        # money each verdict concerns: the authorised amount, or what an unapproved payout moved
+        authorised = {i.instruction_id: i.amount_minor for i in instructions}
+        paid = {r.payout_id: r.amount_minor for r in records}
+        for r in report["results"]:
+            r["amount_minor"] = (sum(paid.get(p, 0) for p in r["event_ids"]) if r["kind"] == "unapproved_event"
+                                 else authorised.get(r["action_id"], 0))
+        report["at_risk_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "conflict")
+        report["verified_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "matched")
+        return {"report": report, "payouts": len(records)}
 
     def checkpoint(self, body):
         try:

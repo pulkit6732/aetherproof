@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 from .hash import sha256
-from .instruction import PaymentInstruction, beneficiary_matches
+from .instruction import PaymentInstruction, beneficiary_matches, money
 from .log import _as_keyring
 from .reconcile import (AMBIGUOUS, CONFLICT, MATCHED, MISSING, ActionResult,
                         ReconciliationReport, canonical_json)
@@ -111,7 +111,7 @@ def load_payouts(path, source: str = "generic") -> List[PayoutRecord]:
 def _compare(ins: PaymentInstruction, p: PayoutRecord) -> List[str]:
     diffs = []
     if p.amount_minor != ins.amount_minor:
-        diffs.append(f"paid {p.amount_minor}, authorised {ins.amount_minor}")
+        diffs.append(f"paid {money(p.amount_minor, ins.currency)}, authorised {money(ins.amount_minor, ins.currency)}")
     if p.currency and p.currency != ins.currency:
         diffs.append(f"currency {p.currency}, authorised {ins.currency}")
     if p.beneficiary_token or (p.ifsc and p.account_number):
@@ -204,5 +204,5 @@ def reconcile_payouts(instructions: Iterable[PaymentInstruction], payouts: Itera
                 continue
             report.results.append(ActionResult(
                 CONFLICT, action_id=ref, event_ids=[p.payout_id], basis="reference", kind="unapproved_event",
-                reasons=[f"payout {p.payout_id} ({p.status}, {p.amount_minor} {p.currency}) has no valid signed instruction"]))
+                reasons=[f"{money(p.amount_minor, p.currency)} paid out ({p.payout_id}, {p.status}) with no valid signed instruction"]))
     return report
