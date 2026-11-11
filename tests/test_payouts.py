@@ -62,6 +62,17 @@ def test_whole_second_provider_clock_inside_tolerance_matches():
     assert one(run([i], [rzp("pout_1", "ins_000001", at=T0)])).verdict == MATCHED
 
 
+def test_duplicate_webhook_rows_for_one_payout_are_not_double_payment():
+    rows = [rzp("pout_1", "ins_000001", status="processing", at=T0 + 60_000),
+            rzp("pout_1", "ins_000001", at=T0 + 61_000), rzp("pout_1", "ins_000001", at=T0 + 61_000)]
+    assert one(run([ins()], rows)).verdict == MATCHED
+
+
+def test_payout_reversed_after_processing_is_missing():
+    rows = [rzp("pout_1", "ins_000001", at=T0 + 60_000), rzp("pout_1", "ins_000001", status="reversed", at=T0 + 300_000)]
+    assert one(run([ins()], rows)).verdict == MISSING
+
+
 def test_paid_twice_is_a_conflict():
     r = one(run([ins()], [rzp("pout_1", "ins_000001"), rzp("pout_2", "ins_000001")]))
     assert r.verdict == CONFLICT and "paid 2 times" in r.reasons[0]

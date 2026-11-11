@@ -9,11 +9,15 @@ It signs payment instructions, so it is locked to this machine:
 - request bodies are capped at 1 MiB and must be JSON objects.
 """
 
+import hashlib
 import hmac
 import json
 import os
 import secrets
 import stat
+import threading
+import time
+from collections import deque
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -36,6 +40,92 @@ class ApiError(Exception):
     def __init__(self, status: int, message: str):
         super().__init__(message)
         self.status = status
+
+
+# Least privilege: an executor's token can only check payments, an auditor's can only
+# read and reconcile, a signer's can only sign. "admin" is the desktop app.
+ROLES = ("admin", "signer", "executor", "auditor")
+PERMS = {
+    ("GET", "/api/status"): {"admin", "signer", "executor", "auditor"},
+    ("GET", "/api/instructions"): {"admin", "signer", "auditor"},
+    ("POST", "/api/instructions"): {"admin", "signer"},
+    ("POST", "/api/verify"): {"admin", "executor"},
+    ("POST", "/api/payouts/reconcile"): {"admin", "auditor"},
+    ("POST", "/api/checkpoints"): {"admin", "signer"},
+    ("GET", "/api/checkpoints/verify"): {"admin", "auditor"},
+    ("POST", "/api/demo"): {"admin"},
+}
+AUTH_FAIL_LIMIT, AUTH_FAIL_WINDOW_S, LOCKOUT_S = 10, 60.0, 60.0
+RATE_LIMIT, RATE_WINDOW_S = 600, 60.0          # requests per role per window
+
+
+class Limiter:
+    """Bad-token lockout per client and a sliding request window per role."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._fails: Dict[str, deque] = {}
+        self._blocked: Dict[str, float] = {}
+        self._calls: Dict[str, deque] = {}
+
+    def blocked(self, client: str, now: float) -> bool:
+        with self._lock:
+            return self._blocked.get(client, 0.0) > now
+
+    def fail(self, client: str, now: float) -> None:
+        with self._lock:
+            q = self._fails.setdefault(client, deque())
+            q.append(now)
+            while q and q[0] < now - AUTH_FAIL_WINDOW_S:
+                q.popleft()
+            if len(q) >= AUTH_FAIL_LIMIT:
+                self._blocked[client] = now + LOCKOUT_S
+                q.clear()
+
+    def allow(self, role: str, now: float) -> bool:
+        with self._lock:
+            q = self._calls.setdefault(role, deque())
+            while q and q[0] < now - RATE_WINDOW_S:
+                q.popleft()
+            if len(q) >= RATE_LIMIT:
+                return False
+            q.append(now)
+            return True
+
+
+class AuditLog:
+    """Append-only JSON lines, each carrying the hash of the line before it, so an
+    edited, reordered or deleted call record breaks the chain (verify_audit)."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._lock = threading.Lock()
+        self._prev = "0" * 64
+        if path.exists():
+            lines = path.read_text(encoding="utf-8").splitlines()
+            if lines:
+                self._prev = json.loads(lines[-1])["hash"]
+
+    def write(self, **fields) -> None:
+        with self._lock:
+            entry = {"t": datetime.now(timezone.utc).isoformat(timespec="milliseconds"), **fields, "prev": self._prev}
+            entry["hash"] = hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()
+            with open(self.path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, sort_keys=True) + "\n")
+            self._prev = entry["hash"]
+
+
+def verify_audit(path: Path) -> Tuple[bool, int, int]:
+    """(intact, entries, first broken line number or 0)."""
+    prev = "0" * 64
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    for n, line in enumerate(lines, 1):
+        entry = json.loads(line)
+        claimed = entry.pop("hash", "")
+        if entry.get("prev") != prev or hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest() != claimed:
+            return False, len(lines), n
+        prev = claimed
+    return True, len(lines), 0
 
 
 def _instructions_dir() -> Path:
@@ -82,7 +172,12 @@ class Api:
     def status(self, _body):
         log = default_log()
         cps = sorted((home() / "checkpoints").glob("*.json")) if (home() / "checkpoints").exists() else []
-        return {"version": __version__, "key_id": Receipt.key_id(self.key), "log_entries": log.count(),
+        from .core.keyprotect import SEALED_NAME
+        audit_ok, audit_n, _ = verify_audit(home() / "audit.jsonl")
+        protection = ("passphrase" if os.environ.get("AETHERPROOF_KEY_PASSPHRASE")
+                      else "dpapi" if (home() / SEALED_NAME).exists() else "file-permissions-only")
+        return {"version": __version__, "key_id": Receipt.key_id(self.key), "key_protection": protection,
+                "audit_entries": audit_n, "audit_intact": audit_ok, "log_entries": log.count(),
                 "log_intact": log.verify_integrity(), "instructions": len(_load_instructions()),
                 "checkpoints": len(cps), "home": str(home())}
 
@@ -193,12 +288,24 @@ class Api:
                 ("GET", "/api/checkpoints/verify"): self.verify_checkpoints, ("POST", "/api/demo"): self.demo}
 
 
-def make_handler(api: Api, token: str, port_hosts: Tuple[str, ...]):
+def _role_for(auth: str, tokens: Dict[str, str]) -> str:
+    """Constant-time match against every role's token; '' when none matches."""
+    found = ""
+    for role, tok in tokens.items():
+        if hmac.compare_digest(auth.encode(), f"Bearer {tok}".encode()):
+            found = role
+    return found
+
+
+def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
     routes = api.routes()
+    limiter = Limiter()
+    audit = AuditLog(home() / "audit.jsonl")
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "AetherProof"
         sys_version = ""
+        timeout = 10  # seconds per socket read: a stalled client cannot hold a worker
 
         def _send(self, status: int, payload: Dict) -> None:
             data = json.dumps(payload).encode("utf-8")
@@ -206,19 +313,30 @@ def make_handler(api: Api, token: str, port_hosts: Tuple[str, ...]):
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(data)
 
         def _handle(self, method: str) -> None:
+            path, role, status, ref = self.path.split("?")[0], "", 500, ""
+            client = self.client_address[0]
+            now = time.monotonic()
             try:
                 if self.headers.get("Host", "").lower() not in port_hosts:
                     raise ApiError(403, "bad host")
-                auth = self.headers.get("Authorization", "")
-                if not hmac.compare_digest(auth.encode(), f"Bearer {token}".encode()):
+                if limiter.blocked(client, now):
+                    raise ApiError(429, "too many bad tokens; locked out for a minute")
+                role = _role_for(self.headers.get("Authorization", ""), tokens)
+                if not role:
+                    limiter.fail(client, now)
                     raise ApiError(401, "missing or wrong token")
-                fn = routes.get((method, self.path.split("?")[0]))
+                if not limiter.allow(role, now):
+                    raise ApiError(429, "rate limit")
+                fn = routes.get((method, path))
                 if fn is None:
                     raise ApiError(404, "no such endpoint")
+                if role not in PERMS[(method, path)]:
+                    raise ApiError(403, f"role {role} may not call {method} {path}")
                 body: Dict = {}
                 if method == "POST":
                     n = int(self.headers.get("Content-Length") or 0)
@@ -230,11 +348,21 @@ def make_handler(api: Api, token: str, port_hosts: Tuple[str, ...]):
                         raise ApiError(400, "body is not JSON")
                     if not isinstance(body, dict):
                         raise ApiError(400, "body must be a JSON object")
-                self._send(200, fn(body))
+                    ref = str(body.get("instruction_id", ""))[:64]
+                out = fn(body)
+                ref = ref or str((out.get("instruction") or {}).get("instruction_id", ""))
+                status = 200
+                self._send(200, out)
             except ApiError as e:
+                status = e.status
                 self._send(e.status, {"error": str(e)})
             except Exception as e:  # never leak a traceback to the client; report the type only
                 self._send(500, {"error": f"internal error ({type(e).__name__})"})
+            finally:
+                try:
+                    audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
+                except OSError:
+                    pass  # a full disk must not take the API down; the gap shows in verify_audit
 
         def do_GET(self):
             self._handle("GET")
@@ -248,12 +376,11 @@ def make_handler(api: Api, token: str, port_hosts: Tuple[str, ...]):
     return Handler
 
 
-def write_token(token: str) -> Path:
-    path = home() / "api_token"
+def _write_private(path: Path, text: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(token)
+        f.write(text)
     try:
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
     except OSError:
@@ -261,14 +388,23 @@ def write_token(token: str) -> Path:
     return path
 
 
-def build_server(port: int = 8787, token: str = "") -> Tuple[ThreadingHTTPServer, str]:
-    token = token or secrets.token_urlsafe(32)
-    write_token(token)
+def write_tokens(tokens: Dict[str, str]) -> None:
+    """api_token keeps the admin token (the desktop app reads it); api_tokens.json holds
+    every role's token, to hand the executor or auditor only what they need."""
+    _write_private(home() / "api_token", tokens["admin"])
+    _write_private(home() / "api_tokens.json", json.dumps(tokens, indent=2))
+
+
+def build_server(port: int = 8787, token: str = "") -> Tuple[ThreadingHTTPServer, Dict[str, str]]:
+    tokens = {role: secrets.token_urlsafe(32) for role in ROLES}
+    if token:
+        tokens["admin"] = token
+    write_tokens(tokens)
     srv = ThreadingHTTPServer(("127.0.0.1", port), None)
     actual = srv.server_address[1]
     hosts = (f"127.0.0.1:{actual}", f"localhost:{actual}")
-    srv.RequestHandlerClass = make_handler(Api(), token, hosts)
-    return srv, token
+    srv.RequestHandlerClass = make_handler(Api(), tokens, hosts)
+    return srv, tokens
 
 
 def serve(port: int = 8787) -> None:

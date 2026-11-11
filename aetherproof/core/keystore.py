@@ -99,10 +99,19 @@ def load_or_create_signer(key_dir: Path = None) -> Signer:
     key_dir.mkdir(parents=True, exist_ok=True)
     priv = key_dir / "signing_key.pem"
     pub = key_dir / "signing_key.pub"
+    from . import keyprotect
+
     pw = _passphrase()
 
     if priv.exists():
-        return Signer.from_private_file(str(priv), password=pw)
+        pw = pw or keyprotect.sealed_passphrase(key_dir, create=False)
+        try:
+            return Signer.from_private_file(str(priv), password=pw)
+        except TypeError:
+            # a key written before sealing existed is unencrypted; keep it working
+            return Signer.from_private_file(str(priv), password=None)
+
+    pw = pw or keyprotect.sealed_passphrase(key_dir, create=True)
 
     candidate = Signer.generate()
     pem = candidate.export_private_pem(password=pw)

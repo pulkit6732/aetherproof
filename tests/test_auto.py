@@ -287,9 +287,12 @@ def test_status_reports_encryption_when_a_passphrase_is_set(monkeypatch):
     assert auto.status()["key_encrypted"] is True
 
 
-def test_key_is_unencrypted_without_a_passphrase():
+def test_key_without_a_passphrase_is_sealed_on_windows_only():
+    # Windows: a random passphrase sealed with DPAPI encrypts the key (core/keyprotect.py).
+    # Elsewhere the env var is still the only way to encrypt it.
+    import sys
     auto.sign(output="x")
-    assert auto.status()["key_encrypted"] is False
+    assert auto.status()["key_encrypted"] is (sys.platform == "win32")
 
 
 def test_home_follows_the_env_var(monkeypatch, tmp_path):

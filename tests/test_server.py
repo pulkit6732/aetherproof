@@ -14,15 +14,15 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setenv("AETHERPROOF_HOME", str(tmp_path / "home"))
     monkeypatch.delenv("AETHERPROOF_KEY_PASSPHRASE", raising=False)
     from aetherproof.server import build_server
-    srv, token = build_server(port=0, token="t" * 43)
+    srv, tokens = build_server(port=0, token="t" * 43)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     port = srv.server_address[1]
 
-    def call(method, path, body=None, *, auth=True, host=None, raw=None):
+    def call(method, path, body=None, *, auth=True, host=None, raw=None, role="admin", token=None):
         c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
         headers = {"Host": host or f"127.0.0.1:{port}", "Content-Type": "application/json"}
         if auth:
-            headers["Authorization"] = f"Bearer {token}"
+            headers["Authorization"] = f"Bearer {token or tokens[role]}"
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
         c.request(method, path, body=data, headers=headers)
         r = c.getresponse()
@@ -55,8 +55,64 @@ def test_body_limits(api):
     assert api("GET", "/api/nothing")[0] == 404
 
 
-def test_token_file_written(api):
+def test_token_files_written(api):
     assert (home() / "api_token").read_text() == "t" * 43
+    roles = json.loads((home() / "api_tokens.json").read_text())
+    assert set(roles) == {"admin", "signer", "executor", "auditor"} and len(set(roles.values())) == 4
+
+
+SIGN = {"amount": "100", "currency": "INR", "beneficiary_token": "fa_1", "reference": "r",
+        "approval_ref": "a", "approved_by": "b"}
+
+
+@pytest.mark.parametrize("role,method,path,body,allowed", [
+    ("executor", "POST", "/api/instructions", SIGN, False),      # a payer cannot mint approvals
+    ("executor", "POST", "/api/payouts/reconcile", {"payouts": []}, False),
+    ("auditor", "POST", "/api/instructions", SIGN, False),
+    ("auditor", "POST", "/api/verify", {}, False),               # an auditor cannot consume instructions
+    ("signer", "POST", "/api/verify", {}, False),                # the signer cannot pay its own instructions
+    ("signer", "POST", "/api/demo", {}, False),
+    ("signer", "POST", "/api/instructions", SIGN, True),
+    ("auditor", "POST", "/api/payouts/reconcile", {"payouts": []}, True),
+    ("executor", "GET", "/api/status", None, True),
+])
+def test_least_privilege_roles(api, role, method, path, body, allowed):
+    status, out, _ = api(method, path, body, role=role)
+    assert (status != 403) == allowed, out
+
+
+def test_bad_tokens_lock_the_client_out(api):
+    for _ in range(10):
+        assert api("GET", "/api/status", token="wrong")[0] == 401
+    status, body, _ = api("GET", "/api/status")          # even the right token waits out the lockout
+    assert status == 429 and "locked out" in body["error"]
+
+
+def test_every_call_is_audited_and_the_chain_detects_edits(api):
+    from aetherproof.server import verify_audit
+    api("GET", "/api/status")
+    api("POST", "/api/instructions", SIGN, role="signer")
+    api("POST", "/api/verify", {}, role="auditor")
+    path = home() / "audit.jsonl"
+    ok, n, _ = verify_audit(path)
+    assert ok and n == 3
+    lines = path.read_text().splitlines()
+    assert json.loads(lines[1])["ref"].startswith("ins_") and json.loads(lines[2])["status"] == 403
+    lines[1] = lines[1].replace('"status": 200', '"status": 500')
+    path.write_text("\n".join(lines) + "\n")
+    assert verify_audit(path) == (False, 3, 2)
+
+
+def test_status_reports_protections(api):
+    st = api("GET", "/api/status")[1]
+    assert st["key_protection"] in ("dpapi", "file-permissions-only", "passphrase") and st["audit_intact"]
+
+
+def test_key_on_disk_is_encrypted_on_windows(api):
+    import sys
+    pem = (home() / "signing_key.pem").read_text()
+    if sys.platform == "win32":
+        assert "ENCRYPTED" in pem and (home() / "key_passphrase.dpapi").exists()
 
 
 def test_full_flow_over_http(api):
