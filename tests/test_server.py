@@ -84,8 +84,18 @@ def test_least_privilege_roles(api, role, method, path, body, allowed):
 def test_bad_tokens_lock_the_client_out(api):
     for _ in range(10):
         assert api("GET", "/api/status", token="wrong")[0] == 401
-    status, body, _ = api("GET", "/api/status")          # even the right token waits out the lockout
+    status, body, _ = api("GET", "/api/status", token="wrong")   # wrong tokens are refused outright now
     assert status == 429 and "locked out" in body["error"]
+
+
+# Regression: CSO-1 — every local client is 127.0.0.1, so 10 wrong tokens from any local process
+# (another Windows user included) locked the real executor out of the payment gate. Valid tokens
+# (256-bit random) are now always served; only wrong ones are locked out.
+def test_a_lockout_cannot_deny_the_executor_its_gate(api):
+    for _ in range(12):
+        api("GET", "/api/v1/status", token="attacker-guess")
+    assert api("GET", "/api/v1/status", role="executor")[0] == 200
+    assert api("GET", "/api/v1/status", token="attacker-guess")[0] == 429
 
 
 def test_every_call_is_audited_and_the_chain_detects_edits(api):
@@ -214,6 +224,26 @@ def test_out_of_range_payout_amounts_are_400(api, amount):
            "time": 0, "beneficiary_token": "fa"}
     status, out, _ = api("POST", "/api/v1/payouts/reconcile", {"source": "generic", "payouts": [row]})
     assert status == 400 and out["error"]["code"] == "invalid_request"
+
+
+# Regression: CSO-2 — an import path was read whole with no size limit (memory exhaustion)
+@pytest.mark.parametrize("field", ["path", "statement_path"])
+def test_import_size_limit_boundary(api, tmp_path, monkeypatch, field):
+    import aetherproof.server as server
+    limit = 64                                   # small limit so the test needs no large file
+    monkeypatch.setattr(server, "MAX_IMPORT_BYTES", limit)
+    ok = tmp_path / "ok.json"
+    ok.write_text("[]", encoding="utf-8")
+    at_limit = tmp_path / "at.json"
+    at_limit.write_text("[" + " " * (limit - 2) + "]", encoding="utf-8")       # exactly the limit: accepted
+    over = tmp_path / "over.json"
+    over.write_text("[" + " " * (limit - 1) + "]", encoding="utf-8")           # one byte over: refused
+    empty = tmp_path / "empty.json"
+    empty.write_text("", encoding="utf-8")                                     # empty: accepted, no rows
+    call = lambda p: api("POST", "/api/v1/payouts/reconcile", {"source": "generic", "path": str(ok), field: str(p)})
+    assert call(at_limit)[0] == 200 and call(empty)[0] == 200
+    status, out, _ = call(over)
+    assert status == 413 and out["error"]["code"] == "too_large"
 
 
 # Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile

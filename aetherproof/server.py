@@ -65,6 +65,7 @@ PERMS = {
     ("POST", "/api/evidence/verify"): {"admin", "auditor"},
 }
 AUTH_FAIL_LIMIT, AUTH_FAIL_WINDOW_S, LOCKOUT_S = 10, 60.0, 60.0
+MAX_IMPORT_BYTES = 256 * 1024 * 1024           # one payout export or statement file (~2M rows)
 RATE_LIMIT, RATE_WINDOW_S = 600, 60.0          # requests per role per window
 
 
@@ -263,6 +264,10 @@ class Api:
         if source not in MAPPINGS:
             raise ApiError(400, f"unknown source {source!r}", "unknown_source")
         rows = body.get("payouts")
+        for key in ("path", "statement_path"):   # stat before reading: no unbounded file read (CSO-2)
+            p = body.get(key)
+            if isinstance(p, str) and p and os.path.isfile(p) and os.path.getsize(p) > MAX_IMPORT_BYTES:
+                raise ApiError(413, f"{key} file larger than {MAX_IMPORT_BYTES} bytes", "too_large")
         from .core.payouts import load_payouts
         from .core.settlement import entry_from_row, load_statement
         try:
@@ -508,10 +513,12 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
             try:
                 if self.headers.get("Host", "").lower() not in port_hosts:
                     raise ApiError(403, "bad host", "bad_host")
-                if limiter.blocked(client, now):
-                    raise ApiError(429, "too many bad tokens; locked out for a minute", "locked_out")
+                # A valid token is always served: every local client shares 127.0.0.1, so a lockout
+                # applied to valid tokens let any local process deny the executor its gate (CSO-1).
                 role = _role_for(self.headers.get("Authorization", ""), tokens)
                 if not role:
+                    if limiter.blocked(client, now):
+                        raise ApiError(429, "too many bad tokens; locked out for a minute", "locked_out")
                     limiter.fail(client, now)
                     raise ApiError(401, "missing or wrong token")
                 if not limiter.allow(role, now):
