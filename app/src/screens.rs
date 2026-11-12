@@ -300,6 +300,7 @@ pub fn investigation(s: &App) -> El {
             "mismatch" => "Mismatch: the bank debited a different amount from the provider record.",
             "absent" => "Absent: provider says processed, the bank statement has no matching debit.",
             "pending" => "Pending: no debit yet, still inside the settlement grace period.",
+            "returned" => "Returned: the payout was reversed and the bank shows the money credited back.",
             "not_checked" => "Not checked: no bank statement given for this run. Provider status is taken as reported.",
             _ => "Not applicable: no successful payout to settle.",
         }.into()))

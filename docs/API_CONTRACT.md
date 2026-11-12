@@ -24,6 +24,8 @@ constants; a change of meaning is a new contract version.
 | POST | `/payouts/reconcile` | admin, auditor | verify provider records; saves a run |
 | GET | `/runs` | admin, auditor | latest 100 runs (summary) |
 | GET | `/runs/{run_id}` | admin, auditor | one saved run, full report |
+| POST | `/runs/{run_id}/evidence` | admin, auditor | seal the run into a signed evidence package; returns its path and digest |
+| POST | `/evidence/verify` | admin, auditor | `{"path": ...}` or `{"package": {...}}` → `{"ok": bool, "problems": [...]}` |
 | POST | `/checkpoints` | admin, signer | sign the log head (optional `tsa_url`) |
 | GET | `/checkpoints/verify` | admin, auditor | verify every stored checkpoint |
 | POST | `/demo` | admin | seed synthetic DEMO data (labelled) |
@@ -59,8 +61,23 @@ Beneficiary: `beneficiary_token`, or both `ifsc` and `account_number` (digits ke
 ```
 → `{"decision": {"verdict": "allow|reject|review", "instruction_id": "...", "reasons": [...]}}`
 
-`POST /payouts/reconcile`: `{"source": "razorpayx|generic", "payouts": [...]}` or `{"source": ..., "path": "<file>"}`
-→ `{"run_id": "run_...", "replayed": false, "payouts": 6, "report": {"counts": {...}, "results": [...], "at_risk_minor": 0, "verified_minor": 0}}`
+`POST /payouts/reconcile`: `{"source": "razorpayx|generic", "payouts": [...]}` or `{"source": ..., "path": "<file>"}`.
+Optional settlement evidence: `"statement": [...]` or `"statement_path": "<csv|json>"`, and
+`"settlement_grace_minutes": <int ≥ 0>` (default 2880 = 2 days).
+→ `{"run_id": "run_...", "replayed": false, "payouts": 6, "report": {"counts": {...}, "results": [...], "at_risk_minor": 0, "verified_minor": 0, "settlement_source": "bank_statement|none"}}`
+
+Each result carries `verdict`, `kind` (`approval` | `unapproved_event` | `unexplained_debit`), `settlement`
+(`confirmed` | `mismatch` | `absent` | `pending` | `returned` | `not_checked` | `""` when nothing was paid), `reasons`,
+`amount_minor`, `events` (raw provider rows with record hashes) and, for approvals, `instruction`.
+Settlement rules: a successful payout with no matching debit after the grace period → `conflict`;
+a debit of a different amount → `conflict`; no debit yet inside grace → `ambiguous`. A payout reported
+`reversed` whose debit is on the statement needs a return credit of the same amount (by UTR or payout id):
+found → `returned`; absent after grace → `conflict`. Debits only token-match a payout id in the narration
+(whole token, never a substring). Malformed rows → `400 invalid_request`.
+
+Evidence package (`aetherproof.evidence/v1`): `{"format", "run", "digest": sha256(canonical run), "signing_key_id", "signature"}`.
+Verification recomputes the digest and checks the Ed25519 signature against a key the verifier
+already trusts; the package never supplies its own trusted key.
 
 ## Verdicts and decisions
 
@@ -77,11 +94,11 @@ Beneficiary: `beneficiary_token`, or both `ifsc` and `account_number` (digits ke
 ## Idempotency and runs
 
 A reconcile run's id is a SHA-256 over the sorted instruction digests, the sorted raw payout record
-hashes and the source. The same inputs return the stored run with `replayed: true`; a run file is
+hashes, the source, the sorted bank-statement record hashes (or none) and the grace setting. The same inputs return the stored run with `replayed: true`; a run file is
 written atomically. A gate ALLOW is single-use by the replay store's primary key; a repeated request
 gets `reject` with reason `instruction already used (replay)`.
 
 ## Not in v1
 
-Live provider connectors, bank-statement settlement evidence, multi-tenant isolation, KMS/HSM keys,
-evidence-package export. These are planned and will be added as new routes, not by changing these.
+Live provider and bank connectors (statements are file imports), multi-tenant isolation, KMS/HSM keys.
+These are planned and will be added as new routes, not by changing these.

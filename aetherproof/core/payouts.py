@@ -213,6 +213,16 @@ def reconcile_payouts(instructions: Iterable[PaymentInstruction], payouts: Itera
         elif failed:
             res.verdict = MISSING
             res.reasons = [f"payout {', '.join(sorted({p.status for p in failed}))}"]
+            for p in (x for x in failed if x.status == "reversed" and book is not None):
+                state, why = book.reversal(p.payout_id, p.utr, p.amount_minor)
+                if state:
+                    res.settlement = state
+                if why:
+                    res.reasons.append(why)
+                if state == "absent":
+                    res.verdict = CONFLICT
+                elif state == "pending":
+                    res.verdict = AMBIGUOUS
         elif as_of <= ins.not_after_ms:
             res.verdict = AMBIGUOUS
             res.reasons = ["no payout yet; instruction still valid"]

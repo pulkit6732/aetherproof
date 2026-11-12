@@ -8,8 +8,12 @@ Attacks follow documented incidents:
   A2 beneficiary swap        A3 amount inflation      A4 double disbursal
   A5 valid instruction id reused on an extra payout   A6 instruction forged with the attacker's key
   A7 one approval split into several payouts           A8 stale approval paid after its window
-Not covered (no bank-statement source yet): a forged "processed" status from the provider
-itself, as in the 2022 Razorpay authorisation-manipulation case; reported as a known gap.
+Settlement pass (bank statement as an independent source):
+  A9 forged "processed" status with no bank debit (2022 Razorpay authorisation-manipulation
+     pattern): invisible to provider records alone, caught against the statement
+  A10 debits on the bank statement that no payout explains (skimming outside the payout rail)
+  Statement noise: bank posting delay up to a day, 30% of debits with no UTR (matched by the
+  payout id in the narration), reversals posted as debit + matching credit.
 usage: python attack_lab.py [n_instructions]
 """
 
@@ -42,8 +46,9 @@ def ins(i, signer=lender, amount=None):
 
 
 def rec(ref, amount, fa, status="processed", at=None, payout_id=None):
-    return PayoutRecord(payout_id=payout_id or f"pout_{next(pid):09d}", reference=ref, amount_minor=amount,
-                        currency="INR", status=status, time_ms=at, beneficiary_token=fa)
+    payout_id = payout_id or f"pout_{next(pid):09d}"
+    return PayoutRecord(payout_id=payout_id, reference=ref, amount_minor=amount, currency="INR", status=status,
+                        time_ms=at, beneficiary_token=fa, utr=f"UTR{payout_id}")
 
 
 t = time.perf_counter()
@@ -55,7 +60,7 @@ ids = list(range(N))
 rng.shuffle(ids)
 cut = iter(ids)
 take = lambda n: [next(cut) for _ in range(n)]
-plan = {"A2": take(500), "A3": take(500), "A4": take(500), "A5": take(500), "A7": take(300), "A8": take(300),
+plan = {"A2": take(500), "A3": take(500), "A4": take(500), "A5": take(500), "A7": take(300), "A8": take(300), "A9": take(500),
         "queued": take(N // 100), "failed": take(N // 100), "reversed": take(N // 200)}
 special = {i: k for k, v in plan.items() for i in v}
 
@@ -125,6 +130,44 @@ a1_hit = sum(1 for r in a1 if r.payout_id in flagged_payouts)
 a1_micro = sum(1 for r in a1[:500] if r.payout_id in flagged_payouts)
 a6_hit = sum(1 for f in forged if got.get(f.instruction_id) == "conflict")
 a6_pay = sum(1 for r in a6 if r.payout_id in flagged_payouts)
+a9_ids = {instructions[i].instruction_id for i in plan["A9"]}
+a9_clean_without_statement = sum(1 for iid in a9_ids if got.get(iid) == "matched")
+by_kind.pop("A9", None)   # provider records alone cannot catch A9; reported separately, not as a "pass"
+
+# ---------------------------------------------------------------- settlement pass (bank statement)
+from aetherproof.core.payouts import SUCCESS
+from aetherproof.core.settlement import BankEntry
+
+latest = {}
+for r in records:
+    if r.payout_id not in latest or r.time_ms >= latest[r.payout_id].time_ms:
+        latest[r.payout_id] = r
+statement = []
+for r in latest.values():
+    if r.reference in a9_ids:
+        continue                                     # A9: provider says processed, money never left
+    if r.status in SUCCESS or r.status == "reversed":
+        no_utr = rng.random() < 0.30                 # bank omits the UTR; narration quotes the payout id
+        statement.append(BankEntry(f"d_{r.payout_id}", "" if no_utr else r.utr, r.amount_minor, "INR", "debit",
+                                   r.time_ms + rng.randrange(5_000, 86_400_000), f"IMPS/{r.payout_id}/NBFC"))
+        if r.status == "reversed":                   # reversal: the debit comes back as a credit
+            statement.append(BankEntry(f"c_{r.payout_id}", r.utr, r.amount_minor, "INR", "credit", r.time_ms + 3_700_000))
+a10 = [BankEntry(f"skim_{j}", f"UTRX{j}", rng.randrange(100_000, 5_000_000, 100), "INR", "debit", T0 + j * 7_001, "NEFT/VENDOR")
+       for j in range(200)]
+statement += a10
+rng.shuffle(statement)
+t = time.perf_counter()
+rep2 = reconcile_payouts(instructions + forged, records, lender.get_public_key(), as_of_ms=T0 + N * 50 + 3 * 86_400_000,
+                         statement=statement)
+t_rec2 = time.perf_counter() - t
+got2 = {r.action_id: r for r in rep2.results if r.kind == "approval"}
+false_alarms2 = sum(1 for iid, k in kind.items() if k == "benign" and (got2[iid].verdict != "matched" or got2[iid].settlement != "confirmed"))
+attacks_still_caught = sum(1 for iid, want in expect.items() if kind[iid] not in ("benign", "A9") and got2[iid].verdict == want)
+attacks_total = sum(1 for iid in expect if kind[iid] not in ("benign", "A9"))
+a9_caught = sum(1 for iid in a9_ids if got2[iid].verdict == "conflict" and got2[iid].settlement == "absent")
+unexplained = {e for r in rep2.results if r.kind == "unexplained_debit" for e in r.event_ids}
+a10_caught = sum(1 for e in a10 if e.entry_id in unexplained)
+unexplained_false = len(unexplained) - a10_caught
 
 # ---------------------------------------------------------------- gate under load
 gate_n = 20_000 if N >= 20_000 else N
@@ -176,12 +219,22 @@ out = {
     "false_alarm_rate_benign": f"{false_alarms}/{benign_total} = {false_alarms / benign_total:.5%}",
     "A1_direct_payouts_flagged": f"{a1_hit}/2000 (Rs 1 test transfers {a1_micro}/500)",
     "A6_forged_instructions": f"{a6_hit}/300 rejected, {a6_pay}/300 payouts flagged",
+    "A9_without_statement": f"{a9_clean_without_statement}/500 look MATCHED from provider records alone (the gap)",
+    "settlement_pass": {
+        "statement_entries": len(statement), "reconcile_s": round(t_rec2, 2),
+        "A9_forged_processed_caught": f"{a9_caught}/500",
+        "A10_unexplained_debits_caught": f"{a10_caught}/200",
+        "benign_false_alarms": f"{false_alarms2}/{benign_total}",
+        "unexplained_debit_false_alarms": unexplained_false,
+        "earlier_attacks_still_correct": f"{attacks_still_caught}/{attacks_total}",
+    },
     "gate_latency_ms": {"p50": round(lat[len(lat) // 2], 3), "p99": round(lat[int(len(lat) * 0.99)], 3), "max": round(lat[-1], 3), "n": gate_n},
     "gate_attacks_rejected": {k: f"{sum(not d.allowed for d in v)}/{len(v)}" for k, v in attacks.items()},
     "race_8_executors": f"{sum(1 for c in wins.values() if c == 1)}/{len(race)} paid exactly once, {sum(1 for c in wins.values() if c > 1)} paid twice, {t_race:.2f}s",
 }
 print(json.dumps(out, indent=2))
 ok = (false_alarms == 0 and all(v[0] == v[1] for v in by_kind.values()) and a1_hit == 2000 and a6_hit == 300
-      and all(all(not d.allowed for d in v) for v in attacks.values()) and all(c == 1 for c in wins.values()) and len(wins) == len(race))
+      and all(all(not d.allowed for d in v) for v in attacks.values()) and all(c == 1 for c in wins.values()) and len(wins) == len(race)
+      and a9_caught == 500 and a10_caught == 200 and false_alarms2 == 0 and unexplained_false == 0 and attacks_still_caught == attacks_total)
 print("PASS" if ok else "FAIL")
 sys.exit(0 if ok else 1)

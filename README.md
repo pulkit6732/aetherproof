@@ -13,7 +13,9 @@ API credential can still call a payout API. It cannot mint a valid instruction.
 |---|---|---|
 | **Signed instructions** | Originator signs amount, currency, beneficiary, validity | [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) |
 | **Payment gate** | Executor verifies before paying; each instruction pays once | same |
-| **Payout verification** | Provider records (RazorpayX, generic CSV/JSON) vs instructions: matched / conflict / missing / pending; payouts with no instruction flagged | same |
+| **Payout verification** | Provider records (RazorpayX, generic CSV/JSON) vs instructions: matched / conflict / missing / pending; payouts with no instruction flagged | [USER_GUIDE.md](docs/USER_GUIDE.md) |
+| **Settlement evidence** | Bank statement vs provider status: a "processed" payout the bank never debited is a conflict | same |
+| **Evidence packages** | A run sealed and signed; an auditor checks it offline with your public key | same |
 | **Action reconciliation** | AI-agent and cloud actions vs AWS CloudTrail | [RECONCILIATION.md](docs/RECONCILIATION.md) |
 | **Evidence** | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](docs/RECONCILIATION.md) |
 | **Receipts** | The original SDK: signed, offline-verifiable receipts for AI output | below |
@@ -28,20 +30,24 @@ aetherproof instruction sign --amount 48500.00 --currency INR --beneficiary-toke
     --reference LN-1041 --approval-ref SAN-7701 --approved-by credit-ops
 aetherproof instruction verify ~/.aetherproof/instructions/<id>.json \
     --amount 48500.00 --currency INR --beneficiary-token fa_123      # exit 0 = allow, 1 = reject
-aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions --source razorpayx
+aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions --source razorpayx \
+    --statement statement.csv                                         # bank debits confirm settlement
+aetherproof evidence verify run.evidence.json --pubkey signing_key.pub  # auditor's offline tamper check
 aetherproof serve                                                     # local API for the desktop app
 ```
 
 **Desktop app** (`app/`, built with [Rune](https://github.com/anomalyco/rune)): Overview,
-Instructions, Payment gate, Payouts and Evidence screens over the local API. Run
+Instructions, Payment gate, Payouts, Transaction investigation, Evidence, Integrations and
+Settings & security, over the local API. Run
 `aetherproof serve`, then `cargo run --release` in `app/` (Rune checkout at
 `../vendor/rune`, rev `ba5e7c80`). Every screen renders headless for review:
 `aetherproof-app --scene payouts --snap payouts.png`.
 
 ![Payouts screen](app/snaps/payouts.png)
 
-> **Not a developer?** Start with the [plain-language guide](docs/GETTING-STARTED.md)
-> - first receipt in three steps, no code.
+> **Running payouts?** Start with the [user guide](docs/USER_GUIDE.md): install, the
+> three-minute demo, daily workflow, file formats, and how an auditor checks your evidence.
+> For AI-output receipts, see the [plain-language guide](docs/GETTING-STARTED.md).
 
 ---
 

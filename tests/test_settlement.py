@@ -54,6 +54,12 @@ def test_bank_debit_confirms_by_payout_id_in_narration():
     assert r.settlement == "confirmed"
 
 
+def test_narration_match_is_whole_token_not_substring():
+    # "p1" must not claim the debit whose narration names "p12"
+    r = approval(run([ins()], [pay("p1", "ins_000001", utr="")], [debit("b1", utr="", narration="IMPS/p12/LN-9")]))
+    assert r.settlement == "absent"
+
+
 def test_forged_processed_status_with_no_bank_debit_is_a_conflict():
     # the Razorpay 2022 pattern: the provider record says success, the money never moved
     r = approval(run([ins()], [pay("p1", "ins_000001")], []))
@@ -74,6 +80,29 @@ def test_debit_that_no_payout_explains_is_flagged():
     rep = run([ins()], [pay("p1", "ins_000001")], [debit("b1"), debit("b9", amount=990_000, utr="UTR9")])
     extra = [r for r in rep.results if r.kind == "unexplained_debit"]
     assert len(extra) == 1 and extra[0].event_ids == ["b9"] and extra[0].verdict == CONFLICT
+
+
+def test_reversed_payout_debit_returned_by_credit_is_not_unexplained():
+    back = entry_from_row({"entry_id": "c1", "utr": "UTR9", "amount_minor": 990_000, "currency": "INR", "direction": "credit", "time": T0})
+    rep = run([ins()], [pay("p1", "ins_000001")], [debit("b1"), debit("b9", amount=990_000, utr="UTR9"), back])
+    assert [r for r in rep.results if r.kind == "unexplained_debit"] == []
+    partial = entry_from_row({"entry_id": "c2", "utr": "UTR9", "amount_minor": 100, "currency": "INR", "direction": "credit", "time": T0})
+    rep = run([ins()], [pay("p1", "ins_000001")], [debit("b1"), debit("b9", amount=990_000, utr="UTR9"), partial])
+    assert len([r for r in rep.results if r.kind == "unexplained_debit"]) == 1   # a partial refund does not explain it
+
+
+def test_reversal_without_utr_on_the_debit_pairs_with_its_credit():
+    back = entry_from_row({"entry_id": "c1", "utr": "UTR1", "amount_minor": 4_850_000, "currency": "INR", "direction": "credit", "time": T0})
+    rep = run([ins()], [pay("p1", "ins_000001", status="reversed")], [debit("b1", utr="", narration="IMPS/p1/X"), back])
+    r = approval(rep)
+    assert r.verdict == "missing" and r.settlement == "returned"
+    assert [x for x in rep.results if x.kind == "unexplained_debit"] == []
+
+
+def test_reversal_claimed_but_money_never_returned_is_a_conflict():
+    rep = run([ins()], [pay("p1", "ins_000001", status="reversed")], [debit("b1")])
+    r = approval(rep)
+    assert r.verdict == CONFLICT and r.settlement == "absent" and "no return credit" in r.reasons[-1]
 
 
 def test_one_debit_cannot_settle_two_payouts():
