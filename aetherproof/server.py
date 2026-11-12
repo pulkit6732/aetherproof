@@ -267,6 +267,31 @@ class Api:
                                  else authorised.get(r["action_id"], 0))
         report["at_risk_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "conflict")
         report["verified_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "matched")
+        # Investigation detail: the signed instruction and every raw provider row behind each
+        # verdict (duplicates and status changes included, in time order), with their hashes.
+        by_id = {i.instruction_id: i for i in instructions}
+        rows_by_ref: Dict[str, list] = {}
+        for rec in records:
+            rows_by_ref.setdefault(rec.reference, []).append(rec)
+        for r in report["results"]:
+            ins = by_id.get(r["action_id"]) if r["kind"] == "approval" else None
+            rows = rows_by_ref.get(r["action_id"], []) if ins else [x for x in records if x.payout_id in r["event_ids"]]
+            r["events"] = [{"payout_id": x.payout_id, "status": x.status, "amount_minor": x.amount_minor,
+                            "currency": x.currency, "beneficiary": x.beneficiary_token or (x.ifsc and "bank account"),
+                            "time_ms": x.time_ms, "utr": x.utr, "record_hash": x.record_hash}
+                           for x in sorted(rows, key=lambda x: x.time_ms)]
+            if ins:
+                ben = ins.beneficiary
+                r["instruction"] = {
+                    "instruction_id": ins.instruction_id, "amount_minor": ins.amount_minor, "currency": ins.currency,
+                    "beneficiary": ben.get("value") if ben.get("kind") == "token" else f"bank account (salted digest {ben['digest'][:12]}…)",
+                    "purpose": ins.purpose, "reference": ins.reference, "approval_ref": ins.approval_ref,
+                    "approved_by": ins.approved_by, "policy": ins.policy, "originator": ins.originator,
+                    "not_before_ms": ins.not_before_ms, "not_after_ms": ins.not_after_ms,
+                    "signing_key_id": ins.signing_key_id, "digest": ins.digest(),
+                    "signature_valid": not any("not signed by a trusted" in x for x in r["reasons"]),
+                }
+        report["demo"] = bool(instructions) and all(i.originator == "demo-lender" for i in instructions)
         # Persist the run. The id is a digest of exactly what was compared, so re-running the
         # same inputs returns the same stored run instead of a second, divergent one.
         fingerprint = hashlib.sha256(json.dumps(
