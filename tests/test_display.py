@@ -8,7 +8,6 @@ These also pin the stdout/stderr split: the banner is chrome and belongs on
 stderr so that machine-readable output stays pipeable.
 """
 
-import io
 
 import pytest
 from rich.progress import Progress

@@ -9,7 +9,6 @@ properties that must hold:
 - canonicalization is key-order independent (semantically-equal => same hash)
 """
 
-import pytest
 
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer

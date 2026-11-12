@@ -11,7 +11,6 @@ receipt is bad but crashing over one is worse. AETHERPROOF_STRICT=1 inverts that
 for environments where a missing receipt IS the failure.
 """
 
-import os
 
 import pytest
 

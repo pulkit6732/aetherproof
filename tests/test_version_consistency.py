@@ -7,7 +7,6 @@ invisible until it is published, which is the worst time to find it.
 """
 
 import re
-import sys
 
 import pytest
 from pathlib import Path

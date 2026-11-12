@@ -17,7 +17,6 @@ Run: python tests/stress/isolation_audit.py
 """
 
 import gc
-import json
 import os
 import shutil
 import sqlite3
@@ -34,7 +33,7 @@ from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer, Verifier
 from aetherproof.core.verifier import verify_receipt
 from aetherproof.core.log import ReceiptLog
-from aetherproof.core.keystore import load_or_create_signer, issue_receipt
+from aetherproof.core.keystore import load_or_create_signer
 from aetherproof.core.hash import sha256, compute_merkle_root
 
 ROWS = []

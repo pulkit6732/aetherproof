@@ -1,9 +1,7 @@
 """Tests for the verification invariant: Verify(receipt, pk, log) = TRUE forever."""
 
-import pytest
-from datetime import datetime
 from aetherproof.core.receipt import Receipt
-from aetherproof.core.signer import Signer, Verifier
+from aetherproof.core.signer import Signer
 from aetherproof.core.verifier import (
     verify_receipt,
     verify_output_unmodified,

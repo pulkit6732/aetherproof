@@ -16,7 +16,6 @@ _evaluate had no tests, so nothing stopped those four collapsing into each other
 
 import json
 import sqlite3
-from pathlib import Path
 
 import pytest
 

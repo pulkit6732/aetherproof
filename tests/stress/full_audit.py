@@ -16,7 +16,6 @@ Battery:
 import concurrent.futures as cf
 import json
 import multiprocessing as mp
-import os
 import sqlite3
 import sys
 import tempfile
@@ -29,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer
 from aetherproof.core.verifier import verify_receipt
-from aetherproof.core.log import ReceiptLog, GENESIS
+from aetherproof.core.log import ReceiptLog
 from aetherproof.core.keystore import load_or_create_signer, issue_receipt
 from aetherproof.core.hash import sha256, compute_merkle_root, compute_model_weight_root
 
@@ -274,7 +273,7 @@ def d_input_suite():
                     input_commitment=sha256("emoji"))
         r.signature = s.sign(r.signing_bytes())
         ok = verify_receipt(r, s.get_public_key())
-    except Exception as e:
+    except Exception:
         ok = False
     record("D", "d1 unicode / NUL in hashed content round-trips", ok)
 
@@ -294,7 +293,7 @@ def d_input_suite():
 
     big = "x" * 5_000_000
     t0 = time.perf_counter()
-    h = sha256(big)
+    sha256(big)
     record("D", f"d4 5 MB output hashes in {(time.perf_counter() - t0) * 1000:.0f} ms", True)
 
     r = mkreceipt(s)

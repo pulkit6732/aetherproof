@@ -13,13 +13,10 @@ command calls, and it is the exact function an external auditor would use.
 
 import json
 import os
-import stat
-import sqlite3
 from pathlib import Path
 
 import pytest
 
-from aetherproof.core import hash as h
 from aetherproof.core.hash import (
     sha256, sha256_file, hash_input, hash_output, merkle_hash, merkle_leaf,
     merkle_node, compute_merkle_root, compute_model_weight_root,

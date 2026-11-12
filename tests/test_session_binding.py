@@ -9,7 +9,6 @@ is exactly what the causal-context extension was proposed for and what
 issue_receipt never actually filled in.
 """
 
-import json
 
 import pytest
 

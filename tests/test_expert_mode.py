@@ -10,11 +10,9 @@ tamper had NO tests of any kind before this file.
 """
 
 import json
-from pathlib import Path
 
 import pytest
 
-from aetherproof.core.log import ReceiptLog
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer
 from aetherproof.ui import expert_mode as em

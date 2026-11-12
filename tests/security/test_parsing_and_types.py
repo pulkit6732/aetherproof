@@ -7,7 +7,6 @@ one path and unequal in another - a type-confusion footgun. Also, unknown keys
 in a (possibly newer / attacker-supplied) receipt should be ignored, not crash.
 """
 
-import json
 
 from aetherproof.core.receipt import Receipt
 

@@ -14,8 +14,6 @@ questionary needs a real terminal, so the prompts are stubbed; everything behind
 them is exercised for real.
 """
 
-import json
-from pathlib import Path
 
 import pytest
 

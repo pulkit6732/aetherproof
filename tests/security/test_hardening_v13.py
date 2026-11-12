@@ -18,9 +18,6 @@ Plus the exhaustive byte-flip tamper probe the shipped tree never had (the old
 tamper_detect flipped a single hex digit of a single field).
 """
 
-import json
-import hashlib
-from pathlib import Path
 
 import pytest
 

@@ -1,10 +1,8 @@
 """Offline receipt verification - the core invariant."""
 
 from typing import Optional, Dict, Any
-from pathlib import Path
 from .receipt import Receipt
 from .signer import Verifier
-from .hash import sha256
 
 
 def verify_receipt(

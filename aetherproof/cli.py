@@ -16,7 +16,6 @@ from .ui.easy_mode import (
     _save_last_pubkey,
 )
 from .ui.expert_mode import run_expert_mode
-from .core.log import ReceiptLog
 from .core.keystore import home, default_log, load_or_create_signer
 
 

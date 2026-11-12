@@ -5,7 +5,10 @@ import hashlib
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import TYPE_CHECKING, List, Optional, Dict, Any
+
+if TYPE_CHECKING:   # annotation only; a runtime import would be circular
+    from .receipt import Receipt
 
 GENESIS = "0" * 64  # prev_hash of the first entry
 SCHEMA_VERSION = 2  # 1 = pre-chain, 2 = hash-chained over the full receipt body

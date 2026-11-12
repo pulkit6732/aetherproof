@@ -1,7 +1,5 @@
 """Tests for Receipt dataclass."""
 
-import pytest
-from datetime import datetime
 from aetherproof.core.receipt import Receipt
 
 

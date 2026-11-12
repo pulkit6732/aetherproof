@@ -7,10 +7,13 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.text import Text
-from typing import Dict, Any
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from aetherproof import __version__
+
+if TYPE_CHECKING:   # annotation only
+    from aetherproof.core.receipt import Receipt
 
 _V = f"v{__version__}"  # single source of truth - never hardcode the version
 
