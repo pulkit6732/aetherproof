@@ -1,7 +1,6 @@
 """CLI: instruction sign -> instruction verify (executor gate) -> payouts reconcile."""
 
 import json
-from datetime import datetime, timezone
 
 import pytest
 
@@ -46,6 +45,13 @@ def test_executor_rejects_changed_amount(capsys):
     ins = sign(capsys)
     ok, d = verify(capsys, ins["instruction_id"], "--amount", "48500.01", "--currency", "INR", "--beneficiary-token", "fa_1")
     assert ok is False and "amount" in d["reasons"][0]
+
+
+@pytest.mark.parametrize("amount", ["NaN", "sNaN", "Infinity", "-1", "0", "1.234"])
+def test_cli_amount_parser_refuses_non_finite_and_invalid(amount):
+    from aetherproof.ui.expert_mode import _minor_units
+    with pytest.raises(ValueError, match="--amount"):
+        _minor_units(amount)
 
 
 def test_signing_is_logged_for_checkpoints(capsys):

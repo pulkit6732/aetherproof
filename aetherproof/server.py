@@ -179,7 +179,7 @@ def _save(path: Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write(path, data)
     except OSError as e:
-        raise ApiError(500, f"cannot write {path.name}: {e.strerror or type(e).__name__}", "internal")
+        raise ApiError(500, f"cannot write {path.name}: {e.strerror or type(e).__name__}", "internal") from e
 
 
 def _minor(amount: Any) -> int:
@@ -187,7 +187,7 @@ def _minor(amount: Any) -> int:
     try:
         d = Decimal(str(amount))
     except InvalidOperation:
-        raise ApiError(400, "amount is not a number", "invalid_amount")
+        raise ApiError(400, "amount is not a number", "invalid_amount") from None
     if not d.is_finite() or d <= 0 or d.as_tuple().exponent < -2:   # NaN/Infinity crashed the compare (QA I6/I7/I9)
         raise ApiError(400, "amount must be positive with at most 2 decimals", "invalid_amount")
     if d * 100 > MAX_AMOUNT_MINOR:
@@ -248,14 +248,14 @@ class Api:
                 approved_by=body["approved_by"], policy=body.get("policy") or "default",
                 validity_ms=int(float(body.get("valid_minutes") or 15) * 60_000))
         except (ValueError, OverflowError) as e:   # valid_minutes "inf" overflowed int() (QA I23)
-            raise ApiError(400, str(e))
+            raise ApiError(400, str(e)) from e
         _save(_instructions_dir() / f"{ins.instruction_id}.json", ins.to_json().encode("utf-8"))
         try:
             issue_receipt(self.signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
                           output_hash=ins.digest(), extensions={INSTRUCTION_NS: {"instruction_id": ins.instruction_id,
                                                                                 "digest": ins.digest()}})
         except OSError as e:   # the instruction is saved; only its log receipt failed (issue_receipt rolls its files back)
-            raise ApiError(500, f"instruction saved, but its log receipt could not be written: {e.strerror or type(e).__name__}", "internal")
+            raise ApiError(500, f"instruction saved, but its log receipt could not be written: {e.strerror or type(e).__name__}", "internal") from e
         return {"instruction": json.loads(ins.to_json())}
 
     def verify(self, body):
@@ -289,7 +289,7 @@ class Api:
                 try:
                     records = load_payouts(body["path"], source)
                 except OSError as e:
-                    raise ApiError(400, f"cannot read payouts file: {e}", "unreadable_input")
+                    raise ApiError(400, f"cannot read payouts file: {e}", "unreadable_input") from e
             elif isinstance(rows, list):
                 records = [payout_from_row(r, MAPPINGS[source]) for r in rows]
             else:
@@ -302,9 +302,9 @@ class Api:
                 try:
                     statement = load_statement(body["statement_path"])
                 except OSError as e:
-                    raise ApiError(400, f"cannot read bank statement: {e}", "unreadable_input")
+                    raise ApiError(400, f"cannot read bank statement: {e}", "unreadable_input") from e
         except (ValueError, TypeError, AttributeError) as e:  # malformed customer rows are a 400, not a crash
-            raise ApiError(400, f"invalid input: {e}", "invalid_request")
+            raise ApiError(400, f"invalid input: {e}", "invalid_request") from e
         grace = body.get("settlement_grace_minutes")
         if grace is not None and (isinstance(grace, bool) or not isinstance(grace, int) or grace < 0):
             raise ApiError(400, "settlement_grace_minutes must be a non-negative integer")
@@ -384,9 +384,9 @@ class Api:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
-            raise ApiError(404, "unknown run", "unknown_run")
+            raise ApiError(404, "unknown run", "unknown_run") from None
         except (OSError, ValueError):
-            raise ApiError(400, "stored run is unreadable; re-run the reconciliation", "unreadable_input")
+            raise ApiError(400, "stored run is unreadable; re-run the reconciliation", "unreadable_input") from None
 
     def export_evidence(self, run_id: str):
         """Seal a stored run into a signed evidence package a third party can verify offline."""
@@ -404,7 +404,7 @@ class Api:
             try:
                 pkg = load_package(body["path"])
             except OSError as e:
-                raise ApiError(400, f"cannot read evidence package: {e}", "unreadable_input")
+                raise ApiError(400, f"cannot read evidence package: {e}", "unreadable_input") from e
             except ValueError:
                 return {"ok": False, "problems": ["evidence package is not valid JSON"]}
         if pkg is None:
@@ -416,7 +416,7 @@ class Api:
         try:
             cp = create_checkpoint(default_log(), self.signer, tsa_url=body.get("tsa_url", ""))
         except ValueError as e:
-            raise ApiError(400, str(e))
+            raise ApiError(400, str(e)) from e
         d = home() / "checkpoints"
         d.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -555,7 +555,7 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                     try:
                         body = json.loads(self.rfile.read(n) or b"{}")
                     except ValueError:
-                        raise ApiError(400, "body is not JSON")
+                        raise ApiError(400, "body is not JSON") from None
                     if not isinstance(body, dict):
                         raise ApiError(400, "body must be a JSON object")
                     ref = str(body.get("instruction_id", ""))[:64]

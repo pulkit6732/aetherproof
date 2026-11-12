@@ -652,8 +652,8 @@ def _minor_units(amount: str) -> int:
     try:
         d = Decimal(amount)
     except InvalidOperation:
-        raise ValueError(f"--amount {amount!r} is not a number")
-    if d <= 0 or d.as_tuple().exponent < -2:
+        raise ValueError(f"--amount {amount!r} is not a number") from None
+    if not d.is_finite() or d <= 0 or d.as_tuple().exponent < -2:   # NaN made the compare raise
         raise ValueError("--amount must be positive with at most 2 decimals")
     return int(d * 100)
 
