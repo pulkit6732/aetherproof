@@ -141,3 +141,11 @@ def test_statement_files_csv_and_json(tmp_path):
     empty = tmp_path / "e.csv"
     empty.write_text("", encoding="utf-8")
     assert load_statement(empty) == []
+
+
+@pytest.mark.parametrize("content", ["[1, 2]", '"text"', '{"entries": [null]}', '{"entries": 5}'])
+def test_statement_file_that_is_not_entry_objects_is_a_clear_error(tmp_path, content):
+    f = tmp_path / "bad.json"
+    f.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError, match="list of entry objects"):
+        load_statement(f)

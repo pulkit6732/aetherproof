@@ -71,6 +71,8 @@ def load_statement(path) -> List[BankEntry]:
     rows = list(csv.DictReader(text.splitlines())) if p.suffix.lower() == ".csv" else json.loads(text)
     if isinstance(rows, dict):
         rows = rows.get("entries", [])
+    if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+        raise ValueError(f"{p.name}: a bank statement is a list of entry objects (or {{\"entries\": [...]}})")
     return [entry_from_row(r) for r in rows]
 
 
