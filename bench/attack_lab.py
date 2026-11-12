@@ -19,7 +19,6 @@ usage: python attack_lab.py [n_instructions]
 
 import json
 import random
-import statistics
 import sys
 import tempfile
 import threading

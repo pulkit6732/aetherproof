@@ -12,12 +12,10 @@ from rich.table import Table
 from .display import console, err_console, header
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer, Verifier
-from aetherproof.core.log import ReceiptLog
 from aetherproof.core.keystore import (load_or_create_signer, issue_receipt,
                                        default_log)
 from aetherproof.core.verifier import (
     verify_receipt,
-    verify_receipt_file,
     verify_output_unmodified,
     tamper_detect,
 )

@@ -28,7 +28,7 @@ def main() -> None:
     for i in range(3):
         lines.append(f"leaf {h(i)} {merkle_leaf(h(i))}")
     lines.append(f"node {h(0)} {h(1)} {merkle_node(h(0), h(1))}")
-    lines.append(f"root - -")
+    lines.append("root - -")
     for n in (1, 2, 3, 4, 5, 7, 8, 9, 16, 17):
         leaves = [h(i) for i in range(n)]
         lines.append(f"root {','.join(leaves)} {compute_merkle_root(leaves)}")

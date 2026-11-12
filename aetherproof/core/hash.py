@@ -1,9 +1,8 @@
 """Hashing utilities: SHA-256 for inputs, outputs, and Merkle trees for model weights."""
 
 import hashlib
-import os
 from pathlib import Path
-from typing import Union, List, Tuple
+from typing import Union, List
 
 
 def sha256(data: Union[str, bytes]) -> str:

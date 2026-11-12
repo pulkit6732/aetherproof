@@ -19,7 +19,6 @@ import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
-from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, Tuple
