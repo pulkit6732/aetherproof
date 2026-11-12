@@ -30,8 +30,9 @@ from typing import Any, Dict, List, Optional
 
 from .receipt import Receipt
 
+from ..contract import ALLOW, REJECT, REVIEW  # noqa: F401  (re-exported for callers)
+
 INSTRUCTION_TYPE = "aetherproof.instruction/v0"
-ALLOW, REJECT = "allow", "reject"
 # instruction_id travels as the payout provider's reference (RazorpayX reference_id
 # is at most 40 characters), so the outcome can be tied back to its instruction
 MAX_ID_LEN = 40
@@ -264,6 +265,13 @@ def verify_instruction(ins: PaymentInstruction, request: PayoutRequest, public_k
     if request.reference and request.reference != ins.instruction_id:
         reasons.append("payout reference does not carry this instruction id")
 
-    if not reasons and replay is not None and not replay.consume(ins.instruction_id, request.digest()):
-        reasons.append("instruction already used (replay)")
-    return Decision(REJECT if reasons else ALLOW, ins.instruction_id, reasons)
+    if reasons:
+        return Decision(REJECT, ins.instruction_id, reasons)
+    if not request.reference:
+        # Valid in every hard check, but the payout would not carry the instruction id, so
+        # the outcome could never be tied back. A person decides; nothing is consumed.
+        return Decision(REVIEW, ins.instruction_id,
+                        ["payout reference not set: outcome cannot be matched to this instruction"])
+    if replay is not None and not replay.consume(ins.instruction_id, request.digest()):
+        return Decision(REJECT, ins.instruction_id, ["instruction already used (replay)"])
+    return Decision(ALLOW, ins.instruction_id, [])

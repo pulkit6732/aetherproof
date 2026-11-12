@@ -36,7 +36,7 @@ from .receipt import Receipt
 
 ACTION_NS = "org.aetherproof.action/v1"
 
-MATCHED, CONFLICT, MISSING, AMBIGUOUS = "matched", "conflict", "missing", "ambiguous"
+from ..contract import AMBIGUOUS, CONFLICT, MATCHED, MISSING  # noqa: E402  single definition
 
 DEFAULT_WINDOW_MS = 15 * 60 * 1000
 

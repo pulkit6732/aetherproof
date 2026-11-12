@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Tuple
 
 from . import __version__
+from .contract import CONTRACT_VERSION, ERRORS
 from .core.anchor import Checkpoint, create_checkpoint, verify_checkpoint
 from .core.instruction import (PaymentInstruction, PayoutRequest, ReplayStore, bank_beneficiary,
                                sign_instruction, token_beneficiary, verify_instruction)
@@ -36,10 +37,16 @@ MAX_BODY = 1 << 20
 INSTRUCTION_NS = "org.aetherproof.instruction/v0"
 
 
+_DEFAULT_CODE = {400: "invalid_request", 401: "unauthenticated", 403: "forbidden", 404: "not_found",
+                 413: "too_large", 429: "rate_limited", 500: "internal"}
+
+
 class ApiError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, code: str = ""):
         super().__init__(message)
         self.status = status
+        self.code = code or _DEFAULT_CODE[status]
+        assert self.code in ERRORS, self.code
 
 
 # Least privilege: an executor's token can only check payments, an auditor's can only
@@ -54,6 +61,7 @@ PERMS = {
     ("POST", "/api/checkpoints"): {"admin", "signer"},
     ("GET", "/api/checkpoints/verify"): {"admin", "auditor"},
     ("POST", "/api/demo"): {"admin"},
+    ("GET", "/api/runs"): {"admin", "auditor"},
 }
 AUTH_FAIL_LIMIT, AUTH_FAIL_WINDOW_S, LOCKOUT_S = 10, 60.0, 60.0
 RATE_LIMIT, RATE_WINDOW_S = 600, 60.0          # requests per role per window
@@ -143,6 +151,10 @@ def _instructions_dir() -> Path:
     return home() / "instructions"
 
 
+def _runs_dir() -> Path:
+    return home() / "runs"
+
+
 def _load_instructions():
     d = _instructions_dir()
     return [PaymentInstruction.from_json(p.read_text(encoding="utf-8")) for p in sorted(d.glob("*.json"))] if d.exists() else []
@@ -153,22 +165,22 @@ def _minor(amount: Any) -> int:
     try:
         d = Decimal(str(amount))
     except InvalidOperation:
-        raise ApiError(400, "amount is not a number")
+        raise ApiError(400, "amount is not a number", "invalid_amount")
     if d <= 0 or d.as_tuple().exponent < -2:
-        raise ApiError(400, "amount must be positive with at most 2 decimals")
+        raise ApiError(400, "amount must be positive with at most 2 decimals", "invalid_amount")
     return int(d * 100)
 
 
 def _need(body: Dict, *names: str):
     missing = [n for n in names if not str(body.get(n, "")).strip()]
     if missing:
-        raise ApiError(400, f"missing: {', '.join(missing)}")
+        raise ApiError(400, f"missing: {', '.join(missing)}", "missing_field")
 
 
 def _beneficiary(body: Dict):
     token, ifsc, account = body.get("beneficiary_token", ""), body.get("ifsc", ""), body.get("account_number", "")
     if bool(token) == bool(ifsc and account):
-        raise ApiError(400, "give either beneficiary_token, or both ifsc and account_number")
+        raise ApiError(400, "give either beneficiary_token, or both ifsc and account_number", "invalid_beneficiary")
     return token, ifsc, account
 
 
@@ -224,7 +236,7 @@ class Api:
         token, ifsc, account = _beneficiary(body)
         path = _instructions_dir() / f"{Path(body['instruction_id']).name}.json"
         if not path.exists():
-            raise ApiError(404, "unknown instruction_id")
+            raise ApiError(404, "unknown instruction_id", "unknown_instruction")
         ins = PaymentInstruction.from_json(path.read_text(encoding="utf-8"))
         req = PayoutRequest(amount_minor=_minor(body["amount"]), currency=body["currency"],
                             reference=body.get("reference", ""), beneficiary_token=token, ifsc=ifsc, account_number=account)
@@ -233,14 +245,14 @@ class Api:
     def reconcile(self, body):
         source = body.get("source") or "generic"
         if source not in MAPPINGS:
-            raise ApiError(400, f"unknown source {source!r}")
+            raise ApiError(400, f"unknown source {source!r}", "unknown_source")
         rows = body.get("payouts")
         if rows is None and body.get("path"):
             from .core.payouts import load_payouts
             try:
                 records = load_payouts(body["path"], source)
             except OSError as e:
-                raise ApiError(400, f"cannot read payouts file: {e}")
+                raise ApiError(400, f"cannot read payouts file: {e}", "unreadable_input")
         elif isinstance(rows, list):
             records = [payout_from_row(r, MAPPINGS[source]) for r in rows]
         else:
@@ -255,7 +267,38 @@ class Api:
                                  else authorised.get(r["action_id"], 0))
         report["at_risk_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "conflict")
         report["verified_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "matched")
-        return {"report": report, "payouts": len(records)}
+        # Persist the run. The id is a digest of exactly what was compared, so re-running the
+        # same inputs returns the same stored run instead of a second, divergent one.
+        fingerprint = hashlib.sha256(json.dumps(
+            [sorted(i.digest() for i in instructions), sorted(r.record_hash for r in records), source]).encode()).hexdigest()
+        run_id = f"run_{fingerprint[:20]}"
+        path = _runs_dir() / f"{run_id}.json"
+        if path.exists():
+            run = json.loads(path.read_text(encoding="utf-8"))
+            return {"run_id": run_id, "report": run["report"], "payouts": run["payouts"], "replayed": True}
+        run = {"run_id": run_id, "contract_version": CONTRACT_VERSION, "created_at": datetime.now(timezone.utc).isoformat(),
+               "source": source, "instructions": len(instructions), "payouts": len(records), "input_digest": fingerprint,
+               "report": report}
+        _runs_dir().mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(run), encoding="utf-8")
+        tmp.replace(path)  # atomic: a reader never sees half a run
+        return {"run_id": run_id, "report": report, "payouts": len(records), "replayed": False}
+
+    def list_runs(self, _body):
+        runs = []
+        for p in sorted(_runs_dir().glob("run_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:100] if _runs_dir().exists() else []:
+            r = json.loads(p.read_text(encoding="utf-8"))
+            runs.append({k: r[k] for k in ("run_id", "created_at", "source", "instructions", "payouts")} | {"counts": r["report"]["counts"]})
+        return {"runs": runs}
+
+    def get_run(self, run_id: str):
+        if not run_id.startswith("run_") or not run_id[4:].isalnum():
+            raise ApiError(404, "unknown run", "unknown_run")
+        path = _runs_dir() / f"{run_id}.json"
+        if not path.exists():
+            raise ApiError(404, "unknown run", "unknown_run")
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def checkpoint(self, body):
         try:
@@ -302,10 +345,19 @@ class Api:
         return {"instructions": len(made), "payouts_path": str(path), "source": "razorpayx"}
 
     def routes(self) -> Dict[Tuple[str, str], Callable[[Dict], Dict]]:
-        return {("GET", "/api/status"): self.status, ("GET", "/api/instructions"): self.list_instructions,
-                ("POST", "/api/instructions"): self.sign, ("POST", "/api/verify"): self.verify,
-                ("POST", "/api/payouts/reconcile"): self.reconcile, ("POST", "/api/checkpoints"): self.checkpoint,
-                ("GET", "/api/checkpoints/verify"): self.verify_checkpoints, ("POST", "/api/demo"): self.demo}
+        """Canonical routes live under /api/v1. The unversioned /api paths are the same
+        handlers kept for the 0.5.x app and scripts; they return the legacy error shape."""
+        base = {("GET", "/status"): self.status, ("GET", "/instructions"): self.list_instructions,
+                ("POST", "/instructions"): self.sign, ("POST", "/verify"): self.verify,
+                ("POST", "/payouts/reconcile"): self.reconcile, ("POST", "/checkpoints"): self.checkpoint,
+                ("GET", "/checkpoints/verify"): self.verify_checkpoints, ("POST", "/demo"): self.demo,
+                ("GET", "/runs"): self.list_runs}
+        out = {}
+        for (m, p), fn in base.items():
+            out[(m, f"/api/v1{p}")] = fn
+            if p != "/runs":
+                out[(m, f"/api{p}")] = fn
+        return out
 
 
 def _role_for(auth: str, tokens: Dict[str, str]) -> str:
@@ -337,15 +389,21 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
             self.end_headers()
             self.wfile.write(data)
 
+        @staticmethod
+        def _error(code: str, message: str, path: str) -> Dict:
+            if path.startswith("/api/v1/"):
+                return {"error": {"code": code, "message": message}, "contract_version": CONTRACT_VERSION}
+            return {"error": message}  # legacy shape for the unversioned routes
+
         def _handle(self, method: str) -> None:
             path, role, status, ref = self.path.split("?")[0], "", 500, ""
             client = self.client_address[0]
             now = time.monotonic()
             try:
                 if self.headers.get("Host", "").lower() not in port_hosts:
-                    raise ApiError(403, "bad host")
+                    raise ApiError(403, "bad host", "bad_host")
                 if limiter.blocked(client, now):
-                    raise ApiError(429, "too many bad tokens; locked out for a minute")
+                    raise ApiError(429, "too many bad tokens; locked out for a minute", "locked_out")
                 role = _role_for(self.headers.get("Authorization", ""), tokens)
                 if not role:
                     limiter.fail(client, now)
@@ -353,9 +411,13 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                 if not limiter.allow(role, now):
                     raise ApiError(429, "rate limit")
                 fn = routes.get((method, path))
+                perm_key = (method, path.replace("/api/v1/", "/api/", 1))
+                if fn is None and method == "GET" and path.startswith("/api/v1/runs/"):
+                    run_id = path[len("/api/v1/runs/"):]
+                    fn, perm_key = (lambda _b, rid=run_id: api.get_run(rid)), ("GET", "/api/runs")
                 if fn is None:
                     raise ApiError(404, "no such endpoint")
-                if role not in PERMS[(method, path)]:
+                if role not in PERMS[perm_key]:
                     raise ApiError(403, f"role {role} may not call {method} {path}")
                 body: Dict = {}
                 if method == "POST":
@@ -375,9 +437,9 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                 self._send(200, out)
             except ApiError as e:
                 status = e.status
-                self._send(e.status, {"error": str(e)})
+                self._send(e.status, self._error(e.code, str(e), path))
             except Exception as e:  # never leak a traceback to the client; report the type only
-                self._send(500, {"error": f"internal error ({type(e).__name__})"})
+                self._send(500, self._error("internal", f"internal error ({type(e).__name__})", path))
             finally:
                 try:
                     audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
