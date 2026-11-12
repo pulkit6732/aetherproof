@@ -155,6 +155,9 @@ pout_0001,ins_7c1e0b9a44d2f6e101a3,4850000,INR,processed,2026-11-11T10:01:00Z,fa
   - in progress: queued, pending, processing, scheduled, initiated
 - `time` is ISO 8601 or unix seconds or milliseconds.
 - Repeated rows for one `payout_id` (webhook retries, status changes) are fine. The latest one counts.
+- Every successful payout row must have a `time` and a `currency`. A row missing either cannot
+  be checked against its approval, so it is a CONFLICT, never assumed correct.
+- The largest accepted amount is 10^15 minor units (₹10 lakh crore). Negative payout amounts are refused.
 
 ### Bank statement, CSV or JSON
 
