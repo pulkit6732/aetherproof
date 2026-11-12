@@ -305,6 +305,14 @@ def test_a_failed_checkpoint_write_is_a_clear_500(api, monkeypatch):
     assert status == 500 and "No space left" in out["error"]["message"]
 
 
+def test_an_unreadable_audit_log_reads_as_not_intact_not_a_crash(tmp_path):
+    from aetherproof.server import verify_audit
+    unreadable = tmp_path / "audit.jsonl"
+    unreadable.mkdir()                       # a directory where the file should be: reading it raises OSError
+    assert verify_audit(unreadable) == (False, 0, 0)
+    assert verify_audit(tmp_path / "absent.jsonl") == (True, 0, 0)
+
+
 # Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile
 def test_a_torn_instruction_file_is_counted_not_fatal(api):
     api("POST", "/api/v1/instructions", SIGN)

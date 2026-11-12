@@ -135,7 +135,11 @@ class AuditLog:
 def verify_audit(path: Path) -> Tuple[bool, int, int]:
     """(intact, entries, first broken line number or 0)."""
     prev = "0" * 64
-    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    except (OSError, UnicodeDecodeError):
+        return False, 0, 0   # cannot be read, so it cannot be shown intact
+
     for n, line in enumerate(lines, 1):
         try:
             entry = json.loads(line)
