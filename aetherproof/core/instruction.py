@@ -274,6 +274,11 @@ def verify_instruction(ins: PaymentInstruction, request: PayoutRequest, public_k
         # the outcome could never be tied back. A person decides; nothing is consumed.
         return Decision(REVIEW, ins.instruction_id,
                         ["payout reference not set: outcome cannot be matched to this instruction"])
-    if replay is not None and not replay.consume(ins.instruction_id, request.digest()):
+    if replay is None:
+        # Fail closed: without a store, single use cannot be enforced, and an ALLOW here could
+        # be repeated for ever. A person decides; nothing is consumed.
+        return Decision(REVIEW, ins.instruction_id,
+                        ["no replay store: single use cannot be enforced, so this payout is not allowed automatically"])
+    if not replay.consume(ins.instruction_id, request.digest()):
         return Decision(REJECT, ins.instruction_id, ["instruction already used (replay)"])
     return Decision(ALLOW, ins.instruction_id, [])

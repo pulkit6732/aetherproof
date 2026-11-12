@@ -48,6 +48,15 @@ def test_authorised_payout_is_allowed(replay):
     assert d.verdict == ALLOW and d.allowed and d.reasons == []
 
 
+# Regression: failure drill — called without a replay store, the gate returned ALLOW every time,
+# so an integrator who forgot the store could pay one approval repeatedly. It now fails closed.
+def test_gate_without_a_replay_store_never_allows():
+    ins = make()
+    for _ in range(3):
+        d = check(ins, req(ins), None)
+        assert d.verdict == "review" and not d.allowed and "replay store" in d.reasons[0]
+
+
 def test_same_instruction_cannot_move_money_twice(replay):
     ins = make()
     assert check(ins, req(ins), replay).allowed
