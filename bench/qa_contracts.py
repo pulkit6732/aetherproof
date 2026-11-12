@@ -156,7 +156,10 @@ s.close()
 
 # ---------------------------------------------------------------- partial failure and recovery
 torn = HOME / "instructions" / "ins_torn000000000000000.json"
-torn.write_text('{"type": "aetherproof.instruction/v0", "amount_mi', encoding="utf-8")
+try:
+    torn.write_text('{"type": "aetherproof.instruction/v0", "amount_mi', encoding="utf-8")
+except OSError as e:
+    sys.exit(f"QA setup failed: cannot write test file in temp home {HOME}: {e}")
 st, out = call("GET", "/api/v1/instructions", role="auditor")
 probe("R1", "torn instruction file: list still works", "200 + unreadable count", st == 200, f"{st} {code(out)} unreadable={out.get('unreadable')}")
 st, out = call("POST", "/api/v1/payouts/reconcile", body, role="auditor")
