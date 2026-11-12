@@ -274,6 +274,37 @@ def test_other_write_failures_are_clear_500s(api, monkeypatch, what):
     assert status == 500 and "No space left" in out["error"]["message"]
 
 
+# Regression: I/O review — a damaged stored instruction at the gate, a damaged checkpoint file,
+# and a failed checkpoint write fell to the generic catch-all
+def test_gate_on_a_damaged_stored_instruction_fails_closed_with_a_clear_error(api):
+    (home() / "instructions").mkdir(parents=True, exist_ok=True)
+    (home() / "instructions" / "ins_bad.json").write_text("{torn", encoding="utf-8")
+    body = {"instruction_id": "ins_bad", "amount": "1", "currency": "INR", "beneficiary_token": "f"}
+    status, out, _ = api("POST", "/api/v1/verify", body, role="executor")
+    assert status == 500 and out["error"]["code"] == "internal" and "unreadable" in out["error"]["message"]
+
+
+def test_one_damaged_checkpoint_file_does_not_hide_the_others(api):
+    api("POST", "/api/v1/instructions", SIGN, role="signer")
+    assert api("POST", "/api/v1/checkpoints", {}, role="signer")[0] == 200
+    (home() / "checkpoints" / "checkpoint_zz_torn.json").write_text("{torn", encoding="utf-8")
+    status, out, _ = api("GET", "/api/v1/checkpoints/verify", role="auditor")
+    assert status == 200 and len(out["checkpoints"]) == 2
+    bad = [c for c in out["checkpoints"] if c["file"] == "checkpoint_zz_torn.json"][0]
+    assert bad["ok"] is False and "unreadable" in bad["problems"][0]
+
+
+def test_a_failed_checkpoint_write_is_a_clear_500(api, monkeypatch):
+    import aetherproof.server as server
+    api("POST", "/api/v1/instructions", SIGN, role="signer")
+
+    def disk_full(*_a, **_k):
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(server, "_atomic_write", disk_full)
+    status, out, _ = api("POST", "/api/v1/checkpoints", {}, role="signer")
+    assert status == 500 and "No space left" in out["error"]["message"]
+
+
 # Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile
 def test_a_torn_instruction_file_is_counted_not_fatal(api):
     api("POST", "/api/v1/instructions", SIGN)

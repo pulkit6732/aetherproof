@@ -264,7 +264,10 @@ class Api:
         path = _instructions_dir() / f"{Path(body['instruction_id']).name}.json"
         if not path.exists():
             raise ApiError(404, "unknown instruction_id", "unknown_instruction")
-        ins = PaymentInstruction.from_json(path.read_text(encoding="utf-8"))
+        try:
+            ins = PaymentInstruction.from_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, KeyError, TypeError) as e:   # fails closed: no decision without a readable instruction
+            raise ApiError(500, "stored instruction is unreadable; re-sign it", "internal") from e
         req = PayoutRequest(amount_minor=_minor(body["amount"]), currency=body["currency"],
                             reference=body.get("reference", ""), beneficiary_token=token, ifsc=ifsc, account_number=account)
         return {"decision": verify_instruction(ins, req, self.key, self.replay).to_dict()}
@@ -417,19 +420,21 @@ class Api:
             cp = create_checkpoint(default_log(), self.signer, tsa_url=body.get("tsa_url", ""))
         except ValueError as e:
             raise ApiError(400, str(e)) from e
-        d = home() / "checkpoints"
-        d.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        path = d / f"checkpoint_{cp.log_size:06d}_{stamp}.json"
-        path.write_text(cp.to_json(), encoding="utf-8")
+        path = home() / "checkpoints" / f"checkpoint_{cp.log_size:06d}_{stamp}.json"
+        _save(path, cp.to_json().encode("utf-8"))
         return {"checkpoint": json.loads(cp.to_json()), "path": str(path)}
 
     def verify_checkpoints(self, _body):
         d = home() / "checkpoints"
         out = []
         for p in sorted(d.glob("*.json")) if d.exists() else []:
-            rep = verify_checkpoint(Checkpoint.from_json(p.read_text(encoding="utf-8")), default_log(), self.key)
-            out.append({"file": p.name, **rep.to_dict()})
+            try:
+                cp = Checkpoint.from_json(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError, KeyError, TypeError):   # one damaged file must not hide the others
+                out.append({"file": p.name, "ok": False, "problems": ["checkpoint file is unreadable"]})
+                continue
+            out.append({"file": p.name, **verify_checkpoint(cp, default_log(), self.key).to_dict()})
         return {"checkpoints": out}
 
     def demo(self, _body):
@@ -456,13 +461,13 @@ class Api:
                    row("pout_0006", "", 9_900_000, "fa_mule_77"),
                    row("pout_0007", made[4]["instruction_id"], 6_000_000, "fa_borrower_05")]
         path = home() / "demo_payouts.json"
-        path.write_text(json.dumps({"entity": "collection", "items": payouts}, indent=2), encoding="utf-8")
+        _save(path, json.dumps({"entity": "collection", "items": payouts}, indent=2).encode("utf-8"))
         # the bank moved every payout except pout_0007, whose "processed" status is forged
         debits = [{"entry_id": f"stmt_{p['id'][-4:]}", "utr": p["utr"], "amount_minor": p["amount"], "currency": "INR",
                    "direction": "debit", "time": (now + 30) * 1000, "narration": f"IMPS/{p['id']}"}
                   for p in payouts if p["id"] != "pout_0007"]
         stmt = home() / "demo_statement.json"
-        stmt.write_text(json.dumps({"entries": debits}, indent=2), encoding="utf-8")
+        _save(stmt, json.dumps({"entries": debits}, indent=2).encode("utf-8"))
         # DEMO: grace 0 so the missing debit shows at once; real runs keep the 2-day default
         return {"instructions": len(made), "payouts_path": str(path), "source": "razorpayx",
                 "statement_path": str(stmt), "settlement_grace_minutes": 0}
