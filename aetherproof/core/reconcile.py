@@ -184,7 +184,8 @@ class ActionResult:
     event_ids: List[str] = field(default_factory=list)
     reasons: List[str] = field(default_factory=list)
     basis: str = ""          # "correlation_id" | "operation+resource+time" | "" (no event)
-    kind: str = "approval"   # "approval" | "unapproved_event"
+    kind: str = "approval"   # "approval" | "unapproved_event" | "unexplained_debit"
+    settlement: str = ""     # payouts only: confirmed | mismatch | absent | pending | not_checked
 
 
 @dataclass

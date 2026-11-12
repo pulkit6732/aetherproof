@@ -39,10 +39,10 @@ fn report(s: &mut App) {
     s.run_id = Some("run_9d4be1c07a52f3e68b10".into());
     s.report = Some(json!({
         "demo": true,
-        "counts": {"matched": 1, "conflict": 4, "missing": 0, "ambiguous": 0},
-        "at_risk_minor": 32_400_000, "verified_minor": 4_850_000,
+        "counts": {"matched": 1, "conflict": 5, "missing": 0, "ambiguous": 0},
+        "at_risk_minor": 38_400_000, "verified_minor": 4_850_000, "settlement_source": "bank_statement",
         "results": [
-            {"verdict": "matched", "kind": "approval", "action_id": "ins_7c1e0b9a44d2f6e101a3", "amount_minor": 4_850_000, "reasons": [],
+            {"verdict": "matched", "kind": "approval", "settlement": "confirmed", "action_id": "ins_7c1e0b9a44d2f6e101a3", "amount_minor": 4_850_000, "reasons": [],
              "instruction": ins(1, 4_850_000, "fa_borrower_01"), "events": [ev("pout_0001", "processing", 4_850_000, "fa_borrower_01", 60_000), ev("pout_0001", "processed", 4_850_000, "fa_borrower_01", 62_000)]},
             {"verdict": "conflict", "kind": "approval", "action_id": "ins_7c1e0b9a44d2f6e102a3", "amount_minor": 12_500_000, "reasons": ["paid to a different beneficiary"],
              "instruction": ins(2, 12_500_000, "fa_borrower_02"), "events": [ev("pout_0002", "processed", 12_500_000, "fa_mule_77", 75_000)]},
@@ -51,10 +51,15 @@ fn report(s: &mut App) {
             {"verdict": "conflict", "kind": "approval", "action_id": "ins_7c1e0b9a44d2f6e104a3", "amount_minor": 7_500_000, "reasons": ["authorised once, paid 2 times"],
              "instruction": ins(4, 7_500_000, "fa_borrower_04"), "events": [ev("pout_0004", "processed", 7_500_000, "fa_borrower_04", 90_000), ev("pout_0005", "processed", 7_500_000, "fa_borrower_04", 150_000)]},
             {"verdict": "conflict", "kind": "unapproved_event", "action_id": "", "amount_minor": 9_900_000, "reasons": ["99,000.00 INR paid out (pout_0006, processed) with no valid signed instruction"],
-             "events": [ev("pout_0006", "processed", 9_900_000, "fa_mule_77", 200_000)]}]}));
+             "events": [ev("pout_0006", "processed", 9_900_000, "fa_mule_77", 200_000)]},
+            {"verdict": "conflict", "kind": "approval", "settlement": "absent", "action_id": "ins_7c1e0b9a44d2f6e105a3", "amount_minor": 6_000_000,
+             "reasons": ["provider reports the payout processed, but the bank statement shows no matching debit"],
+             "instruction": ins(5, 6_000_000, "fa_borrower_05"), "events": [ev("pout_0007", "processed", 6_000_000, "fa_borrower_05", 240_000)]}]}));
 }
 
-pub const SCENES: &[(&str, fn(&mut App))] = &[
+type Scene = (&'static str, fn(&mut App));
+
+pub const SCENES: &[Scene] = &[
     ("offline", |s| {
         s.offline = true;
         s.job = Job::Failed("Backend not reachable on 127.0.0.1:8787. Run: aetherproof serve".into());
@@ -96,6 +101,7 @@ pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("investigation-empty", |s| { connected(s); s.page = Page::Investigation; }),
     ("investigation-double", |s| { connected(s); report(s); s.page = Page::Investigation; s.selected = Some(3); }),
     ("investigation-unapproved", |s| { connected(s); report(s); s.page = Page::Investigation; s.selected = Some(4); }),
+    ("investigation-forged", |s| { connected(s); report(s); s.page = Page::Investigation; s.selected = Some(5); }),
     ("evidence", |s| {
         connected(s);
         s.page = Page::Evidence;

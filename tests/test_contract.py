@@ -82,6 +82,19 @@ def test_runs_are_saved_idempotent_and_readable(api):
     assert api("GET", "/api/v1/runs", role="executor")[0] == 403
 
 
+def test_evidence_export_verifies_and_catches_tampering(api, tmp_path):
+    seed = api("POST", "/api/v1/demo", {})[1]
+    run = api("POST", "/api/v1/payouts/reconcile", {"path": seed["payouts_path"], "source": "razorpayx"})[1]
+    out = api("POST", f"/api/v1/runs/{run['run_id']}/evidence", {})[1]
+    assert api("POST", "/api/v1/evidence/verify", {"path": out["path"]}, role="auditor")[1] == {"ok": True, "problems": []}
+    pkg = json.loads(open(out["path"], encoding="utf-8").read())
+    pkg["run"]["report"]["counts"]["conflict"] = 0
+    verdict = api("POST", "/api/v1/evidence/verify", {"package": pkg})[1]
+    assert verdict["ok"] is False and "modified after export" in verdict["problems"][0]
+    assert api("POST", "/api/v1/runs/run_nope/evidence", {})[1]["error"]["code"] == "unknown_run"
+    assert api("POST", "/api/v1/evidence/verify", {"path": out["path"]}, role="executor")[0] == 403
+
+
 def test_a_damaged_run_file_is_reported_not_fatal(api, tmp_path):
     seed = api("POST", "/api/v1/demo", {})[1]
     run = api("POST", "/api/v1/payouts/reconcile", {"path": seed["payouts_path"], "source": "razorpayx"})[1]

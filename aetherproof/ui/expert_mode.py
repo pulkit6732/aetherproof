@@ -136,6 +136,8 @@ def run_expert_mode(args: List[str]) -> bool:
             return cmd_instruction(rest)
         elif command == "payouts":
             return cmd_payouts(rest)
+        elif command == "evidence":
+            return cmd_evidence(rest)
         elif command == "serve":
             from aetherproof.server import serve
             rest, port = _extract_opt(rest, "--port")
@@ -223,9 +225,15 @@ def show_help() -> None:
   is accepted once.
 
 [yellow]payouts reconcile[/yellow] <payouts_file> --instructions DIR [--source razorpayx|generic]
-        [--pubkey PATH] [--as-of ISO8601] [--quiet]
+        [--pubkey PATH] [--as-of ISO8601] [--statement BANK_FILE]
+        [--settlement-grace-minutes N] [--quiet]
   After the fact: every instruction paid exactly as authorised, and every payout
-  backed by a valid instruction. Exits 1 unless everything matched.
+  backed by a valid instruction. With --statement, every "processed" payout must
+  also appear as a bank debit (default grace 2 days). Exits 1 unless all matched.
+
+[yellow]evidence verify[/yellow] <package.json> [--pubkey originator.pub.pem] [--quiet]
+  Offline check of an exported evidence package: content unchanged since export
+  and signed by the trusted originator key. Exits 1 if tampered or untrusted.
 
 [yellow]serve[/yellow] [--port 8787]
   Local API for the AetherProof desktop app: 127.0.0.1 only, bearer token in
@@ -756,6 +764,8 @@ def cmd_payouts(args: List[str]) -> bool:
     args, source = _extract_opt(args, "--source")
     args, pubkeys = _extract_all(args, "--pubkey")
     args, as_of = _extract_opt(args, "--as-of")
+    args, statement_path = _extract_opt(args, "--statement")
+    args, grace_min = _extract_opt(args, "--settlement-grace-minutes")
     if not ins_paths:
         _emit_err("payouts reconcile needs --instructions DIR", quiet)
         return False
@@ -768,7 +778,11 @@ def cmd_payouts(args: List[str]) -> bool:
         instructions = [PaymentInstruction.from_json(f.read_text(encoding="utf-8")) for f in files]
         payouts = load_payouts(args[0], source or "generic")
         as_of_ms = int(datetime.fromisoformat(as_of.replace("Z", "+00:00")).timestamp() * 1000) if as_of else None
-        report = reconcile_payouts(instructions, payouts, _trusted_keys(pubkeys), as_of_ms=as_of_ms)
+        from aetherproof.core.settlement import load_statement
+        statement = load_statement(statement_path) if statement_path else None
+        grace_ms = int(grace_min) * 60_000 if grace_min else None
+        report = reconcile_payouts(instructions, payouts, _trusted_keys(pubkeys), as_of_ms=as_of_ms,
+                                   statement=statement, settlement_grace_ms=grace_ms)
     except (OSError, ValueError, KeyError, TypeError) as e:
         _emit_err(str(e), quiet)
         return False
@@ -780,7 +794,7 @@ def cmd_payouts(args: List[str]) -> bool:
     for col in ("Verdict", "Instruction", "Payouts", "Why"):
         table.add_column(col)
     for r in report.results:
-        label = r.verdict.upper() + (" (no instruction)" if r.kind == "unapproved_event" else "")
+        label = r.verdict.upper() + {"unapproved_event": " (no instruction)", "unexplained_debit": " (bank debit, no payout)"}.get(r.kind, "")
         table.add_row(f"[{colour[r.verdict]}]{label}[/{colour[r.verdict]}]", r.action_id or "-",
                       ", ".join(r.event_ids) or "-", "; ".join(r.reasons) or "as authorised")
     console.print(table)
@@ -788,6 +802,29 @@ def cmd_payouts(args: List[str]) -> bool:
     console.print(f"{len(instructions)} instructions, {len(payouts)} payouts: {c['matched']} matched, "
                   f"{c['conflict']} conflict, {c['missing']} missing, {c['ambiguous']} ambiguous")
     return report.ok
+
+
+def cmd_evidence(args: List[str]) -> bool:
+    """evidence verify <package.json> [--pubkey PEM]: offline tamper check for an auditor."""
+    from aetherproof.core.evidence import load_package, verify_package
+
+    args, quiet = _pop_quiet(args)
+    args, pubkeys = _extract_all(args, "--pubkey")
+    if len(args) != 2 or args[0] != "verify":
+        _emit_err("usage: evidence verify <package.json> [--pubkey originator.pub.pem]", quiet)
+        return False
+    try:
+        ok, problems = verify_package(load_package(args[1]), _trusted_keys(pubkeys))
+    except (OSError, ValueError) as e:
+        _emit_err(f"cannot read evidence package: {e}", quiet)
+        return False
+    if quiet:
+        print(json.dumps({"ok": ok, "problems": problems}))
+    elif ok:
+        console.print("[green]INTACT[/green] signature valid, content unchanged since export")
+    else:
+        console.print("[red]TAMPERED OR UNTRUSTED[/red]\n  " + "\n  ".join(problems))
+    return ok
 
 
 def cmd_tamper(args: List[str]) -> bool:

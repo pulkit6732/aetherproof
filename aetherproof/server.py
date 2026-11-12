@@ -62,6 +62,7 @@ PERMS = {
     ("GET", "/api/checkpoints/verify"): {"admin", "auditor"},
     ("POST", "/api/demo"): {"admin"},
     ("GET", "/api/runs"): {"admin", "auditor"},
+    ("POST", "/api/evidence/verify"): {"admin", "auditor"},
 }
 AUTH_FAIL_LIMIT, AUTH_FAIL_WINDOW_S, LOCKOUT_S = 10, 60.0, 60.0
 RATE_LIMIT, RATE_WINDOW_S = 600, 60.0          # requests per role per window
@@ -247,23 +248,43 @@ class Api:
         if source not in MAPPINGS:
             raise ApiError(400, f"unknown source {source!r}", "unknown_source")
         rows = body.get("payouts")
-        if rows is None and body.get("path"):
-            from .core.payouts import load_payouts
-            try:
-                records = load_payouts(body["path"], source)
-            except OSError as e:
-                raise ApiError(400, f"cannot read payouts file: {e}", "unreadable_input")
-        elif isinstance(rows, list):
-            records = [payout_from_row(r, MAPPINGS[source]) for r in rows]
-        else:
-            raise ApiError(400, "give payouts (a list) or path")
+        from .core.payouts import load_payouts
+        from .core.settlement import entry_from_row, load_statement
+        try:
+            if rows is None and body.get("path"):
+                try:
+                    records = load_payouts(body["path"], source)
+                except OSError as e:
+                    raise ApiError(400, f"cannot read payouts file: {e}", "unreadable_input")
+            elif isinstance(rows, list):
+                records = [payout_from_row(r, MAPPINGS[source]) for r in rows]
+            else:
+                raise ApiError(400, "give payouts (a list) or path")
+            # optional independent settlement source: the bank statement (list or file path)
+            statement = None
+            if isinstance(body.get("statement"), list):
+                statement = [entry_from_row(r) for r in body["statement"]]
+            elif body.get("statement_path"):
+                try:
+                    statement = load_statement(body["statement_path"])
+                except OSError as e:
+                    raise ApiError(400, f"cannot read bank statement: {e}", "unreadable_input")
+        except (ValueError, TypeError, AttributeError) as e:  # malformed customer rows are a 400, not a crash
+            raise ApiError(400, f"invalid input: {e}", "invalid_request")
+        grace = body.get("settlement_grace_minutes")
+        if grace is not None and (isinstance(grace, bool) or not isinstance(grace, int) or grace < 0):
+            raise ApiError(400, "settlement_grace_minutes must be a non-negative integer")
         instructions = _load_instructions()
-        report = reconcile_payouts(instructions, records, self.key).to_dict()
+        report = reconcile_payouts(instructions, records, self.key, statement=statement,
+                                   settlement_grace_ms=None if grace is None else grace * 60_000).to_dict()
+        report["settlement_source"] = "bank_statement" if statement is not None else "none"
         # money each verdict concerns: the authorised amount, or what an unapproved payout moved
         authorised = {i.instruction_id: i.amount_minor for i in instructions}
         paid = {r.payout_id: r.amount_minor for r in records}
+        bank = {e.entry_id: e.amount_minor for e in statement or []}
         for r in report["results"]:
             r["amount_minor"] = (sum(paid.get(p, 0) for p in r["event_ids"]) if r["kind"] == "unapproved_event"
+                                 else bank.get(r["event_ids"][0], 0) if r["kind"] == "unexplained_debit"
                                  else authorised.get(r["action_id"], 0))
         report["at_risk_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "conflict")
         report["verified_minor"] = sum(r["amount_minor"] for r in report["results"] if r["verdict"] == "matched")
@@ -295,7 +316,8 @@ class Api:
         # Persist the run. The id is a digest of exactly what was compared, so re-running the
         # same inputs returns the same stored run instead of a second, divergent one.
         fingerprint = hashlib.sha256(json.dumps(
-            [sorted(i.digest() for i in instructions), sorted(r.record_hash for r in records), source]).encode()).hexdigest()
+            [sorted(i.digest() for i in instructions), sorted(r.record_hash for r in records), source,
+             None if statement is None else sorted(e.record_hash for e in statement), grace]).encode()).hexdigest()
         run_id = f"run_{fingerprint[:20]}"
         path = _runs_dir() / f"{run_id}.json"
         if path.exists():
@@ -335,6 +357,33 @@ class Api:
         except (OSError, ValueError):
             raise ApiError(400, "stored run is unreadable; re-run the reconciliation", "unreadable_input")
 
+    def export_evidence(self, run_id: str):
+        """Seal a stored run into a signed evidence package a third party can verify offline."""
+        from .core.evidence import export_package
+        pkg = export_package(self.get_run(run_id), self.signer)
+        d = home() / "evidence"
+        d.mkdir(parents=True, exist_ok=True)
+        path = d / f"{run_id}.evidence.json"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(pkg, indent=1), encoding="utf-8")
+        tmp.replace(path)
+        return {"path": str(path), "digest": pkg["digest"], "signing_key_id": pkg["signing_key_id"]}
+
+    def verify_evidence(self, body):
+        from .core.evidence import load_package, verify_package
+        pkg = body.get("package")
+        if pkg is None and body.get("path"):
+            try:
+                pkg = load_package(body["path"])
+            except OSError as e:
+                raise ApiError(400, f"cannot read evidence package: {e}", "unreadable_input")
+            except ValueError:
+                return {"ok": False, "problems": ["evidence package is not valid JSON"]}
+        if pkg is None:
+            raise ApiError(400, "give package or path")
+        ok, problems = verify_package(pkg, self.key)
+        return {"ok": ok, "problems": problems}
+
     def checkpoint(self, body):
         try:
             cp = create_checkpoint(default_log(), self.signer, tsa_url=body.get("tsa_url", ""))
@@ -356,11 +405,13 @@ class Api:
         return {"checkpoints": out}
 
     def demo(self, _body):
-        """Seed a realistic run: four approved disbursals and a payout file that contains
-        the attacks CERT-In describes (no instruction, changed amount, changed beneficiary, paid twice)."""
+        """Seed a realistic run: five approved disbursals, a payout file with the attacks CERT-In
+        describes (no instruction, changed amount, changed beneficiary, paid twice) and a bank
+        statement that shows one "processed" payout never left the bank (forged provider status)."""
         made = []
         for i, (amt, fa) in enumerate([("48500.00", "fa_borrower_01"), ("125000.00", "fa_borrower_02"),
-                                       ("30000.00", "fa_borrower_03"), ("75000.00", "fa_borrower_04")], 1):
+                                       ("30000.00", "fa_borrower_03"), ("75000.00", "fa_borrower_04"),
+                                       ("60000.00", "fa_borrower_05")], 1):
             made.append(self.sign({"amount": amt, "currency": "INR", "beneficiary_token": fa,
                                    "reference": f"LN-2026-{1040 + i}", "approval_ref": f"SAN-{7700 + i}",
                                    "approved_by": "credit-ops", "purpose": "loan_disbursal",
@@ -374,10 +425,19 @@ class Api:
                    row("pout_0003", made[2]["instruction_id"], 3_500_000, "fa_borrower_03"),
                    row("pout_0004", made[3]["instruction_id"], 7_500_000, "fa_borrower_04"),
                    row("pout_0005", made[3]["instruction_id"], 7_500_000, "fa_borrower_04"),
-                   row("pout_0006", "", 9_900_000, "fa_mule_77")]
+                   row("pout_0006", "", 9_900_000, "fa_mule_77"),
+                   row("pout_0007", made[4]["instruction_id"], 6_000_000, "fa_borrower_05")]
         path = home() / "demo_payouts.json"
         path.write_text(json.dumps({"entity": "collection", "items": payouts}, indent=2), encoding="utf-8")
-        return {"instructions": len(made), "payouts_path": str(path), "source": "razorpayx"}
+        # the bank moved every payout except pout_0007, whose "processed" status is forged
+        debits = [{"entry_id": f"stmt_{p['id'][-4:]}", "utr": p["utr"], "amount_minor": p["amount"], "currency": "INR",
+                   "direction": "debit", "time": (now + 30) * 1000, "narration": f"IMPS/{p['id']}"}
+                  for p in payouts if p["id"] != "pout_0007"]
+        stmt = home() / "demo_statement.json"
+        stmt.write_text(json.dumps({"entries": debits}, indent=2), encoding="utf-8")
+        # DEMO: grace 0 so the missing debit shows at once; real runs keep the 2-day default
+        return {"instructions": len(made), "payouts_path": str(path), "source": "razorpayx",
+                "statement_path": str(stmt), "settlement_grace_minutes": 0}
 
     def routes(self) -> Dict[Tuple[str, str], Callable[[Dict], Dict]]:
         """Canonical routes live under /api/v1. The unversioned /api paths are the same
@@ -386,11 +446,11 @@ class Api:
                 ("POST", "/instructions"): self.sign, ("POST", "/verify"): self.verify,
                 ("POST", "/payouts/reconcile"): self.reconcile, ("POST", "/checkpoints"): self.checkpoint,
                 ("GET", "/checkpoints/verify"): self.verify_checkpoints, ("POST", "/demo"): self.demo,
-                ("GET", "/runs"): self.list_runs}
+                ("GET", "/runs"): self.list_runs, ("POST", "/evidence/verify"): self.verify_evidence}
         out = {}
         for (m, p), fn in base.items():
             out[(m, f"/api/v1{p}")] = fn
-            if p != "/runs":
+            if p not in ("/runs", "/evidence/verify"):
                 out[(m, f"/api{p}")] = fn
         return out
 
@@ -450,6 +510,9 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                 if fn is None and method == "GET" and path.startswith("/api/v1/runs/"):
                     run_id = path[len("/api/v1/runs/"):]
                     fn, perm_key = (lambda _b, rid=run_id: api.get_run(rid)), ("GET", "/api/runs")
+                if fn is None and method == "POST" and path.startswith("/api/v1/runs/") and path.endswith("/evidence"):
+                    run_id = path[len("/api/v1/runs/"):-len("/evidence")]
+                    fn, perm_key = (lambda _b, rid=run_id: api.export_evidence(rid)), ("GET", "/api/runs")
                 if fn is None:
                     raise ApiError(404, "no such endpoint")
                 if role not in PERMS[perm_key]:

@@ -51,7 +51,8 @@ pub fn ledger_line(key: String, verdict: &str, id: &str, amount: Option<i64>, wh
 fn results_ledger(rep: &Value, limit: usize) -> El {
     let mut sheet_ = sheet("ledger").child(ledger_head(["Verdict", "Instruction", "Amount", "Finding  ·  click a line to investigate"]));
     for (i, r) in rep["results"].as_array().cloned().unwrap_or_default().iter().take(limit).enumerate() {
-        let who = if r["kind"] == "unapproved_event" { "— no instruction —".to_owned() } else { r["action_id"].as_str().unwrap_or("").to_owned() };
+        let who = if r["kind"] == "unapproved_event" { "— no instruction —".to_owned() }
+            else if r["kind"] == "unexplained_debit" { "— bank debit, no payout —".to_owned() } else { r["action_id"].as_str().unwrap_or("").to_owned() };
         sheet_ = sheet_.child(
             ledger_line(format!("res{i}"), r["verdict"].as_str().unwrap_or(""), &who, r["amount_minor"].as_i64(), &reasons(r))
                 .focusable(true).role("button").label(format!("Investigate {who}"))
@@ -182,11 +183,17 @@ pub fn payouts(s: &App) -> El {
     let l = look();
     let form = sheet("p-form").padding(20.0).gap(12.0)
         .child(field("Payout export path (RazorpayX JSON, or generic CSV/JSON)", &s.p_path, |s| &mut s.p_path))
+        .child(field("Bank statement path (optional, CSV/JSON): confirms each payout really left the bank", &s.s_path, |s| &mut s.s_path))
         .child(row().gap(10.0).center_y()
             .child(primary(s, "Verify payouts", |s: &mut App| {
                 let path = s.p_path.text.trim().to_owned();
                 let src = if path.to_lowercase().ends_with(".csv") { "generic" } else { "razorpayx" };
-                s.send(Action::Reconcile(json!({"path": path, "source": src})));
+                let mut body = json!({"path": path, "source": src});
+                let stmt = s.s_path.text.trim();
+                if !stmt.is_empty() {
+                    body["statement_path"] = json!(stmt);
+                }
+                s.send(Action::Reconcile(body));
             }))
             .child(secondary(s, "Run the DEMO replay", |s: &mut App| s.send(Action::Demo)))
             .child(text(s.run_id.as_deref().map_or(String::new(), |r| format!("Run {r}"))).font(code()).color(l.faint)));
@@ -230,9 +237,13 @@ pub fn investigation(s: &App) -> El {
     };
     let verdict = r["verdict"].as_str().unwrap_or("");
     let unapproved = r["kind"] == "unapproved_event";
+    let debit_only = r["kind"] == "unexplained_debit";
+    let settlement = r["settlement"].as_str().unwrap_or("");
     let verdict_meaning = match verdict {
         "matched" => "Exactly one successful payout, same amount, currency and beneficiary, inside the signed window.",
+        "conflict" if debit_only => "The bank statement shows money leaving that no payout record explains.",
         "conflict" if unapproved => "Money moved with no valid signed instruction behind it.",
+        "conflict" if settlement == "absent" => "The provider says this payout was processed, but the bank never debited it. Treat the provider status as forged until explained.",
         "conflict" => "The payout contradicts the signed instruction, or ran more than once.",
         "missing" => "The approved payout failed, was reversed, or never happened before the deadline.",
         _ => "Evidence is incomplete or still arriving; not treated as fraud.",
@@ -240,7 +251,7 @@ pub fn investigation(s: &App) -> El {
     let head = sheet("case").padding(20.0).gap(10.0)
         .child(row().gap(12.0).center_y()
             .child(stamp_for(verdict))
-            .child(text(if unapproved { "Payout without an instruction".to_owned() } else { r["action_id"].as_str().unwrap_or("").to_owned() }).font(code()).color(l.ink))
+            .child(text(if debit_only { "Bank debit without a payout".to_owned() } else if unapproved { "Payout without an instruction".to_owned() } else { r["action_id"].as_str().unwrap_or("").to_owned() }).font(code()).color(l.ink))
             .child(el().grow(1.0))
             .child(money(n(&r["amount_minor"]), 18.0, l.ink)))
         .child(text(verdict_meaning).font(body()).color(l.ink2).wrap())
@@ -284,10 +295,20 @@ pub fn investigation(s: &App) -> El {
     let evidence = sheet("refs").padding(18.0).gap(4.0)
         .child(eyebrow("Evidence references"))
         .child(kv("Run", s.run_id.clone().unwrap_or_default()))
-        .child(kv("Settlement", "No bank-statement source connected. Provider status is taken as reported (see Integrations).".into()))
+        .child(kv("Settlement", match settlement {
+            "confirmed" => "Confirmed: a matching debit is on the bank statement.",
+            "mismatch" => "Mismatch: the bank debited a different amount from the provider record.",
+            "absent" => "Absent: provider says processed, the bank statement has no matching debit.",
+            "pending" => "Pending: no debit yet, still inside the settlement grace period.",
+            "not_checked" => "Not checked: no bank statement given for this run. Provider status is taken as reported.",
+            _ => "Not applicable: no successful payout to settle.",
+        }.into()))
         .child(row().pt(8.0).gap(10.0)
             .child(secondary(s, "Back to Payouts", |s: &mut App| s.page = Page::Payouts))
-            .child(planned("Export evidence package")));
+            .child(match s.run_id.clone() {
+                Some(id) => secondary(s, "Export signed evidence package", move |s: &mut App| s.send(Action::ExportEvidence(id.clone()))),
+                None => planned("Export evidence package"),
+            }));
     col().key("investigation").gap(14.0).child(head).child(row().gap(14.0).items_start().child(auth).child(timeline)).child(evidence)
 }
 
@@ -346,7 +367,7 @@ pub fn integrations(s: &App) -> El {
         .child(line("c3", "AWS CloudTrail (file)", "agent", "agent-action reconciliation; not part of the payout workflow"))
         .child(line("c4", "RazorpayX live API", "planned", "not connected; no credentials stored"))
         .child(line("c5", "Cashfree Payouts", "planned", "mapping not written or tested"))
-        .child(line("c6", "Bank statement (settlement evidence)", "planned", "needed to catch a forged provider status"))
+        .child(line("c6", "Bank statement (file)", "tested", "CSV/JSON: entry_id, utr, amount_minor, direction; catches a forged \"processed\" status"))
         .child(line("c7", "ACH / Nacha, international", "planned", "separate adapters, each validated before release"));
     let mut history = sheet("history").child(ledger_head(["Source", "Run", "Records", "Outcome · time"]));
     if s.runs.is_empty() {

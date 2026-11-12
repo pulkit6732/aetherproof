@@ -140,10 +140,34 @@ def _check_signatures(instructions: List[PaymentInstruction], keys) -> List[bool
 
 
 def reconcile_payouts(instructions: Iterable[PaymentInstruction], payouts: Iterable[PayoutRecord],
-                      public_keys, *, as_of_ms: Optional[int] = None) -> ReconciliationReport:
+                      public_keys, *, as_of_ms: Optional[int] = None, statement=None,
+                      settlement_grace_ms: Optional[int] = None) -> ReconciliationReport:
+    """`statement`: optional list of settlement.BankEntry. With it, every successful payout
+    must also appear as a bank debit; without it, settlement is reported as not_checked."""
+    from .settlement import DEFAULT_SETTLEMENT_GRACE_MS, SettlementBook
     keys = _as_keyring(public_keys)
     as_of = as_of_ms if as_of_ms is not None else int(datetime.now(timezone.utc).timestamp() * 1000)
     report = ReconciliationReport(as_of_ms=as_of)
+    grace = DEFAULT_SETTLEMENT_GRACE_MS if settlement_grace_ms is None else settlement_grace_ms
+    book = SettlementBook(list(statement), as_of, grace) if statement is not None else None
+
+    def settle(res: ActionResult, paid: List[PayoutRecord]) -> None:
+        """Check each successful payout against the bank; the worst state wins."""
+        if book is None:
+            res.settlement = "not_checked"
+            return
+        rank = {"confirmed": 0, "pending": 1, "mismatch": 2, "absent": 3}
+        worst = "confirmed"
+        for p in paid:
+            state, why, _entry = book.check(p.payout_id, p.utr, p.amount_minor, p.time_ms)
+            if why:
+                res.reasons.append(why)
+            worst = max(worst, state, key=rank.get)
+        res.settlement = worst
+        if worst in ("mismatch", "absent"):
+            res.verdict = CONFLICT
+        elif worst == "pending" and res.verdict == MATCHED:
+            res.verdict = AMBIGUOUS
 
     # One payout, many records: providers resend webhooks and exports repeat rows, and a
     # payout moves processing -> processed -> reversed. Keep each payout's latest state;
@@ -178,9 +202,11 @@ def reconcile_payouts(instructions: Iterable[PaymentInstruction], payouts: Itera
         if len(done) > 1:
             res.verdict = CONFLICT
             res.reasons = [f"authorised once, paid {len(done)} times"]
+            settle(res, done)
         elif done:
             res.reasons = _compare(ins, done[0])
             res.verdict = CONFLICT if res.reasons else MATCHED
+            settle(res, done)
         elif pending or unknown:
             res.verdict = AMBIGUOUS
             res.reasons = [f"payout status {', '.join(sorted({p.status for p in pending + unknown}))}"]
@@ -202,7 +228,15 @@ def reconcile_payouts(instructions: Iterable[PaymentInstruction], payouts: Itera
         for p in records:
             if p.status in FAILED:
                 continue
-            report.results.append(ActionResult(
+            res = ActionResult(
                 CONFLICT, action_id=ref, event_ids=[p.payout_id], basis="reference", kind="unapproved_event",
-                reasons=[f"{money(p.amount_minor, p.currency)} paid out ({p.payout_id}, {p.status}) with no valid signed instruction"]))
+                reasons=[f"{money(p.amount_minor, p.currency)} paid out ({p.payout_id}, {p.status}) with no valid signed instruction"])
+            if p.status in SUCCESS:
+                settle(res, [p])
+            report.results.append(res)
+    if book is not None:
+        for e in book.unexplained():
+            report.results.append(ActionResult(
+                CONFLICT, action_id="", event_ids=[e.entry_id], basis="bank", kind="unexplained_debit", settlement="confirmed",
+                reasons=[f"bank debit {money(e.amount_minor, e.currency)} ({e.entry_id}) matches no payout record"]))
     return report

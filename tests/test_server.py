@@ -157,7 +157,27 @@ def test_full_flow_over_http(api):
 def test_demo_seed_finds_the_planted_attacks(api):
     seeded = api("POST", "/api/demo", {})[1]
     rep = api("POST", "/api/payouts/reconcile", {"path": seeded["payouts_path"], "source": "razorpayx"})[1]["report"]
-    assert rep["counts"] == {"matched": 1, "conflict": 4, "missing": 0, "ambiguous": 0}
+    # provider records alone: the forged "processed" payout looks clean
+    assert rep["counts"] == {"matched": 2, "conflict": 4, "missing": 0, "ambiguous": 0}
+    assert rep["settlement_source"] == "none"
+    body = {"path": seeded["payouts_path"], "source": "razorpayx", "statement_path": seeded["statement_path"],
+            "settlement_grace_minutes": seeded["settlement_grace_minutes"]}
+    rep = api("POST", "/api/payouts/reconcile", body)[1]["report"]
+    assert rep["counts"] == {"matched": 1, "conflict": 5, "missing": 0, "ambiguous": 0}
+    forged = [r for r in rep["results"] if r["settlement"] == "absent"]
+    assert len(forged) == 1 and forged[0]["amount_minor"] == 6_000_000 and rep["at_risk_minor"] > 6_000_000
+
+
+@pytest.mark.parametrize("extra,needle", [({"settlement_grace_minutes": -1}, "non-negative"),
+                                          ({"settlement_grace_minutes": "30"}, "non-negative"),
+                                          ({"statement_path": "Z:/no/such/statement.json"}, "bank statement"),
+                                          ({"statement": [{"entry_id": "e", "amount_minor": 1.5, "direction": "debit"}]}, "integer"),
+                                          ({"path": None, "payouts": [{"id": "p", "amount": 1.5}]}, "integer"),
+                                          ({"statement": ["not an object"]}, "invalid input")])
+def test_bad_settlement_inputs_are_refused(api, extra, needle):
+    seeded = api("POST", "/api/demo", {})[1]
+    status, out = api("POST", "/api/payouts/reconcile", {"path": seeded["payouts_path"], "source": "razorpayx", **extra})[:2]
+    assert status == 400 and needle in json.dumps(out)
 
 
 @pytest.mark.parametrize("body,needle", [

@@ -19,6 +19,7 @@ pub enum Action {
     Checkpoint,
     VerifyCheckpoints,
     Demo,
+    ExportEvidence(String),
 }
 
 impl Action {
@@ -33,6 +34,7 @@ impl Action {
             Action::Checkpoint => "Signing a checkpoint",
             Action::VerifyCheckpoints => "Verifying checkpoints",
             Action::Demo => "Seeding the DEMO replay",
+            Action::ExportEvidence(_) => "Sealing the evidence package",
         }
     }
 }
@@ -128,11 +130,14 @@ pub fn run(action: Action) -> Reply {
         }),
         Action::Checkpoint => call("POST", "/checkpoints", Some(&json!({})))
             .map(|v| Some(format!("Checkpoint of {} entries saved", v["checkpoint"]["log_size"]))),
+        Action::ExportEvidence(id) => call("POST", &format!("/runs/{id}/evidence"), Some(&json!({})))
+            .map(|v| Some(format!("Evidence package signed and saved: {}", v["path"].as_str().unwrap_or("")))),
         Action::Demo => call("POST", "/demo", Some(&json!({}))).and_then(|seed| {
-            let body = json!({"path": seed["payouts_path"], "source": seed["source"]});
+            let body = json!({"path": seed["payouts_path"], "source": seed["source"], "statement_path": seed["statement_path"],
+                              "settlement_grace_minutes": seed["settlement_grace_minutes"]});
             call("POST", "/payouts/reconcile", Some(&body)).map(|v| {
                 take_run(&v, &mut out);
-                Some("DEMO replay seeded: 4 approved disbursals, 6 payouts".to_owned())
+                Some("DEMO replay seeded: 5 approved disbursals, 7 payouts, 1 bank statement".to_owned())
             })
         }),
     };
@@ -153,10 +158,10 @@ pub fn run(action: Action) -> Reply {
     if let Ok(v) = call("GET", "/runs", None) {
         out.runs = v["runs"].as_array().cloned();
     }
-    if matches!(action, Action::Checkpoint | Action::VerifyCheckpoints | Action::Refresh) {
-        if let Ok(v) = call("GET", "/checkpoints/verify", None) {
-            out.checkpoints = v["checkpoints"].as_array().cloned();
-        }
+    if matches!(action, Action::Checkpoint | Action::VerifyCheckpoints | Action::Refresh)
+        && let Ok(v) = call("GET", "/checkpoints/verify", None)
+    {
+        out.checkpoints = v["checkpoints"].as_array().cloned();
     }
     out
 }

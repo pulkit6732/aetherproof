@@ -70,6 +70,7 @@ pub struct App {
     pub g_beneficiary: TextEdit,
     pub g_reference: TextEdit,
     pub p_path: TextEdit,
+    pub s_path: TextEdit,
 }
 
 fn init() -> App {
@@ -98,6 +99,7 @@ fn init() -> App {
         g_beneficiary: TextEdit::new(""),
         g_reference: TextEdit::new(""),
         p_path: TextEdit::new(""),
+        s_path: TextEdit::new(""),
     }
 }
 
@@ -136,7 +138,8 @@ fn poll(s: &mut App, _t: f64, _tx: &mut Tx) -> bool {
     if let Some(sig) = r.signed {
         s.g_id.replace_text(sig["instruction_id"].as_str().unwrap_or(""));
         s.g_reference.replace_text(sig["instruction_id"].as_str().unwrap_or(""));
-        s.g_amount.replace_text(&format!("{:.2}", sig["amount_minor"].as_i64().unwrap_or(0) as f64 / 100.0));
+        let m = sig["amount_minor"].as_i64().unwrap_or(0); // integer paise; never a float for money
+        s.g_amount.replace_text(format!("{}.{:02}", m / 100, m % 100));
         s.g_beneficiary.replace_text(sig["beneficiary"]["value"].as_str().unwrap_or(""));
     }
     if r.decision.is_some() {
