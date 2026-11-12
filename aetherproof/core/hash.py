@@ -89,22 +89,23 @@ def compute_merkle_root(hashes: List[str]) -> str:
     Returns:
         Hex-encoded Merkle root
     """
-    if not hashes:
-        return ""
+    return build_levels(hashes)[-1][0] if hashes else ""
 
-    current_level = [merkle_leaf(h) for h in hashes]
 
-    while len(current_level) > 1:
-        next_level = []
-        for i in range(0, len(current_level), 2):
-            if i + 1 < len(current_level):
-                next_level.append(merkle_node(current_level[i], current_level[i + 1]))
-            else:
-                # odd node out: promote unchanged, never duplicate
-                next_level.append(current_level[i])
-        current_level = next_level
-
-    return current_level[0]
+def build_levels(leaf_hashes: List[str]) -> List[List[str]]:
+    """The one tree builder (roots, session seals and inclusion proofs all use it).
+    levels[0] is the tagged leaves, levels[-1] is [root]; empty input gives [[]].
+    The format is pinned by spec/merkle_vectors.txt, which the Rust core also checks."""
+    if not leaf_hashes:
+        return [[]]
+    level = [merkle_leaf(h) for h in leaf_hashes]
+    levels = [level]
+    while len(level) > 1:
+        # odd node out: promote unchanged, never duplicate (CVE-2012-2459)
+        level = [merkle_node(level[i], level[i + 1]) if i + 1 < len(level) else level[i]
+                 for i in range(0, len(level), 2)]
+        levels.append(level)
+    return levels
 
 
 def compute_model_weight_root(model_path: Union[str, Path], chunk_size: int = 4096) -> str:

@@ -6,6 +6,11 @@ Changing a meaning here is a contract version bump (see docs/API_CONTRACT.md).
 
 CONTRACT_VERSION = "1"
 
+# Largest amount accepted anywhere, in minor units: 10^15 paise = Rs 10 lakh crore. Far above
+# any single payout, and far below 2^63, so every amount fits the app's 64-bit integers
+# exactly (QA I10/I11/I35: unbounded amounts were signed, and shown as 0 by the app).
+MAX_AMOUNT_MINOR = 10**15
+
 # Outcome verdicts (core/payouts.py, core/reconcile.py)
 MATCHED = "matched"      # required evidence agrees with the signed authorisation
 CONFLICT = "conflict"    # a defined contradiction or hard policy violation is established

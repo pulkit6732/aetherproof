@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional
 
 from .receipt import Receipt
 
-from ..contract import ALLOW, REJECT, REVIEW  # noqa: F401  (re-exported for callers)
+from ..contract import ALLOW, MAX_AMOUNT_MINOR, REJECT, REVIEW  # noqa: F401  (re-exported for callers)
 
 INSTRUCTION_TYPE = "aetherproof.instruction/v0"
 # instruction_id travels as the payout provider's reference (RazorpayX reference_id
@@ -138,6 +138,8 @@ def sign_instruction(signer, *, originator: str, amount_minor: int, currency: st
                      instruction_id: str = "") -> PaymentInstruction:
     if not isinstance(amount_minor, int) or isinstance(amount_minor, bool) or amount_minor <= 0:
         raise ValueError("amount_minor must be a positive integer (minor units)")
+    if amount_minor > MAX_AMOUNT_MINOR:
+        raise ValueError(f"amount_minor above the maximum {MAX_AMOUNT_MINOR}")
     if len(currency) != 3 or not currency.isalpha():
         raise ValueError("currency must be a 3-letter ISO 4217 code")
     if beneficiary.get("kind") not in ("bank", "token"):

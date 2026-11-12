@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
+from ..contract import MAX_AMOUNT_MINOR
 from .hash import sha256
 from .instruction import PaymentInstruction, beneficiary_matches, money
 from .log import _as_keyring
@@ -79,6 +80,8 @@ def payout_from_row(row: Dict, mapping: Dict[str, str]) -> PayoutRecord:
     amount = get("amount_minor")
     if isinstance(amount, float) or (isinstance(amount, str) and not amount.strip().lstrip("-").isdigit()):
         raise ValueError(f"payout {get('payout_id')}: amount must be an integer in minor units, got {amount!r}")
+    if not 0 <= int(amount) <= MAX_AMOUNT_MINOR:
+        raise ValueError(f"payout {get('payout_id')}: amount must be between 0 and {MAX_AMOUNT_MINOR} minor units")
     return PayoutRecord(
         payout_id=str(get("payout_id")), reference=str(get("reference")), amount_minor=int(amount),
         currency=str(get("currency")).upper(), status=str(get("status")).lower(), time_ms=_time_ms(get("time")),

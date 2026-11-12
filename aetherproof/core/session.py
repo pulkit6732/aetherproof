@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import json
 import secrets
 
-from .hash import sha256, merkle_leaf, merkle_node
+from .hash import build_levels, merkle_leaf, merkle_node, sha256
 from .receipt import Receipt
 from .signer import Signer, Verifier
 
@@ -44,26 +44,8 @@ SEAL_VERSION = "session-seal/v1"
 
 
 # ── Merkle tree with inclusion proofs ────────────────────────────────────────
-# Same construction as hash.compute_merkle_root: RFC 6962 domain separation,
-# odd node promoted rather than duplicated. The proof format must match that
-# shape exactly or verification silently diverges, so both live on one builder.
-
-def build_levels(leaf_hashes: List[str]) -> List[List[str]]:
-    """Bottom-up tree. levels[0] is the tagged leaves, levels[-1] is [root]."""
-    if not leaf_hashes:
-        return [[]]
-    level = [merkle_leaf(h) for h in leaf_hashes]
-    levels = [level]
-    while len(level) > 1:
-        nxt = []
-        for i in range(0, len(level), 2):
-            if i + 1 < len(level):
-                nxt.append(merkle_node(level[i], level[i + 1]))
-            else:
-                nxt.append(level[i])  # promote, never duplicate
-        levels.append(nxt)
-        level = nxt
-    return levels
+# Roots and proofs come from hash.build_levels, the single builder, so the proof
+# shape cannot drift from the root construction.
 
 
 def merkle_root(leaf_hashes: List[str]) -> str:

@@ -200,18 +200,7 @@ def _finish(progress, task):
     time.sleep(0.4)
 
 
-def _atomic_write(path: Path, data: bytes):
-    # write to a temp sibling then replace - target is never partially written
-    tmp = path.with_name(path.name + ".tmp")
-    try:
-        tmp.write_bytes(data)
-        tmp.replace(path)
-    finally:
-        if tmp.exists():
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
+from aetherproof.core.keystore import _atomic_write  # noqa: E402  one implementation
 
 
 def _cleanup(paths):

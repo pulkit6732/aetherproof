@@ -139,10 +139,22 @@ def load_or_create_signer(key_dir: Path = None) -> Signer:
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
-    tmp = path.with_name(path.name + ".tmp")
+    """Write via a temp sibling, then replace: a reader never sees half a file.
+    The temp name is unique per writer: a shared "<name>.tmp" let two concurrent writers of
+    the same file (identical API requests) collide, and one request failed (QA C3)."""
+    import secrets
+    import time
+    tmp = path.with_name(f".{path.name}.{secrets.token_hex(6)}.tmp")
     try:
         tmp.write_bytes(data)
-        tmp.replace(path)
+        for attempt in range(6):
+            try:
+                tmp.replace(path)
+                break
+            except PermissionError:   # Windows: target briefly open by a reader or another replace
+                if attempt == 5:
+                    raise
+                time.sleep(0.01 * (attempt + 1))
     finally:
         if tmp.exists():
             try:

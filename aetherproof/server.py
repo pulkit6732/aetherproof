@@ -25,11 +25,11 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Tuple
 
 from . import __version__
-from .contract import CONTRACT_VERSION, ERRORS
+from .contract import CONTRACT_VERSION, ERRORS, MAX_AMOUNT_MINOR
 from .core.anchor import Checkpoint, create_checkpoint, verify_checkpoint
 from .core.instruction import (PaymentInstruction, PayoutRequest, ReplayStore, bank_beneficiary,
                                sign_instruction, token_beneficiary, verify_instruction)
-from .core.keystore import default_log, home, issue_receipt, load_or_create_signer
+from .core.keystore import _atomic_write, default_log, home, issue_receipt, load_or_create_signer
 from .core.payouts import MAPPINGS, payout_from_row, reconcile_payouts
 from .core.receipt import Receipt
 
@@ -156,9 +156,21 @@ def _runs_dir() -> Path:
     return home() / "runs"
 
 
+def _read_instructions() -> Tuple[list, int]:
+    """(instructions, unreadable). A torn or foreign file is counted, never fatal: one bad
+    file used to break every list and reconcile (QA R1/R2). Its payouts then show as
+    having no valid instruction, which fails toward flagging, not toward approving."""
+    d, out, bad = _instructions_dir(), [], 0
+    for p in sorted(d.glob("*.json")) if d.exists() else []:
+        try:
+            out.append(PaymentInstruction.from_json(p.read_text(encoding="utf-8")))
+        except (OSError, ValueError, KeyError, TypeError):
+            bad += 1
+    return out, bad
+
+
 def _load_instructions():
-    d = _instructions_dir()
-    return [PaymentInstruction.from_json(p.read_text(encoding="utf-8")) for p in sorted(d.glob("*.json"))] if d.exists() else []
+    return _read_instructions()[0]
 
 
 def _minor(amount: Any) -> int:
@@ -167,8 +179,10 @@ def _minor(amount: Any) -> int:
         d = Decimal(str(amount))
     except InvalidOperation:
         raise ApiError(400, "amount is not a number", "invalid_amount")
-    if d <= 0 or d.as_tuple().exponent < -2:
+    if not d.is_finite() or d <= 0 or d.as_tuple().exponent < -2:   # NaN/Infinity crashed the compare (QA I6/I7/I9)
         raise ApiError(400, "amount must be positive with at most 2 decimals", "invalid_amount")
+    if d * 100 > MAX_AMOUNT_MINOR:
+        raise ApiError(400, f"amount above the maximum {MAX_AMOUNT_MINOR // 100}", "invalid_amount")
     return int(d * 100)
 
 
@@ -207,11 +221,12 @@ class Api:
 
     def list_instructions(self, _body):
         rows = []
-        for ins in sorted(_load_instructions(), key=lambda i: i.not_before_ms, reverse=True)[:200]:
+        instructions, unreadable = _read_instructions()
+        for ins in sorted(instructions, key=lambda i: i.not_before_ms, reverse=True)[:200]:
             d = json.loads(ins.to_json())
-            d["amount"] = f"{ins.amount_minor / 100:.2f}"
+            d["amount"] = f"{ins.amount_minor // 100}.{ins.amount_minor % 100:02d}"   # integer paise, never a float
             rows.append(d)
-        return {"instructions": rows}
+        return {"instructions": rows, "unreadable": unreadable}
 
     def sign(self, body):
         _need(body, "amount", "currency", "reference", "approval_ref", "approved_by")
@@ -223,10 +238,10 @@ class Api:
                 purpose=body.get("purpose") or "payout", reference=body["reference"], approval_ref=body["approval_ref"],
                 approved_by=body["approved_by"], policy=body.get("policy") or "default",
                 validity_ms=int(float(body.get("valid_minutes") or 15) * 60_000))
-        except ValueError as e:
+        except (ValueError, OverflowError) as e:   # valid_minutes "inf" overflowed int() (QA I23)
             raise ApiError(400, str(e))
         _instructions_dir().mkdir(parents=True, exist_ok=True)
-        (_instructions_dir() / f"{ins.instruction_id}.json").write_text(ins.to_json(), encoding="utf-8")
+        _atomic_write(_instructions_dir() / f"{ins.instruction_id}.json", ins.to_json().encode("utf-8"))
         issue_receipt(self.signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
                       output_hash=ins.digest(), extensions={INSTRUCTION_NS: {"instruction_id": ins.instruction_id,
                                                                             "digest": ins.digest()}})
@@ -330,9 +345,7 @@ class Api:
                "source": source, "instructions": len(instructions), "payouts": len(records), "input_digest": fingerprint,
                "report": report}
         _runs_dir().mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(run), encoding="utf-8")
-        tmp.replace(path)  # atomic: a reader never sees half a run
+        _atomic_write(path, json.dumps(run).encode("utf-8"))  # a reader never sees half a run
         return {"run_id": run_id, "report": report, "payouts": len(records), "replayed": False}
 
     def list_runs(self, _body):
@@ -364,9 +377,7 @@ class Api:
         d = home() / "evidence"
         d.mkdir(parents=True, exist_ok=True)
         path = d / f"{run_id}.evidence.json"
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(pkg, indent=1), encoding="utf-8")
-        tmp.replace(path)
+        _atomic_write(path, json.dumps(pkg, indent=1).encode("utf-8"))
         return {"path": str(path), "digest": pkg["digest"], "signing_key_id": pkg["signing_key_id"]}
 
     def verify_evidence(self, body):

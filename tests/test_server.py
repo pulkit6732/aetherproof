@@ -193,6 +193,48 @@ def test_bad_sign_requests(api, body, needle):
     assert status == 400 and needle in out["error"]
 
 
+# Regression: QA I6 I7 I9 I10 I11 I23 — non-finite or out-of-range amounts crashed (500) or were signed
+# Found by bench/qa_contracts.py on 2026-11-12
+@pytest.mark.parametrize("field,value", [("amount", "NaN"), ("amount", "sNaN"), ("amount", "Infinity"),
+                                         ("amount", "1e400"), ("amount", "99999999999999999999999"),
+                                         ("amount", "10000000000000.01"), ("valid_minutes", "inf")])
+def test_non_finite_or_out_of_range_sign_inputs_are_400(api, field, value):
+    status, out, _ = api("POST", "/api/v1/instructions", {**SIGN, field: value})
+    assert status == 400, out
+
+
+def test_largest_allowed_amount_still_signs(api):
+    assert api("POST", "/api/v1/instructions", {**SIGN, "amount": "10000000000000.00"})[0] == 200   # 10^15 paise
+
+
+# Regression: QA I35 I36 — payout amounts beyond the app's int64 range, or negative, were accepted
+@pytest.mark.parametrize("amount", [10**20, 10**15 + 1, -500, "-500"])
+def test_out_of_range_payout_amounts_are_400(api, amount):
+    row = {"payout_id": "p1", "reference": "x", "amount_minor": amount, "currency": "INR", "status": "processed",
+           "time": 0, "beneficiary_token": "fa"}
+    status, out, _ = api("POST", "/api/v1/payouts/reconcile", {"source": "generic", "payouts": [row]})
+    assert status == 400 and out["error"]["code"] == "invalid_request"
+
+
+# Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile
+def test_a_torn_instruction_file_is_counted_not_fatal(api):
+    api("POST", "/api/v1/instructions", SIGN)
+    (home() / "instructions" / "ins_torn.json").write_text('{"type": "aetherproof.instruction/v0", "amou', encoding="utf-8")
+    status, out, _ = api("GET", "/api/v1/instructions")
+    assert status == 200 and len(out["instructions"]) == 1 and out["unreadable"] == 1
+    assert api("POST", "/api/v1/payouts/reconcile", {"source": "generic", "payouts": []})[0] == 200
+
+
+# Regression: QA C3 — parallel identical reconciles collided on one temp file and one failed
+def test_parallel_identical_reconciles_all_succeed_with_one_run(api):
+    from concurrent.futures import ThreadPoolExecutor
+    seed = api("POST", "/api/v1/demo", {})[1]
+    body = {"path": seed["payouts_path"], "source": "razorpayx"}
+    with ThreadPoolExecutor(8) as pool:
+        outs = list(pool.map(lambda _: api("POST", "/api/v1/payouts/reconcile", body), range(16)))
+    assert [o[0] for o in outs] == [200] * 16 and len({o[1]["run_id"] for o in outs}) == 1
+
+
 def test_reconcile_input_errors(api):
     assert api("POST", "/api/payouts/reconcile", {"source": "stripe", "payouts": []})[0] == 400
     assert api("POST", "/api/payouts/reconcile", {})[0] == 400

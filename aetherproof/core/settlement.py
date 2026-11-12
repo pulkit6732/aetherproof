@@ -49,6 +49,9 @@ def entry_from_row(row: Dict) -> BankEntry:
     amount = row.get("amount_minor")
     if isinstance(amount, bool) or not (isinstance(amount, int) or (isinstance(amount, str) and amount.strip().lstrip("-").isdigit())):
         raise ValueError(f"bank entry {row.get('entry_id')}: amount_minor must be an integer, got {amount!r}")
+    from ..contract import MAX_AMOUNT_MINOR
+    if abs(int(amount)) > MAX_AMOUNT_MINOR:
+        raise ValueError(f"bank entry {row.get('entry_id')}: amount above the maximum {MAX_AMOUNT_MINOR}")
     direction = str(row.get("direction", "")).strip().lower()
     if direction not in ("debit", "credit"):
         raise ValueError(f"bank entry {row.get('entry_id')}: direction must be debit or credit")
