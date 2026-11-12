@@ -80,3 +80,15 @@ def test_runs_are_saved_idempotent_and_readable(api):
     assert api("GET", "/api/v1/runs/run_nope")[1]["error"]["code"] == "unknown_run"
     assert api("GET", "/api/v1/runs/..%2f..%2fapi_tokens")[1]["error"]["code"] == "unknown_run"
     assert api("GET", "/api/v1/runs", role="executor")[0] == 403
+
+
+def test_a_damaged_run_file_is_reported_not_fatal(api, tmp_path):
+    seed = api("POST", "/api/v1/demo", {})[1]
+    run = api("POST", "/api/v1/payouts/reconcile", {"path": seed["payouts_path"], "source": "razorpayx"})[1]
+    (tmp_path / "home" / "runs" / f"{run['run_id']}.json").write_text("{torn", encoding="utf-8")
+    listing = api("GET", "/api/v1/runs")[1]
+    assert listing["runs"] == [] and listing["unreadable"] == 1
+    assert api("GET", f"/api/v1/runs/{run['run_id']}")[1]["error"]["code"] == "unreadable_input"
+    again = api("POST", "/api/v1/payouts/reconcile", {"path": seed["payouts_path"], "source": "razorpayx"})[1]
+    assert again["run_id"] == run["run_id"] and again["replayed"] is False      # rewritten from the inputs
+    assert api("GET", f"/api/v1/runs/{run['run_id']}")[0] == 200

@@ -274,8 +274,11 @@ class Api:
         run_id = f"run_{fingerprint[:20]}"
         path = _runs_dir() / f"{run_id}.json"
         if path.exists():
-            run = json.loads(path.read_text(encoding="utf-8"))
-            return {"run_id": run_id, "report": run["report"], "payouts": run["payouts"], "replayed": True}
+            try:
+                run = json.loads(path.read_text(encoding="utf-8"))
+                return {"run_id": run_id, "report": run["report"], "payouts": run["payouts"], "replayed": True}
+            except (OSError, ValueError, KeyError):
+                pass  # an unreadable stored run is rewritten below from the same inputs
         run = {"run_id": run_id, "contract_version": CONTRACT_VERSION, "created_at": datetime.now(timezone.utc).isoformat(),
                "source": source, "instructions": len(instructions), "payouts": len(records), "input_digest": fingerprint,
                "report": report}
@@ -287,18 +290,25 @@ class Api:
 
     def list_runs(self, _body):
         runs = []
+        unreadable = 0
         for p in sorted(_runs_dir().glob("run_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:100] if _runs_dir().exists() else []:
-            r = json.loads(p.read_text(encoding="utf-8"))
-            runs.append({k: r[k] for k in ("run_id", "created_at", "source", "instructions", "payouts")} | {"counts": r["report"]["counts"]})
-        return {"runs": runs}
+            try:
+                r = json.loads(p.read_text(encoding="utf-8"))
+                runs.append({k: r[k] for k in ("run_id", "created_at", "source", "instructions", "payouts")} | {"counts": r["report"]["counts"]})
+            except (OSError, ValueError, KeyError):
+                unreadable += 1  # one damaged file must not hide every other run
+        return {"runs": runs, "unreadable": unreadable}
 
     def get_run(self, run_id: str):
         if not run_id.startswith("run_") or not run_id[4:].isalnum():
             raise ApiError(404, "unknown run", "unknown_run")
         path = _runs_dir() / f"{run_id}.json"
-        if not path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
             raise ApiError(404, "unknown run", "unknown_run")
-        return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise ApiError(400, "stored run is unreadable; re-run the reconciliation", "unreadable_input")
 
     def checkpoint(self, body):
         try:
