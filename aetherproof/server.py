@@ -174,6 +174,15 @@ def _load_instructions():
     return _read_instructions()[0]
 
 
+def _save(path: Path, data: bytes) -> None:
+    """Atomic write; a disk failure (full, locked after retries) is a clear 500, never a traceback."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write(path, data)
+    except OSError as e:
+        raise ApiError(500, f"cannot write {path.name}: {e.strerror or type(e).__name__}", "internal")
+
+
 def _minor(amount: Any) -> int:
     from decimal import Decimal, InvalidOperation
     try:
@@ -241,8 +250,7 @@ class Api:
                 validity_ms=int(float(body.get("valid_minutes") or 15) * 60_000))
         except (ValueError, OverflowError) as e:   # valid_minutes "inf" overflowed int() (QA I23)
             raise ApiError(400, str(e))
-        _instructions_dir().mkdir(parents=True, exist_ok=True)
-        _atomic_write(_instructions_dir() / f"{ins.instruction_id}.json", ins.to_json().encode("utf-8"))
+        _save(_instructions_dir() / f"{ins.instruction_id}.json", ins.to_json().encode("utf-8"))
         issue_receipt(self.signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
                       output_hash=ins.digest(), extensions={INSTRUCTION_NS: {"instruction_id": ins.instruction_id,
                                                                             "digest": ins.digest()}})
@@ -266,7 +274,11 @@ class Api:
         rows = body.get("payouts")
         for key in ("path", "statement_path"):   # stat before reading: no unbounded file read (CSO-2)
             p = body.get(key)
-            if isinstance(p, str) and p and os.path.isfile(p) and os.path.getsize(p) > MAX_IMPORT_BYTES:
+            try:
+                too_big = isinstance(p, str) and bool(p) and os.path.isfile(p) and os.path.getsize(p) > MAX_IMPORT_BYTES
+            except OSError:
+                too_big = False   # vanished or unreadable: the read below reports unreadable_input
+            if too_big:
                 raise ApiError(413, f"{key} file larger than {MAX_IMPORT_BYTES} bytes", "too_large")
         from .core.payouts import load_payouts
         from .core.settlement import entry_from_row, load_statement
@@ -349,8 +361,7 @@ class Api:
         run = {"run_id": run_id, "contract_version": CONTRACT_VERSION, "created_at": datetime.now(timezone.utc).isoformat(),
                "source": source, "instructions": len(instructions), "payouts": len(records), "input_digest": fingerprint,
                "report": report}
-        _runs_dir().mkdir(parents=True, exist_ok=True)
-        _atomic_write(path, json.dumps(run).encode("utf-8"))  # a reader never sees half a run
+        _save(path, json.dumps(run).encode("utf-8"))  # a reader never sees half a run
         return {"run_id": run_id, "report": report, "payouts": len(records), "replayed": False}
 
     def list_runs(self, _body):
@@ -382,7 +393,7 @@ class Api:
         d = home() / "evidence"
         d.mkdir(parents=True, exist_ok=True)
         path = d / f"{run_id}.evidence.json"
-        _atomic_write(path, json.dumps(pkg, indent=1).encode("utf-8"))
+        _save(path, json.dumps(pkg, indent=1).encode("utf-8"))
         return {"path": str(path), "digest": pkg["digest"], "signing_key_id": pkg["signing_key_id"]}
 
     def verify_evidence(self, body):

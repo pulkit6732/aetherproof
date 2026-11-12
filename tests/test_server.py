@@ -246,6 +246,17 @@ def test_import_size_limit_boundary(api, tmp_path, monkeypatch, field):
     assert status == 413 and out["error"]["code"] == "too_large"
 
 
+def test_a_failed_disk_write_is_a_clear_500_not_a_crash(api, monkeypatch):
+    import aetherproof.server as server
+
+    def disk_full(_path, _data):
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(server, "_atomic_write", disk_full)
+    status, out, _ = api("POST", "/api/v1/instructions", SIGN)
+    assert status == 500 and out["error"]["code"] == "internal" and "No space left" in out["error"]["message"]
+    assert api("GET", "/api/v1/status")[0] == 200            # the server keeps serving
+
+
 # Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile
 def test_a_torn_instruction_file_is_counted_not_fatal(api):
     api("POST", "/api/v1/instructions", SIGN)
