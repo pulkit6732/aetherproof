@@ -1,0 +1,24 @@
+{
+ "gate_fuzz": {
+  "cases": 40000,
+  "parse_refused": 3295,
+  "instructions_allowed_once": 1598,
+  "allowed_twice": 0
+ },
+ "reconcile_fuzz": {
+  "cases": 20000,
+  "parse_refused": 2993,
+  "unapproved_payouts_flagged": 2227
+ },
+ "fail_open_findings": 0,
+ "seconds": 12.5
+}
+
+FAILURE DRILLS
+CAUGHT  B1 replay store lost                           gate: allow then allow (prevention lost) reconcile: CONFLICT 'paid 2 times'
+CAUGHT  B2 replay store corrupted                      gate store                             refused to start (DatabaseError)
+CAUGHT  B3 no replay store                             gate                                   REVIEW
+CAUGHT  B4 executor clock wrong                        gate: allow (clock fooled)             reconcile: CONFLICT outside window
+CAUGHT  B5 bank statement missing                      settlement                             MATCHED with settlement=not_checked
+GAP     B6 signing key stolen                          gate: allow                            NOT CAUGHT by AetherProof alone: needs sanction-register cross-check and HSM/KMS key custody
+GAP     B7 insider forges provider + statement files   settlement                             NOT CAUGHT: needs a direct bank feed (SFTP / account aggregator / bank API)

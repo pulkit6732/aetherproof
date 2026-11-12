@@ -20,6 +20,7 @@ See docs/SIGNED-INSTRUCTION-SPEC.md for the wire format.
 
 import hashlib
 import json
+import re
 import secrets
 import sqlite3
 import threading
@@ -29,6 +30,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .receipt import Receipt
+
+_CANONICAL_SIG = re.compile(r"[0-9a-f]{128}")   # Ed25519 signature: 64 bytes, lowercase hex
 
 from ..contract import ALLOW, MAX_AMOUNT_MINOR, REJECT, REVIEW  # noqa: F401  (re-exported for callers)
 
@@ -248,6 +251,9 @@ def verify_instruction(ins: PaymentInstruction, request: PayoutRequest, public_k
     key = _as_keyring(public_keys).get(ins.signing_key_id)
     if key is None:
         reasons.append(f"no trusted originator key for signing_key_id={ins.signing_key_id}")
+    elif not (isinstance(ins.signature, str) and _CANONICAL_SIG.fullmatch(ins.signature)):
+        # the hex decoder also accepts spaces and capitals; only one written form may verify
+        reasons.append("instruction signature is not canonical (128 lowercase hex characters)")
     elif not key.verify(ins.signing_bytes(), ins.signature):
         reasons.append("instruction signature invalid (altered or forged)")
 

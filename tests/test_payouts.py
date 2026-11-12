@@ -54,6 +54,18 @@ def test_payout_that_differs_is_a_conflict(payout, needle):
     assert r.verdict == CONFLICT and any(needle in x for x in r.reasons)
 
 
+# Regression: unknown-attack fuzz — a payout row with no timestamp skipped the window check, and one
+# with no currency skipped the currency check; both were MATCHED. Missing evidence must not pass.
+# Found by bench/unknown_attacks.py on 2026-11-12
+@pytest.mark.parametrize("field,needle", [("created_at", "no time"), ("currency", "no currency")])
+def test_payout_missing_time_or_currency_is_not_matched(field, needle):
+    row = {"id": "pout_1", "fund_account_id": FA, "amount": 4_850_000, "currency": "INR", "status": "processed",
+           "reference_id": "ins_000001", "utr": "U1", "created_at": (T0 + 60_000) // 1000}
+    row[field] = None
+    r = one(run([ins()], [payout_from_row(row, MAPPINGS["razorpayx"])]))
+    assert r.verdict == CONFLICT and any(needle in x for x in r.reasons)
+
+
 def test_whole_second_provider_clock_inside_tolerance_matches():
     # instruction signed at T0 + 0.7 s; provider stamps the same second, truncated to T0
     i = sign_instruction(ORIG, originator="x", amount_minor=4_850_000, currency="INR", beneficiary=token_beneficiary(FA),

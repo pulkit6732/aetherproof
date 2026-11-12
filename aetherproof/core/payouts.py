@@ -115,8 +115,13 @@ def _compare(ins: PaymentInstruction, p: PayoutRecord) -> List[str]:
     diffs = []
     if p.amount_minor != ins.amount_minor:
         diffs.append(f"paid {money(p.amount_minor, ins.currency)}, authorised {money(ins.amount_minor, ins.currency)}")
-    if p.currency and p.currency != ins.currency:
+    # missing evidence must not pass silently (unknown-attack fuzz: rows without currency or time were MATCHED)
+    if not p.currency:
+        diffs.append("payout record carries no currency to check")
+    elif p.currency != ins.currency:
         diffs.append(f"currency {p.currency}, authorised {ins.currency}")
+    if not p.time_ms:
+        diffs.append("payout record carries no time to check against the instruction's window")
     if p.beneficiary_token or (p.ifsc and p.account_number):
         if not beneficiary_matches(ins.beneficiary, token=p.beneficiary_token, ifsc=p.ifsc,
                                    account_number=p.account_number):

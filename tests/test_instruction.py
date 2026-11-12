@@ -57,6 +57,19 @@ def test_gate_without_a_replay_store_never_allows():
         assert d.verdict == "review" and not d.allowed and "replay store" in d.reasons[0]
 
 
+# Regression: unknown-attack fuzz — the hex decoder accepted " <sig>", "<SIG>" and spaced forms,
+# so differently written documents verified as the same instruction. One canonical form only.
+@pytest.mark.parametrize("variant", [lambda s: " " + s, lambda s: s + " ", lambda s: s.upper(),
+                                     lambda s: s[:len(s) // 2] + " " + s[len(s) // 2:], lambda s: s + "00",
+                                     lambda s: "", lambda s: None])
+def test_signature_must_be_canonical_lowercase_hex(replay, variant):
+    ins = make()
+    data = json.loads(ins.to_json())
+    data["signature"] = variant(data["signature"])
+    d = check(PaymentInstruction.from_json(json.dumps(data)), req(ins), replay)
+    assert d.verdict == REJECT and any("signature" in r for r in d.reasons)
+
+
 def test_same_instruction_cannot_move_money_twice(replay):
     ins = make()
     assert check(ins, req(ins), replay).allowed
