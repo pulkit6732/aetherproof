@@ -200,7 +200,6 @@ def _finish(progress, task):
     time.sleep(0.4)
 
 
-from aetherproof.core.keystore import _atomic_write  # noqa: E402  one implementation
 
 
 def _cleanup(paths):

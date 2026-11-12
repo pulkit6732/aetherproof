@@ -257,6 +257,23 @@ def test_a_failed_disk_write_is_a_clear_500_not_a_crash(api, monkeypatch):
     assert api("GET", "/api/v1/status")[0] == 200            # the server keeps serving
 
 
+@pytest.mark.parametrize("what", ["receipt", "evidence"])
+def test_other_write_failures_are_clear_500s(api, monkeypatch, what):
+    import aetherproof.server as server
+
+    def disk_full(*_a, **_k):
+        raise OSError(28, "No space left on device")
+    if what == "receipt":
+        monkeypatch.setattr(server, "issue_receipt", disk_full)
+        status, out, _ = api("POST", "/api/v1/instructions", SIGN)
+    else:
+        seed = api("POST", "/api/v1/demo", {})[1]
+        run = api("POST", "/api/v1/payouts/reconcile", {"path": seed["payouts_path"], "source": "razorpayx"})[1]
+        monkeypatch.setattr(server, "_atomic_write", disk_full)
+        status, out, _ = api("POST", f"/api/v1/runs/{run['run_id']}/evidence", {})
+    assert status == 500 and "No space left" in out["error"]["message"]
+
+
 # Regression: QA R1 R2 — one torn instruction file (crash mid-write) broke every list and reconcile
 def test_a_torn_instruction_file_is_counted_not_fatal(api):
     api("POST", "/api/v1/instructions", SIGN)

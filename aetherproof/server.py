@@ -251,9 +251,12 @@ class Api:
         except (ValueError, OverflowError) as e:   # valid_minutes "inf" overflowed int() (QA I23)
             raise ApiError(400, str(e))
         _save(_instructions_dir() / f"{ins.instruction_id}.json", ins.to_json().encode("utf-8"))
-        issue_receipt(self.signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
-                      output_hash=ins.digest(), extensions={INSTRUCTION_NS: {"instruction_id": ins.instruction_id,
-                                                                            "digest": ins.digest()}})
+        try:
+            issue_receipt(self.signer, default_log(), model_weight_root=ins.digest(), model_root_type="name_only",
+                          output_hash=ins.digest(), extensions={INSTRUCTION_NS: {"instruction_id": ins.instruction_id,
+                                                                                "digest": ins.digest()}})
+        except OSError as e:   # the instruction is saved; only its log receipt failed (issue_receipt rolls its files back)
+            raise ApiError(500, f"instruction saved, but its log receipt could not be written: {e.strerror or type(e).__name__}", "internal")
         return {"instruction": json.loads(ins.to_json())}
 
     def verify(self, body):
@@ -391,8 +394,7 @@ class Api:
         from .core.evidence import export_package
         pkg = export_package(self.get_run(run_id), self.signer)
         d = home() / "evidence"
-        d.mkdir(parents=True, exist_ok=True)
-        path = d / f"{run_id}.evidence.json"
+        path = d / f"{run_id}.evidence.json"   # _save creates the folder and reports a failed write
         _save(path, json.dumps(pkg, indent=1).encode("utf-8"))
         return {"path": str(path), "digest": pkg["digest"], "signing_key_id": pkg["signing_key_id"]}
 
