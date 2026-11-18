@@ -50,7 +50,7 @@ _LOGO_MARK = r"""      .+######+.
 _LOGO_LINES = [
     ("AETHERPROOF", f"bold {BRAND}"),
     (_V, "dim white"),
-    ("Cryptographic receipt engine", "white"),
+    ("Proof of authority for payouts", "white"),
     ("R0/L2", "dim"),
     ("", None),
     ("github.com/pulkit6732/aetherproof", LINK),
@@ -97,7 +97,7 @@ def run_about() -> None:
         border_style="dim cyan",
     )
     body = Group(
-        Text("AetherProof is the open-source cryptographic receipt engine."),
+        Text("AetherProof signs what was approved and checks it before money moves."),
         Text("Proof of authority for money and consequential actions."),
         Text(""),
         invariant,
@@ -111,7 +111,7 @@ def run_about() -> None:
 def header() -> None:
     """Print the branded header - to stderr, so stdout stays pipeable."""
     title_text = Text("AETHERPROOF", style="cyan bold")
-    subtitle = Text("the open-source receipt engine", style="dim cyan")
+    subtitle = Text("proof of authority for payouts", style="dim cyan")
     err_console.print(f"\n{title_text}")
     err_console.print(subtitle)
     err_console.print(f"AetherProof {_V}\n", style="dim")

@@ -570,18 +570,17 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                     ref = str(body.get("instruction_id", ""))[:64]
                 out = fn(body)
                 ref = ref or str((out.get("instruction") or {}).get("instruction_id", ""))
-                status = 200
-                self._send(200, out)
+                status, payload = 200, out
             except ApiError as e:
-                status = e.status
-                self._send(e.status, self._error(e.code, str(e), path))
+                status, payload = e.status, self._error(e.code, str(e), path)
             except Exception as e:  # never leak a traceback to the client; report the type only
-                self._send(500, self._error("internal", f"internal error ({type(e).__name__})", path))
-            finally:
-                try:
-                    audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
-                except OSError:
-                    pass  # a full disk must not take the API down; the gap shows in verify_audit
+                status, payload = 500, self._error("internal", f"internal error ({type(e).__name__})", path)
+            # Audit before replying: a client that has its answer must find the call in the log.
+            try:
+                audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
+            except OSError:
+                pass  # a full disk must not take the API down; the gap shows in verify_audit
+            self._send(status, payload)
 
         def do_GET(self):
             self._handle("GET")
