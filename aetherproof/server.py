@@ -578,7 +578,7 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
             # Audit before replying: a client that has its answer must find the call in the log.
             try:
                 audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
-            except OSError:
+            except Exception:  # noqa: BLE001 - no audit failure may stop the reply
                 pass  # a full disk must not take the API down; the gap shows in verify_audit
             self._send(status, payload)
 
