@@ -11,6 +11,8 @@ a valid instruction.
 Status: **0.5.2, evaluation build.** Tested on synthetic data only. No production
 deployment, no live provider or bank connector, no independent security audit.
 
+**Join the waitlist:** https://aetherproof.vercel.app/
+
 ## What it does
 
 | Layer | What it does | Docs |
