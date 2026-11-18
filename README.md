@@ -17,15 +17,15 @@ deployment, no live provider or bank connector, no independent security audit.
 
 | Layer | What it does | Docs |
 |---|---|---|
-| Signed instructions | The approver signs amount, currency, beneficiary and validity window (Ed25519) | [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) |
+| Signed instructions | The approver signs amount, currency, beneficiary and validity window (Ed25519) | [SIGNED-INSTRUCTION-SPEC.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/SIGNED-INSTRUCTION-SPEC.md) |
 | Payment gate | The executor verifies before paying. A replay store makes each instruction pay once, and the gate fails closed | same |
-| Payout verification | Provider records (RazorpayX shaped, generic CSV/JSON) against instructions: matched, conflict, missing, pending. Payouts with no instruction are flagged | [USER_GUIDE.md](docs/USER_GUIDE.md) |
+| Payout verification | Provider records (RazorpayX shaped, generic CSV/JSON) against instructions: matched, conflict, missing, pending. Payouts with no instruction are flagged | [USER_GUIDE.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md) |
 | Settlement evidence | Bank statement against provider status. A "processed" payout the bank never debited is a conflict | same |
 | Evidence packages | A run sealed and signed. An auditor checks it offline with your public key | same |
-| Checkpoints and time | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](docs/RECONCILIATION.md) |
+| Checkpoints and time | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/RECONCILIATION.md) |
 | Action reconciliation | Automated and agent actions against AWS CloudTrail | same |
-| Receipts | Signed, offline verifiable receipts for model output (the original SDK) | [GETTING-STARTED.md](docs/GETTING-STARTED.md) |
-| Local API and desktop app | `/api/v1` with roles, lockout, rate limit and a hash-chained audit log | [API_CONTRACT.md](docs/API_CONTRACT.md) |
+| Receipts | Signed, offline verifiable receipts for model output (the original SDK) | [GETTING-STARTED.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/GETTING-STARTED.md) |
+| Local API and desktop app | `/api/v1` with roles, lockout, rate limit and a hash-chained audit log | [API_CONTRACT.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/API_CONTRACT.md) |
 
 ## Install
 
@@ -59,7 +59,7 @@ aetherproof evidence verify run.evidence.json --pubkey signing_key.pub
 aetherproof serve
 ```
 
-The [user guide](docs/USER_GUIDE.md) covers the three minute demo, the daily workflow,
+The [user guide](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md) covers the three minute demo, the daily workflow,
 file formats and how an auditor checks evidence.
 
 ## Desktop app
@@ -73,7 +73,7 @@ repository, at `../vendor/rune` from the repository root, pinned to rev `ba5e7c8
 Then run `aetherproof serve` and `cargo run --release` in `app/`. Every screen also
 renders headless: `aetherproof-app --scene payouts --snap payouts.png`.
 
-![Payouts screen](app/snaps/payouts.png)
+![Payouts screen](https://raw.githubusercontent.com/pulkit6732/aetherproof/main/app/snaps/payouts.png)
 
 ## Receipts
 
@@ -88,11 +88,11 @@ sign(prompt=user_prompt, output=out, model_id=resp.model)
 
 It never blocks your program. On failure it returns `None`; set `AETHERPROOF_STRICT=1`
 to make a missing receipt an error. Decorator and session forms are in
-[INTEGRATION.md](docs/INTEGRATION.md).
+[INTEGRATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/INTEGRATION.md).
 
 Verification needs one dependency (`cryptography`), no network and no account. The
 complete offline verifier, tested on every commit, is in
-[VERIFICATION.md](docs/VERIFICATION.md).
+[VERIFICATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/VERIFICATION.md).
 
 ## What it proves
 
@@ -106,7 +106,7 @@ complete offline verifier, tested on every commit, is in
 
 ## What it does not prove
 
-Read this before quoting anything above. Full list: [CLAIMS.md](docs/CLAIMS.md).
+Read this before quoting anything above. Full list: [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md).
 
 | Not proven | Why |
 |---|---|
@@ -128,7 +128,7 @@ Read this before quoting anything above. Full list: [CLAIMS.md](docs/CLAIMS.md).
 
 The Rust core is optional. The Python package does not import it, which CI enforces.
 The 128 byte Rust receipt is a legacy format whose hash fields are 64 bit FNV-1a
-checksums, not cryptographic hashes; see [CLAIMS.md](docs/CLAIMS.md).
+checksums, not cryptographic hashes; see [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md).
 
 ## Tests
 
@@ -147,19 +147,19 @@ Rerun them before quoting.
 
 | | |
 |---|---|
-| [USER_GUIDE.md](docs/USER_GUIDE.md) | install, demo, workflow, file formats |
-| [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) | instruction format, gate, payout checks |
-| [API_CONTRACT.md](docs/API_CONTRACT.md) | local API `/api/v1` |
-| [RECONCILIATION.md](docs/RECONCILIATION.md) | CloudTrail, checkpoints, RFC 3161 time |
-| [CLAIMS.md](docs/CLAIMS.md) | what this proves and what it does not |
-| [VERIFICATION.md](docs/VERIFICATION.md) | the offline receipt verifier |
-| [INTEGRATION.md](docs/INTEGRATION.md) | receipt integration paths |
-| [SECURITY.md](SECURITY.md) | reporting a vulnerability, threat model |
-| [ROADMAP.md](docs/ROADMAP.md) | what is planned |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute |
+| [USER_GUIDE.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md) | install, demo, workflow, file formats |
+| [SIGNED-INSTRUCTION-SPEC.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/SIGNED-INSTRUCTION-SPEC.md) | instruction format, gate, payout checks |
+| [API_CONTRACT.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/API_CONTRACT.md) | local API `/api/v1` |
+| [RECONCILIATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/RECONCILIATION.md) | CloudTrail, checkpoints, RFC 3161 time |
+| [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md) | what this proves and what it does not |
+| [VERIFICATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/VERIFICATION.md) | the offline receipt verifier |
+| [INTEGRATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/INTEGRATION.md) | receipt integration paths |
+| [SECURITY.md](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md) | reporting a vulnerability, threat model |
+| [ROADMAP.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/ROADMAP.md) | what is planned |
+| [CONTRIBUTING.md](https://github.com/pulkit6732/aetherproof/blob/main/CONTRIBUTING.md) | how to contribute |
 
 ## License
 
 Apache-2.0. Versions up to 0.2.2 were AGPL-3.0-or-later.
 
-Security issues: see [SECURITY.md](SECURITY.md). Please do not open a public issue.
+Security issues: see [SECURITY.md](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md). Please do not open a public issue.
