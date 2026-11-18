@@ -21,6 +21,7 @@ default CI dependency.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -249,22 +250,45 @@ def test_bare_command_without_a_tty_explains_itself(tmp_path):
     assert "--help" in text
 
 
-# ══ opt-in: a real clean virtualenv (needs network) ═════════════════════════
+# ══ a real clean virtualenv ═════════════════════════════════════════════════
 
-@pytest.mark.skipif(os.environ.get("AETHERPROOF_TEST_VENV") != "1",
-                    reason="set AETHERPROOF_TEST_VENV=1 (installs cryptography)")
 def test_verifies_in_a_clean_virtualenv(rig, tmp_path):
     """The strongest form: a separate interpreter that has never seen
-    aetherproof, with only `cryptography` installed."""
+    aetherproof, with only `cryptography` available.
+
+    By default the `cryptography` already installed here is copied in, so the
+    test runs offline. AETHERPROOF_TEST_VENV=1 installs it from PyPI instead."""
     work, receipt, pub, verifier = rig
     venv = tmp_path / "cleanenv"
-    subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True,
-                   capture_output=True, timeout=300)
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)]
+                   if os.environ.get("AETHERPROOF_TEST_VENV") != "1"
+                   else [sys.executable, "-m", "venv", str(venv)],
+                   check=True, capture_output=True, timeout=300)
     vpy = venv / ("Scripts" if os.name == "nt" else "bin") / (
         "python.exe" if os.name == "nt" else "python")
-    subprocess.run([str(vpy), "-m", "pip", "install", "-q",
-                    "--disable-pip-version-check", "cryptography"],
-                   check=True, capture_output=True, timeout=600)
+    if os.environ.get("AETHERPROOF_TEST_VENV") == "1":
+        subprocess.run([str(vpy), "-m", "pip", "install", "-q",
+                        "--disable-pip-version-check", "cryptography"],
+                       check=True, capture_output=True, timeout=600)
+    else:
+        from importlib import metadata
+        deps = tmp_path / "deps"
+        # cryptography and what it needs at run time (cffi, pycparser), nothing else
+        for dist in ("cryptography", "cffi", "pycparser"):
+            try:
+                files = metadata.distribution(dist).files or []
+            except metadata.PackageNotFoundError:
+                continue
+            for f in files:
+                src = Path(f.locate())
+                if src.is_file() and ".dist-info" not in str(f) and ".." not in f.parts:
+                    dst = deps / f
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+        site = subprocess.run(
+            [str(vpy), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
+            capture_output=True, text=True, check=True, timeout=60).stdout.strip()
+        Path(site, "only_cryptography.pth").write_text(str(deps), encoding="utf-8")
 
     # cwd MUST be outside the repo: python puts the working directory on
     # sys.path, so running this from the repo root would find aetherproof/

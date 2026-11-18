@@ -25,7 +25,7 @@ property regulated buyers actually need.
 Scope boundary: this is the FREE layer. It proves a turn belongs to a session
 you sealed. It cannot prove you did not seal a *second*, edited session and show
 that one instead - defeating that needs an independent witness publishing the
-root, which is the transparency-log service (Signet). The split is deliberate:
+root, which is the transparency-log service (planned). The split is deliberate:
 everything provable on one machine is free and offline forever.
 """
 

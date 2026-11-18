@@ -39,8 +39,8 @@ class Receipt:
     output_hash: str = ""  # SHA-256 of model output
     timestamp_ms: int = 0  # Unix milliseconds
     log_sequence: int = 0  # uint64 monotonic counter in append-only log
-    hw_evidence: List[Dict[str, Any]] = field(default_factory=list)  # [] in AetherProof; R1+ in Signet
-    signature: str = ""  # Ed25519 (AetherProof) or Ed25519+ML-DSA-65 (Signet)
+    hw_evidence: List[Dict[str, Any]] = field(default_factory=list)  # [] today; hardware evidence is planned for R1+
+    signature: str = ""  # Ed25519 (ML-DSA-65 exists only in the Rust core)
     log_anchor: str = ""  # "local://log/<log_sequence>" for open-source version
     receipt_id: str = ""  # Unique identifier ("ap_<random hex>")
     # SHA-256 of the signing public key, truncated - "which key signed this".
@@ -127,7 +127,7 @@ class Receipt:
     def _canonical_hw_evidence(self) -> str:
         # canonical, key-sorted JSON so semantically-equal evidence (any key
         # order / whitespace) yields one preimage. [] for AetherProof; typed
-        # objects for Signet R1+.
+        # objects for the planned R1+ hardware evidence.
         return json.dumps(self.hw_evidence, sort_keys=True, separators=(",", ":"))
 
     @staticmethod

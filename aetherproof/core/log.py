@@ -338,7 +338,7 @@ class ReceiptLog:
         `strict_keys=True` to require that every row be checkable.
 
         The single-machine trust assumption itself is removed only by an
-        independent witness log (Signet).
+        independent witness log (planned).
         """
         return self.verify_integrity_report(
             public_key, strict_keys=strict_keys

@@ -175,7 +175,7 @@ def test_readme_does_not_claim_an_unimplemented_signature_scheme():
 
     ML-DSA-65 exists in the Rust core (rust/core/src/pq.rs). It does NOT exist in
     the Python package. A README line mentioning it must therefore be scoped to
-    the implementation that has it - "rust", the 0.5.0 roadmap, or Signet - and
+    the implementation that has it - "rust", the 0.5.0 roadmap, or "planned" - and
     this test verifies the Rust claim against the Rust source rather than trusting
     a keyword.
     """
@@ -183,7 +183,7 @@ def test_readme_does_not_claim_an_unimplemented_signature_scheme():
     rust_pq = repo / "rust" / "core" / "src" / "pq.rs"
     rust_has_mldsa = rust_pq.is_file() and "ml_dsa_65" in rust_pq.read_text(encoding="utf-8")
 
-    scopes = ("signet", "rust", "roadmap", "0.5.0")
+    scopes = ("planned", "rust", "roadmap", "0.5.0")
     # Markdown wraps sentences across lines, so scope is a property of the
     # paragraph, not of whichever line the token happens to land on.
     text = README.read_text(encoding="utf-8").lower()
@@ -210,7 +210,7 @@ def test_python_package_does_not_claim_post_quantum_signing():
             if "ml-dsa" not in low and "dilithium" not in low:
                 continue
             # A comment noting where PQ *would* live is fine; a claim is not.
-            assert "signet" in low or "roadmap" in low or "rust" in low, (
+            assert "planned" in low or "roadmap" in low or "rust" in low, (
                 f"{path.name}:{n} implies post-quantum signing in the Python "
                 f"package, which signs with Ed25519 only: {line.strip()!r}"
             )

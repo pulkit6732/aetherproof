@@ -211,7 +211,7 @@ def b_tamper_suite():
     detected = not log.verify_integrity()
     record("B", "b4 TAIL truncation is detected", detected,
            "" if detected else "known gap: a shorter chain is self-consistent; "
-                               "needs a signed/published log head (SIGNET)")
+                               "needs a signed/published log head")
 
     # b5 delete-then-renumber
     d, log, s = _seeded_log()

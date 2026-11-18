@@ -166,5 +166,5 @@ rm -rf ~/.aetherproof
 ## 7. HONEST FRAMING (so you don't overclaim on camera)
 Say: "proves the output wasn't changed and the record wasn't rewritten, verifiable
 offline." Do **not** say it proves the model actually ran, or that the key is in
-hardware - that's the next layer (Signet). The full proves / does-not-prove
+hardware - that's the next layer (planned). The full proves / does-not-prove
 matrix is in `CLAIMS.md`; keep claims at that level and the demo stays bulletproof.

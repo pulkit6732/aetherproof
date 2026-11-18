@@ -102,5 +102,5 @@ In a real dispute (a wrongful denial, a bad summary), the fight is almost never
 the record edited afterward?"** AetherProof answers that completely, for any cloud
 model, with zero provider cooperation. The model-identity gap upgrades to a real
 hardware root only when the provider signs their infrastructure (AWS Bedrock +
-Nitro, future) - at which point **Signet** imports that signature and the tier
+Nitro, future) - at which point AetherProof imports that signature and the tier
 graduates `api_attested -> hardware-rooted`, with no change to the receipt format.

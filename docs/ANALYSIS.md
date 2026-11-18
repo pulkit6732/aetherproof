@@ -125,7 +125,7 @@ CI should run it.
 
 ## 4. Honest position against the literature
 
-From `signet/RESEARCH.md`, where every competitor was read in full:
+From the earlier competitor review, where every competitor was read in full:
 
 | System | Where it is ahead | Where AetherProof is ahead |
 |---|---|---|
@@ -161,7 +161,7 @@ Listed plainly, because an unstated gap is a claim.
    the security layer are bound and verified; the object layer above them is not.
 6. **Completeness remains unsolved**, and is unsolvable locally. Somebody who logs
    9,000 of 10,000 outputs passes every check in this repository. That requires an
-   external witness, which is SIGNET, which has 0 lines of code.
+   external witness, which is planned and has 0 lines of code.
 7. **Phase 0 customer validation has never been run.** Every market framing that
    died, died on a fact one conversation would have surfaced.
 

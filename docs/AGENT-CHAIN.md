@@ -40,4 +40,4 @@ r = Receipt(
 
 This is the AetherProof side of the [agent-chain context spec](https://github.com/pulkit6732/aetherproof/issues/1).
 Multi-hop pipeline aggregation (signing each hop, identifying a tampered hop) is
-**Signet Layer 3** and builds on this primitive.
+planned Layer 3 work and builds on this primitive.

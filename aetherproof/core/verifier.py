@@ -13,7 +13,7 @@ def verify_receipt(
     THE INVARIANT:
     Verify(receipt, public_key, log) = TRUE
     using ONLY those three inputs, forever, with zero dependency on
-    AetherProof/Signet servers, any vendor SDK, or any hardware driver.
+    AetherProof servers, any vendor SDK, or any hardware driver.
 
     Args:
         receipt: Receipt object to verify

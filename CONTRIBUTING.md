@@ -1,7 +1,7 @@
 # Contributing to AetherProof
 
 AetherProof is the open-source R0/L2 receipt engine - Ed25519 + SHA-256, offline
-verifiable, append-only hash-chained log. It is the prototype base for Signet.
+verifiable, append-only hash-chained log.
 Contributions that strengthen the core invariant are welcome:
 
 > **Verify(receipt, public_key, log) = TRUE** - using only those three inputs,

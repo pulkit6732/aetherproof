@@ -7,7 +7,7 @@ signature, a SHA-256 output binding, and a local hash-chained transparency log.
 This document states plainly what that establishes and what it does not, so the
 claim can be made in a security review without overstating it. The hardware-rooted
 (R1+, TPM / NVIDIA CC), post-quantum, and independently-witnessed-log properties
-belong to **Signet** and are explicitly out of scope here.
+are planned later work and are explicitly out of scope here.
 
 The honesty rule: a receipt proves things about **signing time** under **one
 software key held on the signer's machine**. It does not prove anything about the
@@ -33,16 +33,16 @@ inference itself, and it trusts the operator's key custody and clock.
 
 | Not proven | Why | What would close it |
 |---|---|---|
-| That the named model actually produced this output | There is no inference attestation; AetherProof signs a `(model_id, output)` pair the caller supplies | Hardware/runtime attestation of the inference (Signet R1: TPM / NVIDIA CC) |
+| That the named model actually produced this output | There is no inference attestation; AetherProof signs a `(model_id, output)` pair the caller supplies | Hardware/runtime attestation of the inference (planned R1: TPM / NVIDIA CC) |
 | That the model **weights** match (only the model *name* in the wizard) | Easy-mode sets `model_weight_root = SHA-256(model name)`; expert `sign <model_file>` hashes real bytes | Use expert `sign` with the actual model file/dir; measured-load attestation for the strong form |
-| That the signing key is held securely | The R0 key is an unencrypted PEM in `~/.aetherproof/` | Hardware-held, non-exportable key (Signet R1: TPM/CC) |
+| That the signing key is held securely | The R0 key is an unencrypted PEM in `~/.aetherproof/` | Hardware-held, non-exportable key (planned R1: TPM/CC) |
 | That the timestamp is truthful | `timestamp_ms` is the signer's own clock, bound but not externally anchored | **Partly closed:** `checkpoint create --tsa URL` gets an RFC 3161 token over a signed log checkpoint, proving every covered receipt existed no later than the TSA's genTime, and flags a signer clock more than 5 min off. Each receipt's own `timestamp_ms` is still the signer's clock; only the upper bound is independent |
-| That the log operator is independent | The transparency log is a single local SQLite file run by the signer; tamper-evident but not third-party-witnessed | **Partly closed:** a signed checkpoint kept outside the signer's control detects deleted newest entries and rewritten history (`checkpoint verify`). It is only as independent as wherever the checkpoint is kept; a witness that cosigns is still Signet work |
+| That the log operator is independent | The transparency log is a single local SQLite file run by the signer; tamper-evident but not third-party-witnessed | **Partly closed:** a signed checkpoint kept outside the signer's control detects deleted newest entries and rewritten history (`checkpoint verify`). It is only as independent as wherever the checkpoint is kept; a witness that cosigns is still planned work |
 | That the action an agent took is the action that was approved | A receipt binds a record, not the effect in the destination system | `reconcile` (new) compares a signed approval with the destination's own record (AWS CloudTrail) and returns matched / conflict / missing / ambiguous - see [RECONCILIATION.md](RECONCILIATION.md). It is only as complete as the destination's log |
-| That `log_anchor` is a portable inclusion proof | It is the reference string `local://log/<n>`, not yet a Merkle inclusion proof | Merkle tree over the log + signed head (Signet) |
-| That the most recent entries were not truncated | The chain detects edits/deletions/reorders *within* the log, but with no published or signed log head, dropping the **tail** (the latest N rows) leaves a shorter self-consistent chain that key-free verification cannot distinguish from "those rows were never written" | A signed/published log head or independent witness (Signet) |
+| That `log_anchor` is a portable inclusion proof | It is the reference string `local://log/<n>`, not yet a Merkle inclusion proof | Merkle tree over the log + signed head (planned) |
+| That the most recent entries were not truncated | The chain detects edits/deletions/reorders *within* the log, but with no published or signed log head, dropping the **tail** (the latest N rows) leaves a shorter self-consistent chain that key-free verification cannot distinguish from "those rows were never written" | A signed/published log head or independent witness (planned) |
 | That rows logged before a chain migration were untouched | The hash chain is computed at migration time; it attests integrity **from migration forward**, not retroactively | A chain built at issuance time from day one (default for any fresh log) |
-| That a maximally thorough forger with database write access cannot rewrite the log | Default log verification is key-free and catches deletion, reordering, content edits, and delete-then-renumber; an attacker who also rewrites each receipt's embedded `log_sequence` and recomputes the whole chain is caught **only** by key-bound signature re-verification | Independent witness cosigners / published log head (Signet) removes the single-machine trust assumption entirely |
+| That a maximally thorough forger with database write access cannot rewrite the log | Default log verification is key-free and catches deletion, reordering, content edits, and delete-then-renumber; an attacker who also rewrites each receipt's embedded `log_sequence` and recomputes the whole chain is caught **only** by key-bound signature re-verification | Independent witness cosigners / published log head (planned) removes the single-machine trust assumption entirely |
 | That the receipt survives a quantum adversary | The Python receipt is signed with Ed25519 only. The optional Rust core has an experimental ML-DSA-65 (FIPS 204) second signature slot (`rust/core/src/pq.rs`); it is not wired into the Python package and has not been independently reviewed | Hybrid Ed25519 + ML-DSA-65 end to end, after review |
 | That the Rust 128-byte receipt binds its model and output | Its `binary_hash` and `memory_hash` are 64-bit FNV-1a checksums, not cryptographic hashes; a collision has been demonstrated. The Ed25519 signature still detects any change to the receipt after signing | A versioned format with a cryptographic hash (e.g. SHA-256) |
 | That a receipt signed with the Rust demo key means anything | `DEV_SIGNING_SEED` is public. From 0.5.2 the CLI refuses it unless `--demo` is passed and labels such receipts "proves nothing" | Externally provisioned keys only (`--key` / `--pubkey`) |
@@ -76,7 +76,7 @@ the log against something the log's operator does not control. Any purely local
 mechanism is computed by the same party who chose what to record, so it inherits
 that choice. Closing it requires an independent party - a witness who retains
 signed log heads, or an exogenous record (a provider's usage report) to reconcile
-against. Both are out of scope here and belong to Signet.
+against. Both are out of scope here and are planned later work.
 
 **What to say when asked.** Not *"our logs are complete"* - that is unprovable
 with this tool. Say: *"every record we produce is tamper-evident and offline
@@ -118,7 +118,7 @@ real work and should be quoted alongside the claim, never dropped from it.
 > single-operator log can establish and which we do not claim. This is a
 > software-key (R0) implementation; hardware key custody, inference attestation,
 > post-quantum signatures, and an independently-witnessed log are roadmap items
-> (Signet) and are not claimed here."
+> and are not claimed here."
 
 Make the claim at the level the code supports. The strongest honest statement is
 about **integrity and authentication of the record** - not about the inference,

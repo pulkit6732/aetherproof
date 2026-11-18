@@ -80,19 +80,19 @@ Start narrow and registry-bound, exactly as you have it. Proposed v0.1 stable se
 a semantics-requiring verifier (your model is right). Everything else goes through
 the registry rather than the enum.
 
-## Where this lands: AetherProof vs Signet
+## Where this lands: now vs later
 
 To set expectations honestly: AetherProof is the open-source R0/L2 base; the
-agent-chain / multi-hop receipt work is **Signet Layer 3** (model identity + agent
+agent-chain / multi-hop receipt work is planned **Layer 3** (model identity + agent
 chain receipts) on its roadmap. So the right sequencing is:
 
 1. **Now (AetherProof v1.2):** land the *single-receipt* extension mechanism -
    `signed_extensions_hash` in the preimage, the JCS+SHA-256 commitment, the
    replay fixture, and the registry. This is small, self-contained, and a clean
    addition to the current injective preimage.
-2. **Signet L3 (next):** the *multi-hop* aggregation - `pipeline_receipt_root`,
+2. **Layer 3 (next):** the *multi-hop* aggregation - `pipeline_receipt_root`,
    `hop_receipts[]`, Merkle path, tampered-hop identification - builds on the v1.2
-   extension primitive. The IETF companion doc you outlined maps onto Signet's
+   extension primitive. The IETF companion doc you outlined maps onto the
    planned `draft-srivastava-rats-ai-workload-attestation`, so let's align the
    claim-set names now to avoid a rename later.
 

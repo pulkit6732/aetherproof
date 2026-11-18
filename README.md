@@ -1,267 +1,163 @@
-<p align="center">
-  <img src="docs/signet-logo.png" alt="Signet" width="240">
-</p>
-
 # AetherProof
 
-**Proof of authority for money and consequential actions.** The system that approves a
-payout signs exactly what it approved; the system that executes it checks that proof
-before any money moves; afterwards the outcome is matched back to the proof. A stolen
-API credential can still call a payout API. It cannot mint a valid instruction.
+**Proof of authority for payouts and other consequential actions.**
+
+The system that approves a payout signs exactly what it approved. The system that
+executes it checks that signature before money moves, and each instruction pays once.
+Afterwards, provider records and the bank statement are matched back to the signed
+instruction. A stolen API credential can still call a payout API, but it cannot create
+a valid instruction.
+
+Status: **0.5.2, evaluation build.** Tested on synthetic data only. No production
+deployment, no live provider or bank connector, no independent security audit.
+
+## What it does
 
 | Layer | What it does | Docs |
 |---|---|---|
-| **Signed instructions** | Originator signs amount, currency, beneficiary, validity | [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) |
-| **Payment gate** | Executor verifies before paying; each instruction pays once | same |
-| **Payout verification** | Provider records (RazorpayX, generic CSV/JSON) vs instructions: matched / conflict / missing / pending; payouts with no instruction flagged | [USER_GUIDE.md](docs/USER_GUIDE.md) |
-| **Settlement evidence** | Bank statement vs provider status: a "processed" payout the bank never debited is a conflict | same |
-| **Evidence packages** | A run sealed and signed; an auditor checks it offline with your public key | same |
-| **Action reconciliation** | AI-agent and cloud actions vs AWS CloudTrail | [RECONCILIATION.md](docs/RECONCILIATION.md) |
-| **Evidence** | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](docs/RECONCILIATION.md) |
-| **Receipts** | The original SDK: signed, offline-verifiable receipts for AI output | below |
+| Signed instructions | The approver signs amount, currency, beneficiary and validity window (Ed25519) | [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) |
+| Payment gate | The executor verifies before paying. A replay store makes each instruction pay once, and the gate fails closed | same |
+| Payout verification | Provider records (RazorpayX shaped, generic CSV/JSON) against instructions: matched, conflict, missing, pending. Payouts with no instruction are flagged | [USER_GUIDE.md](docs/USER_GUIDE.md) |
+| Settlement evidence | Bank statement against provider status. A "processed" payout the bank never debited is a conflict | same |
+| Evidence packages | A run sealed and signed. An auditor checks it offline with your public key | same |
+| Checkpoints and time | Hash-chained log, signed checkpoints, RFC 3161 time stamps | [RECONCILIATION.md](docs/RECONCILIATION.md) |
+| Action reconciliation | Automated and agent actions against AWS CloudTrail | same |
+| Receipts | Signed, offline verifiable receipts for model output (the original SDK) | [GETTING-STARTED.md](docs/GETTING-STARTED.md) |
+| Local API and desktop app | `/api/v1` with roles, lockout, rate limit and a hash-chained audit log | [API_CONTRACT.md](docs/API_CONTRACT.md) |
+
+## Install
 
 ```bash
-pip install aetherproof            # 0.5.1 on PyPI: receipts only
-pip install -e ".[timestamp]"      # from this branch: everything above
+git clone https://github.com/pulkit6732/aetherproof
+cd aetherproof
+pip install -e ".[timestamp]"
 ```
 
+`pip install aetherproof` currently installs 0.5.1 from PyPI, which has receipts only.
+
+## Quick start
+
 ```bash
+# approver: sign what was approved
 aetherproof instruction sign --amount 48500.00 --currency INR --beneficiary-token fa_123 \
     --reference LN-1041 --approval-ref SAN-7701 --approved-by credit-ops
+
+# executor: check before paying (exit 0 = allow, 1 = reject)
 aetherproof instruction verify ~/.aetherproof/instructions/<id>.json \
-    --amount 48500.00 --currency INR --beneficiary-token fa_123      # exit 0 = allow, 1 = reject
-aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions --source razorpayx \
-    --statement statement.csv                                         # bank debits confirm settlement
-aetherproof evidence verify run.evidence.json --pubkey signing_key.pub  # auditor's offline tamper check
-aetherproof serve                                                     # local API for the desktop app
+    --amount 48500.00 --currency INR --beneficiary-token fa_123
+
+# afterwards: provider export and bank statement against the instructions
+aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions \
+    --source razorpayx --statement statement.csv
+
+# auditor: offline tamper check of a signed evidence package
+aetherproof evidence verify run.evidence.json --pubkey signing_key.pub
+
+# local API for the desktop app
+aetherproof serve
 ```
 
-**Desktop app** (`app/`, built with [Rune](https://github.com/anomalyco/rune)): Overview,
-Instructions, Payment gate, Payouts, Transaction investigation, Evidence, Integrations and
-Settings & security, over the local API. Run
-`aetherproof serve`, then `cargo run --release` in `app/` (Rune checkout at
-`../vendor/rune`, rev `ba5e7c80`). Every screen renders headless for review:
-`aetherproof-app --scene payouts --snap payouts.png`.
+The [user guide](docs/USER_GUIDE.md) covers the three minute demo, the daily workflow,
+file formats and how an auditor checks evidence.
+
+## Desktop app
+
+`app/` is a desktop client for the local API, built with
+[Rune](https://github.com/anomalyco/rune). Screens: Overview, Instructions, Payment gate,
+Payouts, Transaction investigation, Evidence, Integrations, Settings and security.
+
+Rune is pre release, so the app builds against a local checkout placed next to this
+repository, at `../vendor/rune` from the repository root, pinned to rev `ba5e7c80`.
+Then run `aetherproof serve` and `cargo run --release` in `app/`. Every screen also
+renders headless: `aetherproof-app --scene payouts --snap payouts.png`.
 
 ![Payouts screen](app/snaps/payouts.png)
 
-> **Running payouts?** Start with the [user guide](docs/USER_GUIDE.md): install, the
-> three-minute demo, daily workflow, file formats, and how an auditor checks your evidence.
-> For AI-output receipts, see the [plain-language guide](docs/GETTING-STARTED.md).
+## Receipts
 
----
-
-## The problem
-
-Somebody acts on an AI's output. Weeks later it is questioned:
-
-> *"Did it really say that, or did you change it afterwards?"*
-
-Today that argument is unwinnable in both directions. You cannot prove you did not
-edit a text file, and they cannot prove you did. Screenshots prove nothing. Logs you
-control prove nothing, because you control them.
-
-**AetherProof turns that into arithmetic that either checks or does not.**
-
----
-
-## Use it
-
-### Sign one output
+The receipt SDK signs a prompt and output pair so anyone can later check that the
+record was not changed.
 
 ```python
 from aetherproof.auto import sign
 
-resp = client.chat.completions.create(model="gpt-4o", messages=[...])
-out  = resp.choices[0].message.content
-
 sign(prompt=user_prompt, output=out, model_id=resp.model)
 ```
 
-That is the whole integration. It never prompts, never blocks. On failure it
-returns `None` and your program continues - set `AETHERPROOF_STRICT=1` if a missing
-receipt should be an error instead.
+It never blocks your program. On failure it returns `None`; set `AETHERPROOF_STRICT=1`
+to make a missing receipt an error. Decorator and session forms are in
+[INTEGRATION.md](docs/INTEGRATION.md).
 
-### Wrap a function you already have
-
-```python
-from aetherproof.auto import receipted
-
-@receipted(model_id="gpt-4o")
-def ask(prompt: str) -> str:
-    return client.chat.completions.create(...).choices[0].message.content
-```
-
-No call sites change.
-
-### A whole conversation, one signature
-
-```python
-from aetherproof.auto import AutoSession
-
-with AutoSession(model_id="gpt-4o") as chat:      # seals on exit
-    for prompt in prompts:
-        chat.turn(prompt=prompt, output=ask(prompt))
-```
-
-At 1,000 turns that is **one 412-byte seal**. Proving any single turn costs 10
-hashes and about 1 KB, and reveals nothing about the other 999.
-
-### From the command line
-
-```bash
-aetherproof sign model.onnx output.txt
-aetherproof verify receipt.json --output output.txt
-aetherproof                                   # interactive menu
-```
-
-**More recipes:** [docs/INTEGRATION.md](docs/INTEGRATION.md) - pick a path by one
-question, every snippet tested.
-
----
-
-## Verify it
-
-Verification needs **21 lines and one dependency**. No network, no account, no
-special hardware, and it keeps working if this project is abandoned.
-
-```bash
-pip install cryptography      # that is the entire requirement
-```
-
-**The shape of it**, so you can see there is no trick - this is illustrative, not
-complete:
-
-```python
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-import json
-
-r   = json.load(open("receipt.json"))
-pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(r["public_key"]))
-
-# every field length-prefixed as "<len>:<field>", concatenated, then signed
-preimage = build_preimage(r)                 # see the full version below
-pub.verify(bytes.fromhex(r["signature"]), preimage)     # raises if invalid
-```
-
-> **Do not ship the snippet above.** It omits `log_sequence`, `hw_evidence`, the
-> v1.2 extension commitment, and the v1.3 `receipt_id` and `signing_key_id`, so it
-> rejects every receipt the current version produces. The complete verifier - 21
-> lines, tested on every commit against real receipts - is in
-> **[docs/VERIFICATION.md](docs/VERIFICATION.md)**.
-
----
+Verification needs one dependency (`cryptography`), no network and no account. The
+complete offline verifier, tested on every commit, is in
+[VERIFICATION.md](docs/VERIFICATION.md).
 
 ## What it proves
 
 | Claim | Mechanism |
 |---|---|
-| This exact output was not modified after signing | `output_hash` inside the signed preimage |
-| The receipt itself was not altered | Ed25519 over a length-prefixed canonical preimage |
-| It was signed by the holder of a specific key | Ed25519 verify, no other input |
-| A claimed time and log position were fixed at signing | both inside the preimage |
-| The local log was not edited, reordered, or truncated in the middle | key-free hash chain |
-| A specific turn belongs to a sealed session | Merkle inclusion proof, revealing no other turn |
-| Anyone can check all of it offline, forever | receipt + public key, nothing else |
+| The payout matched what was approved | Signed instruction checked at the gate |
+| An instruction paid at most once | Replay store at the gate, fail closed |
+| The provider's record agrees with the bank | Statement match in settlement evidence |
+| Evidence was not altered after sealing | Signed evidence package, offline verify |
+| The local log was not edited, reordered or cut in the middle | Hash chain plus signed checkpoints |
 
----
+## What it does not prove
 
-## What it does **not** prove
-
-Read this before citing anything above.
-
-**Integrity, not completeness.** *"Show me the record of this decision"* is answered.
-*"Show me that you logged them all"* is not. Someone who logs 9,000 of 10,000
-outputs passes every check here. That cannot be fixed locally - it needs an
-independent witness, which does not exist yet.
+Read this before quoting anything above. Full list: [CLAIMS.md](docs/CLAIMS.md).
 
 | Not proven | Why |
 |---|---|
-| That the named model produced the output | it signs a `(model, output)` pair you supply |
-| That the timestamp is truthful | it is your own clock - bound, not externally anchored |
-| That the signing key is held securely | a software key on disk unless you set a passphrase |
-| That it survives a quantum adversary | Python is Ed25519 only; ML-DSA-65 is in the Rust core |
-
-**Where it does not fit at all:** detecting deepfakes or unsigned AI content. A
-scammer never signs, so there is nothing to verify.
-
-Full list: [docs/CLAIMS.md](docs/CLAIMS.md).
-
----
+| Payouts that bypass the gate | The gate only protects payouts routed through it; a direct provider API call skips it |
+| Business facts behind an approval | A signature proves who approved, not that the approval was right |
+| Authentic bank data | Statements are imported files, not authenticated feeds |
+| Safety against a stolen signing key | Whoever holds the key can sign valid instructions |
+| Safety against one insider forging both files | Provider export and statement forged together stay consistent |
+| That every event was logged | Integrity, not completeness; that needs an independent witness |
+| That a named model produced an output | A receipt signs the model and output pair you supply |
 
 ## Two implementations
 
-| | Rust - `rust/` | Python - `aetherproof/` |
+| | Python, `aetherproof/` | Rust, `rust/` |
 |---|---|---|
-| Receipt | **128 B fixed binary** | 646 B JSON |
-| Post-quantum | **ML-DSA-65 (FIPS 204)** | none |
-| Secret zeroization, constant-time compare | **yes** | no |
-| `unsafe` in production | **zero, compiler-enforced** | n/a |
-| Tests (measured 2026-11-02, Windows, Python 3.14) | 59 pass | 646 pass, 1 skipped (93% coverage) with the native extension built; 573 pass, 3 skipped without it |
-| Distribution | source + CI wheels | PyPI |
+| Signatures | Ed25519 | Ed25519, plus ML-DSA-65 (FIPS 204) in the Rust core |
+| Secret wiping, constant time compare | no | yes |
+| Distribution | PyPI | source and CI wheels |
 
-Measured by the author on one machine (2026-08), 50,000 leaves, medians of seven
-isolated runs: Rust built a Merkle tree in **28.16 ms** against Python's 102.71 ms
-(3.6x) and verified a proof in **3.93 µs** against 17.17 µs (4.4x). Not re-run for
-0.5.2; reproduce with `cargo run --release --example bench_merkle` before quoting.
+The Rust core is optional. The Python package does not import it, which CI enforces.
+The 128 byte Rust receipt is a legacy format whose hash fields are 64 bit FNV-1a
+checksums, not cryptographic hashes; see [CLAIMS.md](docs/CLAIMS.md).
 
-The 128-byte Rust receipt is a legacy format: its hash fields are 64-bit FNV-1a
-checksums, not cryptographic hashes, and the CLI refuses the public demo key
-unless `--demo` is passed. See [docs/CLAIMS.md](docs/CLAIMS.md).
+## Tests
 
-The Rust core is optional. `aetherproof` does not import it and behaves identically
-without it - enforced in CI. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Local results on Windows, synthetic data only, not production accuracy:
 
-### Secrets that get wiped
+* Python suite, 18 Nov 2026: 900 passed, 0 skipped (`python -m pytest tests/`)
+* Rust core, 18 Nov 2026: 62 passed (`cargo test --release --workspace` in `rust/`)
+* Attack lab, 12 Nov 2026, 100k payouts: 0 of 94,400 clean payouts flagged; forged
+  "processed" status caught 500 of 500 with the statement (`python bench/attack_lab.py 100000`)
+* Unknown attack fuzz, 12 Nov 2026: 0 fail open in 60,000 mutated cases
+  (`python bench/unknown_attacks.py 60000`)
 
-A signing key held as a Python `bytes` object cannot be wiped - it is immutable, and
-garbage collection does not overwrite the allocation. `SecureSigner` keeps the key
-inside Rust and overwrites it on release, including when a block exits by exception.
-
-```python
-import _native
-
-with _native.SecureSigner() as signer:        # key wiped on exit
-    pub     = signer.public_key()             # nothing returns the secret
-    receipt = signer.sign_receipt(pid=1, binary=model_bytes,
-                                  memory_hash=0, syscall_count=1)
-
-assert _native.SecureVerifier(pub).verify_receipt(receipt)
-```
-
-Setup and post-quantum usage: [docs/INTEGRATION.md](docs/INTEGRATION.md#path-c--secrets-that-get-wiped).
-
----
+Rerun them before quoting.
 
 ## Documentation
 
 | | |
 |---|---|
-| [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) | signed payment instructions: format, gate, payout checks |
-| [RECONCILIATION.md](docs/RECONCILIATION.md) | agent actions vs CloudTrail, checkpoints, RFC 3161 time |
-| [INTEGRATION.md](docs/INTEGRATION.md) | receipts: pick a path by one question |
-| [GETTING-STARTED.md](docs/GETTING-STARTED.md) | first receipt, no code |
+| [USER_GUIDE.md](docs/USER_GUIDE.md) | install, demo, workflow, file formats |
+| [SIGNED-INSTRUCTION-SPEC.md](docs/SIGNED-INSTRUCTION-SPEC.md) | instruction format, gate, payout checks |
+| [API_CONTRACT.md](docs/API_CONTRACT.md) | local API `/api/v1` |
+| [RECONCILIATION.md](docs/RECONCILIATION.md) | CloudTrail, checkpoints, RFC 3161 time |
 | [CLAIMS.md](docs/CLAIMS.md) | what this proves and what it does not |
-| [VERIFICATION.md](docs/VERIFICATION.md) | the offline verifier, in full |
-| [CLOUD-MODELS.md](docs/CLOUD-MODELS.md) | local weights vs an API you do not control |
-| [AGENT-CHAIN.md](docs/AGENT-CHAIN.md) | binding agent context (receipt v1.2) |
-| [SECURITY.md](SECURITY.md) | reporting a vulnerability, threat model, known issues |
-| [ROADMAP.md](docs/ROADMAP.md) | 0.5.x - Rust core, bindings, post-quantum |
-| [ANALYSIS.md](docs/ANALYSIS.md) | measured assessment, including what is unverified |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | extension and spec workflow |
-| [RELEASE-NOTES-0.5.1.md](docs/RELEASE-NOTES-0.5.1.md) | what changed in 0.5.1 |
-| [RELEASE-NOTES-0.4.0.md](docs/RELEASE-NOTES-0.4.0.md) | what changed in 0.4.0 |
-| [agent-chain-context-response.md](docs/agent-chain-context-response.md) | the v1.2 design discussion, from issue #1 |
-| [DEMO.md](docs/DEMO.md) | recording a walkthrough |
-
----
+| [VERIFICATION.md](docs/VERIFICATION.md) | the offline receipt verifier |
+| [INTEGRATION.md](docs/INTEGRATION.md) | receipt integration paths |
+| [SECURITY.md](SECURITY.md) | reporting a vulnerability, threat model |
+| [ROADMAP.md](docs/ROADMAP.md) | what is planned |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute |
 
 ## License
 
-**Apache-2.0.** Use it, deploy it, fork it, embed it in a commercial product - no
-copyleft obligation. The receipt format and the offline verifier are meant to be
-copied freely; a proof layer nobody can adopt is not a proof layer.
+Apache-2.0. Versions up to 0.2.2 were AGPL-3.0-or-later.
 
-*Versions up to 0.2.2 were AGPL-3.0-or-later. From 0.3.0 onward: Apache-2.0.*
-
-Security issues: **[SECURITY.md](SECURITY.md)** - please do not open a public issue.
+Security issues: see [SECURITY.md](SECURITY.md). Please do not open a public issue.

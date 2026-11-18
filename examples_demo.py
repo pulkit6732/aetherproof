@@ -6,7 +6,7 @@ from datetime import datetime
 from aetherproof.core.receipt import Receipt
 from aetherproof.core.signer import Signer
 from aetherproof.core.verifier import verify_receipt, tamper_detect
-from aetherproof.core.hash import hash_output, hash_input
+from aetherproof.core.hash import hash_output
 from aetherproof.core.log import ReceiptLog
 
 print("=" * 70)
