@@ -578,8 +578,14 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
             # Audit before replying: a client that has its answer must find the call in the log.
             try:
                 audit.write(client=client, role=role or "-", method=method, path=path[:100], status=status, ref=ref)
-            except Exception:  # noqa: BLE001 - no audit failure may stop the reply
-                pass  # a full disk must not take the API down; the gap shows in verify_audit
+            except Exception as e:  # noqa: BLE001 - no audit failure may stop the reply
+                # A full disk must not take the API down. Say so now; verify_audit shows the gap later.
+                try:
+                    import sys
+                    print(f"aetherproof: audit write failed ({type(e).__name__}) for {method} {path[:100]}",
+                          file=sys.stderr)
+                except Exception:  # noqa: BLE001 - a closed stderr must not stop the reply either
+                    pass
             self._send(status, payload)
 
         def do_GET(self):
