@@ -30,7 +30,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
-          python -m pip install pytest pytest-cov
+          python -m pip install pytest pytest-cov pytest-github-actions-annotate-failures
 
       # The pure-Python package must pass on its own. The native extension is
       # optional, and tests that need it skip when it is absent - so this job
@@ -113,7 +113,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e . maturin pytest
+          python -m pip install -e . maturin pytest pytest-github-actions-annotate-failures
 
       - name: Build and install the native extension
         working-directory: rust/py
