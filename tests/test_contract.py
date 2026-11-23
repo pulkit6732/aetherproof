@@ -92,9 +92,12 @@ def test_rejected_post_reads_its_body_before_replying(api, path, role, status, s
             if not chunk:
                 break
             reply += chunk
-        assert reply.split(b" ", 2)[1] == str(status).encode()
+    except OSError as e:  # the bug this test guards against shows up as a reset or abort
+        pytest.fail(f"connection broke instead of getting the {status} reply: {type(e).__name__}: {e}")
     finally:
         s.close()
+    assert reply.startswith(b"HTTP/"), f"no HTTP reply received: {reply[:80]!r}"
+    assert reply.split(b" ", 2)[1] == str(status).encode()
 
 
 def test_runs_are_saved_idempotent_and_readable(api):
