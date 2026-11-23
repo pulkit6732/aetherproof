@@ -46,7 +46,7 @@ aetherproof instruction sign --amount 48500.00 --currency INR --beneficiary-toke
 
 # executor: check before paying (exit 0 = allow, 1 = reject)
 aetherproof instruction verify ~/.aetherproof/instructions/<id>.json \
-    --amount 48500.00 --currency INR --beneficiary-token fa_123
+    --amount 48500.00 --currency INR --beneficiary-token fa_123 --reference <id>
 
 # afterwards: provider export and bank statement against the instructions
 aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instructions \
