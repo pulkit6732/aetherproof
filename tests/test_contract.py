@@ -51,6 +51,7 @@ def api(tmp_path, monkeypatch):
         c.close()
         return out
 
+    call.port, call.tokens = port, tokens
     yield call
     srv.shutdown()
     srv.server_close()
@@ -66,6 +67,34 @@ def test_v1_errors_are_typed_and_legacy_keeps_its_shape(api):
     assert status == 400 and isinstance(body["error"], str)
     assert api("GET", "/api/v1/nothing")[1]["error"]["code"] == "not_found"
     assert api("POST", "/api/v1/verify", {}, role="auditor")[1]["error"]["code"] == "forbidden"
+
+
+@pytest.mark.parametrize("size", [8, 1 << 20])  # small, and exactly the largest body accepted
+@pytest.mark.parametrize("path,role,status", [("/api/v1/verify", "auditor", 403), ("/api/v1/nothing", "admin", 404)])
+def test_rejected_post_reads_its_body_before_replying(api, path, role, status, size):
+    # A reply sent while the body is still unread, then a close, makes Windows reset the socket:
+    # the client sees ConnectionAbortedError instead of the error (seen on CI, Windows, 3.11).
+    # Deterministic check: send only the headers. The server must wait for the body, not reply.
+    import select
+    import socket
+    body = b"x" * size
+    s = socket.create_connection(("127.0.0.1", api.port), timeout=10)
+    try:
+        s.sendall((f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{api.port}\r\n"
+                   f"Authorization: Bearer {api.tokens[role]}\r\nContent-Type: application/json\r\n"
+                   f"Content-Length: {len(body)}\r\n\r\n").encode())
+        early, _, _ = select.select([s], [], [], 0.5)
+        assert not early, "server replied before reading the request body"
+        s.sendall(body)
+        reply = b""
+        while b"\r\n\r\n" not in reply:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            reply += chunk
+        assert reply.split(b" ", 2)[1] == str(status).encode()
+    finally:
+        s.close()
 
 
 def test_runs_are_saved_idempotent_and_readable(api):

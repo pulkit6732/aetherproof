@@ -529,6 +529,7 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
 
         def _handle(self, method: str) -> None:
             path, role, status, ref = self.path.split("?")[0], "", 500, ""
+            body_read = False
             client = self.client_address[0]
             now = time.monotonic()
             try:
@@ -561,8 +562,9 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                     n = int(self.headers.get("Content-Length") or 0)
                     if n > MAX_BODY:
                         raise ApiError(413, "body too large")
+                    raw, body_read = self.rfile.read(n), True
                     try:
-                        body = json.loads(self.rfile.read(n) or b"{}")
+                        body = json.loads(raw or b"{}")
                     except ValueError:
                         raise ApiError(400, "body is not JSON") from None
                     if not isinstance(body, dict):
@@ -586,7 +588,21 @@ def make_handler(api: Api, tokens: Dict[str, str], port_hosts: Tuple[str, ...]):
                           file=sys.stderr)
                 except Exception:  # noqa: BLE001 - a closed stderr must not stop the reply either
                     pass
+            if method == "POST" and not body_read:
+                self._drain_body()
             self._send(status, payload)
+
+        def _drain_body(self) -> None:
+            # A request rejected before its body was read (bad token, wrong role, no route) still
+            # has that body unread. Closing a socket with unread data makes Windows send a reset,
+            # and the client sees "connection aborted" instead of the error reply. Read and drop
+            # it, up to the same limit as a real body; anything larger is not worth reading.
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                if 0 < n <= MAX_BODY:
+                    self.rfile.read(n)
+            except Exception:  # noqa: BLE001 - a broken or slow client must not stop the reply
+                self.close_connection = True
 
         def do_GET(self):
             self._handle("GET")
