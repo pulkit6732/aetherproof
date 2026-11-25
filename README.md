@@ -51,9 +51,14 @@ extended to check facts that server cannot create (see the status table).
 | Freeze request with UTRs and receiving account, for the 1930 helpline and the bank | In development |
 | Pay only to the account on the borrower's own repayment mandate | In development |
 | Second approver for account changes and large payouts | In development |
-| Limits, velocity checks, emergency pause, safe float advice | In development |
+| Per payout, daily, per destination and count caps, atomic across processes; revocation (`core/limits.py`) | Built as a library; not yet in the CLI or API |
+| Velocity alerts, emergency pause, safe float advice | In development |
 | Incident pack, early warning signal mapping | In development |
 | Cloud key store, two or more gate instances, self hosted deployment package | In development |
+
+## Benchmark
+
+AetherProof against an API key, a conventional caps and allowlist engine (two variants) and itself, on bank payouts, crypto withdrawals and stock orders, with 16 attack families modelled on real incidents: [BENCHMARK.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/BENCHMARK.md). Synthetic data; the conventional engines are models, not vendor products.
 
 ## Requirements it is built around
 

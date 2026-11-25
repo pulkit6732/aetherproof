@@ -1,0 +1,1171 @@
+{
+  "date": "2026-11-25",
+  "synthetic": true,
+  "policy_minor": {
+    "per_payout_max_minor": 20000000,
+    "daily_max_minor": 800000000,
+    "daily_count_max": 500,
+    "per_destination_daily_max_minor": 20000000,
+    "utc_offset_minutes": 330
+  },
+  "legit": {
+    "bank_payout": {
+      "S1_api_key": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2_policy_engine": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2b_policy_locked_allowlist": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S3_aetherproof_gate": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S4_aetherproof_full": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      }
+    },
+    "crypto_withdrawal": {
+      "S1_api_key": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2_policy_engine": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2b_policy_locked_allowlist": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S3_aetherproof_gate": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S4_aetherproof_full": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      }
+    },
+    "stock_order": {
+      "S1_api_key": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2_policy_engine": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S2b_policy_locked_allowlist": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S3_aetherproof_gate": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S4_aetherproof_full": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      }
+    }
+  },
+  "attacks": {
+    "01_stolen_api_key_new_mule": {
+      "source": "NBFC payout API heists, India 2026 (press, CERT-In advisory)",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 38000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "02_account_swapped_on_approved_loan": {
+      "source": "Delhi NCR NBFC cases 2026: borrower account swapped for a mule",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "03_amount_inflated": {
+      "source": "Altered payment instructions (BEC and insider patterns, FBI IC3)",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 51743211,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 51743211,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 51743211,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 53645877,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 53645877,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 53645877,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 86716548,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 86716548,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 86716548,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "04_replay_same_idempotency_key": {
+      "source": "Duplicate payouts from retried or replayed calls",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 1,
+            "amount_unauthorized_minor": 1457706,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 1,
+            "amount_unauthorized_minor": 2031078,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 1,
+            "amount_unauthorized_minor": 2034105,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "05_replay_new_idempotency_key": {
+      "source": "Replay with a fresh request id",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "06_replay_after_48h": {
+      "source": "Old approval reused later",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 32213146,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 33728770,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 20,
+            "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "07_structuring_small_payouts": {
+      "source": "Delhi NBFC case: 317 transactions, Rs 12.84 crore (ThePrint)",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 200,
+            "amount_unauthorized_minor": 99800000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "08_expired_authority": {
+      "source": "Approval used after its window",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "09_revoked_authority": {
+      "source": "Loan cancelled after approval, payout still sent",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "12_stolen_signing_key_burst": {
+      "source": "Ronin bridge 2022 (validator keys), Knight Capital 2012 (runaway orders)",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 11,
+            "amount_unauthorized_minor": 220000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 11,
+            "amount_unauthorized_minor": 220000000,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 11,
+            "amount_unauthorized_minor": 220000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 11,
+            "amount_unauthorized_minor": 220000000,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 200000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 60,
+            "amount_unauthorized_minor": 1200000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 200000000,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "13_approver_tricked_into_signing": {
+      "source": "Bybit 2025: signers approved a payload the UI misrepresented",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 1,
+            "amount_unauthorized_minor": 19000000,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 1,
+            "amount_unauthorized_minor": 19000000,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 3,
+            "amount_unauthorized_minor": 57000000,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "10_network_or_asset_swapped": {
+      "source": "Same address on another chain or token (address poisoning, wrong network)",
+      "by_env": {
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "11_instrument_or_side_swapped": {
+      "source": "Compromised trading agent flips side or symbol",
+      "by_env": {
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    }
+  },
+  "race": {
+    "threads": 16,
+    "requests": 160,
+    "each_minor": 20000000,
+    "allowed": 40,
+    "allowed_amount_minor": 800000000,
+    "daily_cap_minor": 800000000,
+    "cap_held": true
+  },
+  "after_the_fact": {
+    "14_route_bypass_direct_provider_payout": {
+      "source": "Payout made at the provider dashboard, skipping the gate",
+      "S1_api_key": false,
+      "S2_policy_engine": false,
+      "S2b_policy_locked_allowlist": false,
+      "S3_aetherproof_gate": false,
+      "S4_aetherproof_full": true,
+      "flags": [
+        "unapproved_event: 40,000.00 INR paid out (px, processed) with no valid signed instruction"
+      ]
+    },
+    "15_provider_status_forged": {
+      "source": "Bangladesh Bank 2016 pattern: records altered to hide the transfer",
+      "S1_api_key": false,
+      "S2_policy_engine": false,
+      "S2b_policy_locked_allowlist": false,
+      "S3_aetherproof_gate": false,
+      "S4_aetherproof_full": true,
+      "flags": [
+        "approval: provider reports the payout processed, but the bank statement shows no matching debit",
+        "unexplained_debit: bank debit 25,000.00 INR (ez) matches no payout record"
+      ]
+    },
+    "16_insider_forges_both_files": {
+      "source": "One insider edits provider export and statement consistently",
+      "S1_api_key": false,
+      "S2_policy_engine": false,
+      "S2b_policy_locked_allowlist": false,
+      "S3_aetherproof_gate": false,
+      "S4_aetherproof_full": false,
+      "flags": []
+    }
+  },
+  "latency": {
+    "S1_api_key": {
+      "median_ms": 0.0,
+      "p99_ms": 0.0
+    },
+    "S2_policy_engine": {
+      "median_ms": 0.001,
+      "p99_ms": 0.002
+    },
+    "S2b_policy_locked_allowlist": {
+      "median_ms": 0.0,
+      "p99_ms": 0.001
+    },
+    "S3_aetherproof_gate": {
+      "median_ms": 1.281,
+      "p99_ms": 1.736
+    },
+    "S4_aetherproof_full": {
+      "median_ms": 2.685,
+      "p99_ms": 3.619
+    }
+  }
+}
