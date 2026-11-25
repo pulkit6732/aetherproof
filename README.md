@@ -139,7 +139,7 @@ The conventional systems are models of publicly documented controls, not vendor 
 A simulated exchange (price time priority, 265 agents, liquidity shock, rogue bot) used to test
 the permission gate on trading orders. Reproduced 26 Nov 2026: same seed gives the same event
 log fingerprint; the gate blocked all 713 rule breaking orders with 0 legitimate orders wrongly
-blocked; a liquidity shock widened spreads from 1.75 to 4.41 ticks. Its price dynamics are only
+blocked; in a liquidity shock one side of the book was empty in 97% of steps. Its price dynamics are only
 partly realistic. Details and the two failed attempts to improve them:
 [marketlab/README.md](https://github.com/pulkit6732/aetherproof/blob/main/marketlab/README.md). Simulation only; never connected to an exchange.
 

@@ -17,7 +17,7 @@ research environment for AetherProof's permission gate, not part of the PyPI pac
 |---|---|
 | T1 reproducibility | Same seed: identical event chain digest. Different seed: different. 32,852 trades, 1.4 s per 20,000 steps |
 | T2 realism (stylized facts) | Simulated, 5 seeds, sampled every 10 steps: excess kurtosis 4.38, lag 1 return autocorrelation -0.152, mean autocorrelation of absolute returns (lags 1 to 10) 0.166. SPY 1 minute within session (7 days): 3.74, 0.025, 0.188. SPY daily (10 years): 14.58, -0.130, 0.334. Gaussian walk: 0.00, 0.00, 0.00 |
-| T3 liquidity shock | Market makers withdraw and 8 sellers dump for 600 steps: spread 1.75 to 4.41 ticks, top 5 depth 267 to 43, drop 62 ticks (1 without the shock), half of the drop recovered 14 steps after the low |
+| T3 liquidity shock | Market makers withdraw and 8 sellers dump for 600 steps: one side of the book empty in 97% of shock steps (where both sides existed, spread averaged 4.41 ticks against 1.75 before), top 5 depth 267 to 43, drop 62 ticks (1 without the shock), half of the drop recovered 14 steps after the low |
 | T4 rogue agent | 600 oversized dumps, 60 wrong account, 24 forged mandate, 29 replayed order ids: all blocked. 91 legitimate orders: 0 wrongly blocked inside the permission window (45 correctly blocked after it expired). Price drop 1 tick with the gate, 1,464 without |
 | T5 evidence | 32,652 events; recomputed digest matches; editing one trade is detected |
 

@@ -90,6 +90,7 @@ drop = pre - low
 t_low = S + int(np.argmin(shock["mids"][S:S + L]))
 rec = next((t for t in range(t_low, len(shock["mids"])) if shock["mids"][t] >= low + drop * 0.5), None)
 R["T3"] = {
+    "one_sided_share_during": float(np.mean(np.isnan(shock["spreads"][S:S + L]))),
     "spread_ticks_before": window(shock["spreads"], S - L, S), "spread_ticks_during": window(shock["spreads"], S, S + L),
     "spread_ticks_after": window(shock["spreads"], S + L, S + 2 * L),
     "depth_top5_before": window(shock["depths"], S - L, S), "depth_top5_during": window(shock["depths"], S, S + L),
@@ -97,7 +98,8 @@ R["T3"] = {
     "low_at_step_into_shock": t_low - S, "steps_from_low_to_half_recovery": (rec - t_low) if rec is not None else None,
 }
 t3 = R["T3"]
-print(f"  spread before/during/after: {t3['spread_ticks_before']:.2f} / {t3['spread_ticks_during']:.2f} / "
+print(f"  one side of the book empty in {t3['one_sided_share_during']:.0%} of shock steps; mean spread where both sides existed,")
+print(f"  before/during/after: {t3['spread_ticks_before']:.2f} / {t3['spread_ticks_during']:.2f} / "
       f"{t3['spread_ticks_after']:.2f} ticks; depth {t3['depth_top5_before']:.0f} -> {t3['depth_top5_during']:.0f}")
 print(f"  drop {drop:.0f} ticks with shock vs {t3['price_drop_ticks_same_seed_no_shock']:.0f} without; "
       f"low reached {t3['low_at_step_into_shock']} steps in; half recovered {t3['steps_from_low_to_half_recovery']} steps after the low")
