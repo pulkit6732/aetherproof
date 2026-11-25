@@ -41,7 +41,8 @@ Unversioned `/api/...` paths call the same handlers for 0.5.x clients and return
 Codes and HTTP status: `invalid_request` 400, `missing_field` 400, `invalid_amount` 400, `invalid_currency` 400,
 `invalid_beneficiary` 400, `invalid_window` 400, `unknown_source` 400, `unreadable_input` 400, `unauthenticated` 401,
 `forbidden` 403, `bad_host` 403, `not_found` 404, `unknown_instruction` 404, `unknown_run` 404, `too_large` 413,
-`rate_limited` 429, `locked_out` 429, `internal` 500. Branch on `code`, never on `message`.
+`rate_limited` 429, `locked_out` 429, `internal` 500, `gate_policy` 503 (the gate policy file exists but is unusable;
+verify refuses to decide until it is fixed). Branch on `code`, never on `message`.
 
 ## Requests
 

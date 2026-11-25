@@ -45,4 +45,5 @@ ERRORS = {
     "rate_limited": 429,
     "locked_out": 429,
     "internal": 500,
+    "gate_policy": 503,
 }

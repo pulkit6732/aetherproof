@@ -29,6 +29,8 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from aetherproof.contract import MATCHED  # noqa: E402
 from aetherproof.core.instruction import PayoutRequest, ReplayStore, sign_instruction, token_beneficiary, verify_instruction  # noqa: E402
+from aetherproof.core.destinations import DestinationRegistry, lookup_key, make_record, sign_record  # noqa: E402
+from aetherproof.core.gate import GatePolicy, decide  # noqa: E402
 from aetherproof.core.limits import LimitPolicy, LimitStore, verify_with_limits  # noqa: E402
 from aetherproof.core.payouts import PayoutRecord, reconcile_payouts  # noqa: E402
 from aetherproof.core.settlement import BankEntry  # noqa: E402
@@ -55,7 +57,9 @@ def _store(cls, path):
     return st
 
 
-SYSTEMS = ("S1_api_key", "S2_policy_engine", "S2b_policy_locked_allowlist", "S3_aetherproof_gate", "S4_aetherproof_full")
+SYSTEMS = ("S1_api_key", "S2_policy_engine", "S2b_policy_locked_allowlist", "S3_aetherproof_gate", "S4_aetherproof_full",
+           "S5_aetherproof_destinations")
+POLICY_SIGNERS = (Signer.generate(), Signer.generate())   # destination authority: not the payout approver
 
 ENVS = {
     # dest(i) builds the destination; every field that must not change is inside the token
@@ -130,6 +134,39 @@ class S4:
         return d.allowed, "; ".join(d.reasons)
 
 
+class S5:
+    """S4 plus destination approval by 2 of 2 policy keys, through core/gate.decide: the same
+    function the CLI and the API call."""
+
+    def __init__(self, keys, rpath, lpath, dpath, env):
+        self.keys, self.replay = keys, _store(ReplayStore, rpath)
+        self.policy = GatePolicy(env, POLICIES[env], lpath, [s.get_public_key() for s in POLICY_SIGNERS], 2, dpath)
+
+    def decide(self, r):
+        if r.ins is None:
+            return False, "no signed instruction"
+        d = decide(r.ins, PayoutRequest(r.amount, r.currency, r.ins.instruction_id, r.dest), self.keys, self.replay,
+                   self.policy, now_ms=r.t)
+        return d.allowed, "; ".join(d.reasons)
+
+
+def build_registry(path, env, dests):
+    """The policy authority approves the legitimate destinations once, before the day starts."""
+    reg = DestinationRegistry(path, [s.get_public_key() for s in POLICY_SIGNERS], 2)
+    seen = {}
+    for d in dests:
+        key, side = lookup_key(d)
+        if key in seen:
+            continue
+        seen[key] = True
+        dom = env.split("_")[0] if env != "bank_payout" else "bank"
+        rec = make_record(account=env, destination=key, domain={"crypto": "crypto", "stock": "stock"}.get(dom, "bank"),
+                          action="add", version=1, attrs={"sides": [side]} if side else {}, created_ms=T0)
+        ok, why = reg.apply(rec, [sign_record(rec, s) for s in POLICY_SIGNERS])
+        assert ok, why
+    reg.close()
+
+
 # ------------------------------------------------------------------ helpers
 def sign(signer, env, dest, amount, t, ref="LN"):
     return sign_instruction(signer, originator=env, amount_minor=amount, currency=ENVS[env]["currency"],
@@ -143,6 +180,8 @@ def fresh_systems(tmp, tag, approver, allowlist, env):
     # approval path. The strongest fair version of a conventional engine.
     return {"S1_api_key": S1(), "S2_policy_engine": S2(allowlist, POLICIES[env]),
             "S2b_policy_locked_allowlist": S2(allowlist, POLICIES[env]),
+            "S5_aetherproof_destinations": S5(keys, os.path.join(tmp, f"{tag}_s5r.db"), os.path.join(tmp, f"{tag}_s5l.db"),
+                                              os.path.join(tmp, f"{env}_destinations.db"), env),
             "S3_aetherproof_gate": S3(keys, os.path.join(tmp, f"{tag}_s3.db")),
             "S4_aetherproof_full": S4(keys, os.path.join(tmp, f"{tag}_s4r.db"), os.path.join(tmp, f"{tag}_s4l.db"))}
 
@@ -196,6 +235,7 @@ def _main(tmp):
             t = T0 + i * MIN
             ins = sign(approver, env, dests[i], int(amts[i]), t)
             legit.append(Req(env, dests[i], int(amts[i]), cur, t + (VALIDITY - 1000 if i == 1 else 2000), ins, f"idem-{env}-{i}", True))
+        build_registry(os.path.join(tmp, f"{env}_destinations.db"), env, dests)
         systems = fresh_systems(tmp, env, approver, dests, env)
         legit_summary[env] = run_requests(systems, legit, timing)
         # legit retry of payout 5 after a timeout: must not pay twice (correct outcome is a refusal)
@@ -217,6 +257,24 @@ def _main(tmp):
         attack("02_account_swapped_on_approved_loan", "Delhi NCR NBFC cases 2026: borrower account swapped for a mule",
                [Req(env, mule, int(amts[10 + i]), cur, last_t + 1000, fresh[i], f"swap-{i}") for i in range(10)],
                before=lambda s: s["S2_policy_engine"].add_beneficiary(mule))
+        def loan_system_adds_mule(s):
+            # the attacker owns the loan system: it feeds S2b's allowlist, but holds only the
+            # payout approver key, which the destination registry does not accept
+            s["S2b_policy_locked_allowlist"].add_beneficiary(mule)
+            s["S2_policy_engine"].add_beneficiary(mule)
+            reg = DestinationRegistry(s["S5_aetherproof_destinations"].policy.destinations_db,
+                                      [k.get_public_key() for k in POLICY_SIGNERS], 2)
+            key = lookup_key(mule)[0]
+            row = reg._db.execute("SELECT version FROM entries WHERE account=? AND key=?", (env, key)).fetchone()
+            rec = make_record(account=env, destination=key, domain="bank", action="add", version=(row[0] if row else 0) + 1,
+                              attrs={"sides": ["SELL"]} if env == "stock_order" else {})
+            ok, _ = reg.apply(rec, [sign_record(rec, approver)])
+            reg.close()
+            assert not ok, "the approver key must not be able to approve destinations"
+        attack("02b_loan_system_compromised_feeds_allowlist", "Delhi NBFC cases 2026: attacker inside the loan system",
+               [Req(env, mule, int(amts[10 + i]), cur, last_t + 1000,
+                    sign(approver, env, mule, int(amts[10 + i]), last_t), f"los-{i}") for i in range(10)],
+               before=loan_system_adds_mule)
         attack("03_amount_inflated", "Altered payment instructions (BEC and insider patterns, FBI IC3)",
                [Req(env, dests[10 + i], int(amts[10 + i]) * 3, cur, last_t + 1000, fresh[i], f"inf-{i}") for i in range(10)])
         attack("04_replay_same_idempotency_key", "Duplicate payouts from retried or replayed calls",
@@ -232,8 +290,10 @@ def _main(tmp):
                [Req(env, dests[i], int(amts[i]), cur, last_t + VALIDITY + HOUR, fresh[i - 10], f"exp-{i}") for i in range(10, 20)])
 
         def revoke_all(s):
+            s5 = _store(LimitStore, s["S5_aetherproof_destinations"].policy.limits_db)
             for f in fresh:
                 s["S4_aetherproof_full"].limits.revoke(f.instruction_id)
+                s5.revoke(f.instruction_id)
         attack("09_revoked_authority", "Loan cancelled after approval, payout still sent",
                [Req(env, dests[10 + i], int(amts[10 + i]), cur, last_t + 1000, fresh[i], f"rev-{i}") for i in range(10)],
                before=revoke_all)
@@ -295,7 +355,7 @@ def _main(tmp):
                                 statement=statement, settlement_grace_ms=HOUR)
         flagged = [r for r in rep.results if r.verdict != MATCHED]
         detect[name] = {"source": source, "S1_api_key": False, "S2_policy_engine": False, "S2b_policy_locked_allowlist": False,
-                        "S3_aetherproof_gate": False,
+                        "S3_aetherproof_gate": False, "S5_aetherproof_destinations": bool(flagged),
                         "S4_aetherproof_full": bool(flagged), "flags": [f"{r.kind or r.verdict}: {r.reasons[0] if r.reasons else ''}" for r in flagged]}
 
     lat = {k: {"median_ms": round(statistics.median(v), 3), "p99_ms": round(float(np.percentile(v, 99)), 3)} for k, v in timing.items()}

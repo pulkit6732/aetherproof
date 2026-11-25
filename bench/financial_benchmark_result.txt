@@ -1,23 +1,24 @@
 legit traffic, 300 approved payouts per environment, wrongly blocked:
-  bank_payout        S1 0  S2 0  S2b 0  S3 0  S4 0
-  crypto_withdrawal  S1 0  S2 0  S2b 0  S3 0  S4 0
-  stock_order        S1 0  S2 0  S2b 0  S3 0  S4 0
+  bank_payout        S1 0  S2 0  S2b 0  S3 0  S4 0  S5 0
+  crypto_withdrawal  S1 0  S2 0  S2b 0  S3 0  S4 0  S5 0
+  stock_order        S1 0  S2 0  S2b 0  S3 0  S4 0  S5 0
 
 unauthorized actions executed (count / amount in units), lower is better:
-  attack                                                 S1               S2              S2b               S3               S4
-  01_stolen_api_key_new_mule                 60 /  1,140,000   60 /  1,140,000    0 /          0    0 /          0    0 /          0
-  02_account_swapped_on_approved_loan        30 /    640,352   30 /    640,352    0 /          0    0 /          0    0 /          0
-  03_amount_inflated                         30 /  1,921,056   30 /  1,921,056   30 /  1,921,056    0 /          0    0 /          0
-  04_replay_same_idempotency_key              3 /     55,229    0 /          0    0 /          0    0 /          0    0 /          0
-  05_replay_new_idempotency_key              60 /  1,139,756   60 /  1,139,756   60 /  1,139,756    0 /          0    0 /          0
-  06_replay_after_48h                        60 /  1,139,756   60 /  1,139,756   60 /  1,139,756    0 /          0    0 /          0
-  07_structuring_small_payouts              600 /  2,994,000  600 /  2,994,000    0 /          0    0 /          0    0 /          0
-  08_expired_authority                       30 /    640,352   30 /    640,352   30 /    640,352    0 /          0    0 /          0
-  09_revoked_authority                       30 /    640,352   30 /    640,352   30 /    640,352   30 /    640,352    0 /          0
-  12_stolen_signing_key_burst               180 / 36,000,000   32 /  6,400,000    0 /          0  180 / 36,000,000   32 /  6,400,000
-  13_approver_tricked_into_signing            9 /  1,710,000    9 /  1,710,000    0 /          0    9 /  1,710,000    5 /    950,000
-  10_network_or_asset_swapped                10 /    178,820   10 /    178,820    0 /          0    0 /          0    0 /          0
-  11_instrument_or_side_swapped              10 /    289,055   10 /    289,055    0 /          0    0 /          0    0 /          0
+  attack                                                 S1               S2              S2b               S3               S4               S5
+  01_stolen_api_key_new_mule                 60 /  1,140,000   60 /  1,140,000    0 /          0    0 /          0    0 /          0    0 /          0
+  02_account_swapped_on_approved_loan        30 /    640,352   30 /    640,352    0 /          0    0 /          0    0 /          0    0 /          0
+  02b_loan_system_compromised_feeds_allowlist   30 /    640,352   30 /    640,352   30 /    640,352   30 /    640,352   30 /    640,352    0 /          0
+  03_amount_inflated                         30 /  1,921,056   30 /  1,921,056   30 /  1,921,056    0 /          0    0 /          0    0 /          0
+  04_replay_same_idempotency_key              3 /     55,229    0 /          0    0 /          0    0 /          0    0 /          0    0 /          0
+  05_replay_new_idempotency_key              60 /  1,139,756   60 /  1,139,756   60 /  1,139,756    0 /          0    0 /          0    0 /          0
+  06_replay_after_48h                        60 /  1,139,756   60 /  1,139,756   60 /  1,139,756    0 /          0    0 /          0    0 /          0
+  07_structuring_small_payouts              600 /  2,994,000  600 /  2,994,000    0 /          0    0 /          0    0 /          0    0 /          0
+  08_expired_authority                       30 /    640,352   30 /    640,352   30 /    640,352    0 /          0    0 /          0    0 /          0
+  09_revoked_authority                       30 /    640,352   30 /    640,352   30 /    640,352   30 /    640,352    0 /          0    0 /          0
+  12_stolen_signing_key_burst               180 / 36,000,000   32 /  6,400,000    0 /          0  180 / 36,000,000   32 /  6,400,000    0 /          0
+  13_approver_tricked_into_signing            9 /  1,710,000    9 /  1,710,000    0 /          0    9 /  1,710,000    5 /    950,000    0 /          0
+  10_network_or_asset_swapped                10 /    178,820   10 /    178,820    0 /          0    0 /          0    0 /          0    0 /          0
+  11_instrument_or_side_swapped              10 /    289,055   10 /    289,055    0 /          0    0 /          0    0 /          0    0 /          0
 
 race: 16 threads, 160 stolen-key payouts of 200,000: 40 allowed = 8,000,000 vs daily cap 8,000,000; cap held: True
 
@@ -26,4 +27,4 @@ after the fact, detected:
   15_provider_status_forged                S4 True  approval: provider reports the payout processed, but the bank statement shows no matching 
   16_insider_forges_both_files             S4 False  (nothing flagged)
 
-decision latency on legitimate payouts: S1 0.0 ms median, 0.0 p99, S2 0.001 ms median, 0.003 p99, S2b 0.0 ms median, 0.001 p99, S3 1.208 ms median, 1.699 p99, S4 2.514 ms median, 3.335 p99
+decision latency on legitimate payouts: S1 0.0 ms median, 0.0 p99, S2 0.001 ms median, 0.002 p99, S2b 0.0 ms median, 0.001 p99, S5 3.165 ms median, 4.898 p99, S3 1.289 ms median, 1.704 p99, S4 2.673 ms median, 3.797 p99

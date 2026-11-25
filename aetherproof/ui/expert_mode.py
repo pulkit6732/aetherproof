@@ -218,7 +218,7 @@ def show_help() -> None:
         [--originator ORG] [--valid MIN] [--out FILE] [--quiet]
   Originator side: sign exactly what was authorised. Logged like a receipt.
 [yellow]instruction verify[/yellow] <instruction.json> --amount A --currency C (--beneficiary-token T | --ifsc I --account N)
-        [--reference REF] [--pubkey PATH] [--replay-db PATH] [--quiet]
+        [--reference REF] [--pubkey PATH] [--replay-db PATH] [--gate-policy PATH] [--quiet]
   Executor side, before money moves: exit 0 = allow, 1 = reject. Each instruction
   is accepted once.
 
@@ -669,8 +669,7 @@ def _beneficiary_opts(args: List[str]):
 
 def cmd_instruction(args: List[str]) -> bool:
     from aetherproof.core.instruction import (PaymentInstruction, PayoutRequest, ReplayStore,
-                                              bank_beneficiary, sign_instruction, token_beneficiary,
-                                              verify_instruction)
+                                              bank_beneficiary, sign_instruction, token_beneficiary)
     from aetherproof.core.keystore import home, issue_receipt
 
     args, quiet = _pop_quiet(args)
@@ -726,17 +725,22 @@ def cmd_instruction(args: List[str]) -> bool:
     args, reference = _extract_opt(args, "--reference")
     args, pubkeys = _extract_all(args, "--pubkey")
     args, replay_path = _extract_opt(args, "--replay-db")
+    args, gate_policy_path = _extract_opt(args, "--gate-policy")
     if not args:
         _emit_err("usage: instruction verify <instruction.json> --amount A --currency C ...", quiet)
         return False
     try:
         ins = PaymentInstruction.from_json(Path(args[0]).read_text(encoding="utf-8"))
+        from aetherproof.core.gate import decide, load_policy
+        policy = load_policy(home(), gate_policy_path)   # GatePolicyError is a ValueError: refused below
         replay = ReplayStore(replay_path or str(home() / "replay.db"))
-        decision = verify_instruction(ins, PayoutRequest(amount_minor=amount_minor, currency=currency,
-                                                         reference=reference or "", beneficiary_token=token,
-                                                         ifsc=ifsc, account_number=account),
-                                      _trusted_keys(pubkeys), replay)
-        replay.close()
+        try:
+            decision = decide(ins, PayoutRequest(amount_minor=amount_minor, currency=currency,
+                                                 reference=reference or "", beneficiary_token=token,
+                                                 ifsc=ifsc, account_number=account),
+                              _trusted_keys(pubkeys), replay, policy)
+        finally:
+            replay.close()
     except (OSError, ValueError, TypeError, sqlite3.Error) as e:
         _emit_err(str(e), quiet)
         return False

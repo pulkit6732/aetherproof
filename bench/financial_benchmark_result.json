@@ -25,6 +25,11 @@
         "amount_unauthorized_minor": 0,
         "legit_blocked": 0
       },
+      "S5_aetherproof_destinations": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
       "S3_aetherproof_gate": {
         "executed_unauthorized": 0,
         "amount_unauthorized_minor": 0,
@@ -52,6 +57,11 @@
         "amount_unauthorized_minor": 0,
         "legit_blocked": 0
       },
+      "S5_aetherproof_destinations": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
       "S3_aetherproof_gate": {
         "executed_unauthorized": 0,
         "amount_unauthorized_minor": 0,
@@ -75,6 +85,11 @@
         "legit_blocked": 0
       },
       "S2b_policy_locked_allowlist": {
+        "executed_unauthorized": 0,
+        "amount_unauthorized_minor": 0,
+        "legit_blocked": 0
+      },
+      "S5_aetherproof_destinations": {
         "executed_unauthorized": 0,
         "amount_unauthorized_minor": 0,
         "legit_blocked": 0
@@ -111,6 +126,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -138,6 +158,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -161,6 +186,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -197,6 +227,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -220,6 +255,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -251,6 +291,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -259,6 +304,107 @@
           "S4_aetherproof_full": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          }
+        }
+      }
+    },
+    "02b_loan_system_compromised_feeds_allowlist": {
+      "source": "Delhi NBFC cases 2026: attacker inside the loan system",
+      "by_env": {
+        "bank_payout": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17247737,
+            "legit_blocked": 0
+          }
+        },
+        "crypto_withdrawal": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 17881959,
+            "legit_blocked": 0
+          }
+        },
+        "stock_order": {
+          "S1_api_key": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2_policy_engine": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S3_aetherproof_gate": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S4_aetherproof_full": {
+            "executed_unauthorized": 10,
+            "amount_unauthorized_minor": 28905516,
             "legit_blocked": 0
           }
         }
@@ -283,6 +429,11 @@
             "amount_unauthorized_minor": 51743211,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -310,6 +461,11 @@
             "amount_unauthorized_minor": 53645877,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -335,6 +491,11 @@
           "S2b_policy_locked_allowlist": {
             "executed_unauthorized": 10,
             "amount_unauthorized_minor": 86716548,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
           "S3_aetherproof_gate": {
@@ -369,6 +530,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -396,6 +562,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -419,6 +590,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -455,6 +631,11 @@
             "amount_unauthorized_minor": 32213146,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -482,6 +663,11 @@
             "amount_unauthorized_minor": 33728770,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -507,6 +693,11 @@
           "S2b_policy_locked_allowlist": {
             "executed_unauthorized": 20,
             "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
           "S3_aetherproof_gate": {
@@ -541,6 +732,11 @@
             "amount_unauthorized_minor": 32213146,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -568,6 +764,11 @@
             "amount_unauthorized_minor": 33728770,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -593,6 +794,11 @@
           "S2b_policy_locked_allowlist": {
             "executed_unauthorized": 20,
             "amount_unauthorized_minor": 48033696,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
           "S3_aetherproof_gate": {
@@ -627,6 +833,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -654,6 +865,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -677,6 +893,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -713,6 +934,11 @@
             "amount_unauthorized_minor": 17247737,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -740,6 +966,11 @@
             "amount_unauthorized_minor": 17881959,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -765,6 +996,11 @@
           "S2b_policy_locked_allowlist": {
             "executed_unauthorized": 10,
             "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
           "S3_aetherproof_gate": {
@@ -799,6 +1035,11 @@
             "amount_unauthorized_minor": 17247737,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 10,
             "amount_unauthorized_minor": 17247737,
@@ -826,6 +1067,11 @@
             "amount_unauthorized_minor": 17881959,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 10,
             "amount_unauthorized_minor": 17881959,
@@ -851,6 +1097,11 @@
           "S2b_policy_locked_allowlist": {
             "executed_unauthorized": 10,
             "amount_unauthorized_minor": 28905516,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
           "S3_aetherproof_gate": {
@@ -885,6 +1136,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 60,
             "amount_unauthorized_minor": 1200000000,
@@ -912,6 +1168,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 60,
             "amount_unauthorized_minor": 1200000000,
@@ -935,6 +1196,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -971,6 +1237,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 3,
             "amount_unauthorized_minor": 57000000,
@@ -998,6 +1269,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 3,
             "amount_unauthorized_minor": 57000000,
@@ -1021,6 +1297,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -1057,6 +1338,11 @@
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
           },
+          "S5_aetherproof_destinations": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
           "S3_aetherproof_gate": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
@@ -1085,6 +1371,11 @@
             "legit_blocked": 0
           },
           "S2b_policy_locked_allowlist": {
+            "executed_unauthorized": 0,
+            "amount_unauthorized_minor": 0,
+            "legit_blocked": 0
+          },
+          "S5_aetherproof_destinations": {
             "executed_unauthorized": 0,
             "amount_unauthorized_minor": 0,
             "legit_blocked": 0
@@ -1119,6 +1410,7 @@
       "S2_policy_engine": false,
       "S2b_policy_locked_allowlist": false,
       "S3_aetherproof_gate": false,
+      "S5_aetherproof_destinations": true,
       "S4_aetherproof_full": true,
       "flags": [
         "unapproved_event: 40,000.00 INR paid out (px, processed) with no valid signed instruction"
@@ -1130,6 +1422,7 @@
       "S2_policy_engine": false,
       "S2b_policy_locked_allowlist": false,
       "S3_aetherproof_gate": false,
+      "S5_aetherproof_destinations": true,
       "S4_aetherproof_full": true,
       "flags": [
         "approval: provider reports the payout processed, but the bank statement shows no matching debit",
@@ -1142,6 +1435,7 @@
       "S2_policy_engine": false,
       "S2b_policy_locked_allowlist": false,
       "S3_aetherproof_gate": false,
+      "S5_aetherproof_destinations": false,
       "S4_aetherproof_full": false,
       "flags": []
     }
@@ -1153,19 +1447,23 @@
     },
     "S2_policy_engine": {
       "median_ms": 0.001,
-      "p99_ms": 0.003
+      "p99_ms": 0.002
     },
     "S2b_policy_locked_allowlist": {
       "median_ms": 0.0,
       "p99_ms": 0.001
     },
+    "S5_aetherproof_destinations": {
+      "median_ms": 3.165,
+      "p99_ms": 4.898
+    },
     "S3_aetherproof_gate": {
-      "median_ms": 1.208,
-      "p99_ms": 1.699
+      "median_ms": 1.289,
+      "p99_ms": 1.704
     },
     "S4_aetherproof_full": {
-      "median_ms": 2.514,
-      "p99_ms": 3.335
+      "median_ms": 2.673,
+      "p99_ms": 3.797
     }
   }
 }

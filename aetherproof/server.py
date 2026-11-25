@@ -27,7 +27,7 @@ from . import __version__
 from .contract import CONTRACT_VERSION, ERRORS, MAX_AMOUNT_MINOR
 from .core.anchor import Checkpoint, create_checkpoint, verify_checkpoint
 from .core.instruction import (PaymentInstruction, PayoutRequest, ReplayStore, bank_beneficiary,
-                               sign_instruction, token_beneficiary, verify_instruction)
+                               sign_instruction, token_beneficiary)
 from .core.keystore import _atomic_write, default_log, home, issue_receipt, load_or_create_signer
 from .core.payouts import MAPPINGS, payout_from_row, reconcile_payouts
 from .core.receipt import Receipt
@@ -219,6 +219,11 @@ class Api:
         self.signer = load_or_create_signer()
         self.key = self.signer.get_public_key()
         self.replay = ReplayStore(str(home() / "replay.db"))
+        from aetherproof.core.gate import GatePolicyError, load_policy
+        try:
+            self.gate_policy, self.gate_policy_error = load_policy(home()), ""
+        except GatePolicyError as e:   # fail closed: verify refuses until the policy is fixed
+            self.gate_policy, self.gate_policy_error = None, str(e)
 
     def status(self, _body):
         log = default_log()
@@ -274,7 +279,10 @@ class Api:
             raise ApiError(500, "stored instruction is unreadable; re-sign it", "internal") from e
         req = PayoutRequest(amount_minor=_minor(body["amount"]), currency=body["currency"],
                             reference=body.get("reference", ""), beneficiary_token=token, ifsc=ifsc, account_number=account)
-        return {"decision": verify_instruction(ins, req, self.key, self.replay).to_dict()}
+        if self.gate_policy_error:
+            raise ApiError(503, f"gate policy unusable, not deciding: {self.gate_policy_error}", "gate_policy")
+        from aetherproof.core.gate import decide
+        return {"decision": decide(ins, req, self.key, self.replay, self.gate_policy).to_dict()}
 
     def reconcile(self, body):
         source = body.get("source") or "generic"
