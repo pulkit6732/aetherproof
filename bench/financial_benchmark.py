@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import statistics
 import sys
 import tempfile
@@ -45,6 +46,15 @@ LEGIT_PER_ENV = 300
 POLICIES = {"bank_payout": POLICY, "crypto_withdrawal": POLICY,
             "stock_order": LimitPolicy(POLICY.per_payout_max_minor, POLICY.daily_max_minor, POLICY.daily_count_max,
                                        POLICY.daily_max_minor)}
+OPEN_STORES = []  # closed at the end so the temporary folder can be removed (Windows keeps open files)
+
+
+def _store(cls, path):
+    st = cls(path)
+    OPEN_STORES.append(st)
+    return st
+
+
 SYSTEMS = ("S1_api_key", "S2_policy_engine", "S2b_policy_locked_allowlist", "S3_aetherproof_gate", "S4_aetherproof_full")
 
 ENVS = {
@@ -98,7 +108,7 @@ class S2:
 
 class S3:
     def __init__(self, keys, path):
-        self.keys, self.replay = keys, ReplayStore(path)
+        self.keys, self.replay = keys, _store(ReplayStore, path)
 
     def decide(self, r):
         if r.ins is None:
@@ -110,7 +120,7 @@ class S3:
 class S4:
     def __init__(self, keys, rpath, lpath):
         self.keys, self.rpath, self.lpath = keys, rpath, lpath
-        self.replay, self.limits = ReplayStore(rpath), LimitStore(lpath)
+        self.replay, self.limits = _store(ReplayStore, rpath), _store(LimitStore, lpath)
 
     def decide(self, r, replay=None, limits=None):
         if r.ins is None:
@@ -158,8 +168,20 @@ def run_requests(systems, reqs, timing):
 
 # ------------------------------------------------------------------ main
 def main():
-    rng = np.random.default_rng(20261125)
     tmp = tempfile.mkdtemp(prefix="finbench_")
+    try:
+        _main(tmp)
+    finally:
+        for st in OPEN_STORES:
+            try:
+                st.close()
+            except Exception:  # noqa: BLE001 - closing is best effort; the folder removal below reports nothing either
+                pass
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _main(tmp):
+    rng = np.random.default_rng(20261125)
     approver = Signer.generate()
     results, timing, legit_summary = {}, {}, {}
 
@@ -279,8 +301,11 @@ def main():
     lat = {k: {"median_ms": round(statistics.median(v), 3), "p99_ms": round(float(np.percentile(v, 99)), 3)} for k, v in timing.items()}
     out = {"date": "2026-11-25", "synthetic": True, "policy_minor": POLICY.__dict__, "legit": legit_summary,
            "attacks": results, "race": race, "after_the_fact": detect, "latency": lat}
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial_benchmark_result.json"), "w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2, default=str)
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial_benchmark_result.json"), "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2, default=str)
+    except OSError as e:  # the table below still prints; say the file was not saved
+        print(f"could not write financial_benchmark_result.json: {e}", file=sys.stderr)
 
     # ---------------- print
     print(f"legit traffic, {LEGIT_PER_ENV} approved payouts per environment, wrongly blocked:")

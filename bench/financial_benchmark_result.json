@@ -1153,19 +1153,19 @@
     },
     "S2_policy_engine": {
       "median_ms": 0.001,
-      "p99_ms": 0.002
+      "p99_ms": 0.003
     },
     "S2b_policy_locked_allowlist": {
       "median_ms": 0.0,
       "p99_ms": 0.001
     },
     "S3_aetherproof_gate": {
-      "median_ms": 1.281,
-      "p99_ms": 1.736
+      "median_ms": 1.208,
+      "p99_ms": 1.699
     },
     "S4_aetherproof_full": {
-      "median_ms": 2.685,
-      "p99_ms": 3.619
+      "median_ms": 2.514,
+      "p99_ms": 3.335
     }
   }
 }
