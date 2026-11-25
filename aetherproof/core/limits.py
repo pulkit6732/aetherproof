@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 from .dbutil import open_db  # noqa: F401 - re-exported for older imports
-from .instruction import REJECT, Decision, PaymentInstruction, PayoutRequest, ReplayStore, verify_instruction, REVIEW
+from .instruction import REJECT, Decision, money, PaymentInstruction, PayoutRequest, ReplayStore, verify_instruction, REVIEW
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class LimitStore:
     def reserve(self, instruction_id: str, account: str, dest: str, amount_minor: int,
                 policy: LimitPolicy, now_ms: int) -> Tuple[bool, str]:
         if amount_minor > policy.per_payout_max_minor:
-            return False, f"amount above the per payout cap {policy.per_payout_max_minor}"
+            return False, f"amount above the per payout cap {money(policy.per_payout_max_minor)}"
         day = self.day_of(now_ms, policy)
         cur = self._db.cursor()
         cur.execute("BEGIN IMMEDIATE")
