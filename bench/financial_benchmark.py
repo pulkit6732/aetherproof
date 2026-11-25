@@ -358,7 +358,8 @@ def _main(tmp):
                         "S3_aetherproof_gate": False, "S5_aetherproof_destinations": bool(flagged),
                         "S4_aetherproof_full": bool(flagged), "flags": [f"{r.kind or r.verdict}: {r.reasons[0] if r.reasons else ''}" for r in flagged]}
 
-    lat = {k: {"median_ms": round(statistics.median(v), 3), "p99_ms": round(float(np.percentile(v, 99)), 3)} for k, v in timing.items()}
+    lat = {k: {"n": len(v), "median_ms": round(statistics.median(v), 3), "p95_ms": round(float(np.percentile(v, 95)), 3),
+               "p99_ms": round(float(np.percentile(v, 99)), 3)} for k, v in timing.items()}
     out = {"date": "2026-11-25", "synthetic": True, "policy_minor": POLICY.__dict__, "legit": legit_summary,
            "attacks": results, "race": race, "after_the_fact": detect, "latency": lat}
     try:
@@ -385,7 +386,7 @@ def _main(tmp):
     print("\nafter the fact, detected:")
     for name, v in detect.items():
         print(f"  {name:40s} S4 {v['S4_aetherproof_full']}  " + (v["flags"][0][:90] if v["flags"] else "(nothing flagged)"))
-    print("\ndecision latency on legitimate payouts: " + ", ".join(f"{k.split('_')[0]} {v['median_ms']} ms median, {v['p99_ms']} p99" for k, v in lat.items()))
+    print("\ndecision latency on legitimate payouts: " + ", ".join(f"{k.split('_')[0]} {v['median_ms']} ms median, {v['p95_ms']} p95, {v['p99_ms']} p99 (n={v['n']})" for k, v in lat.items()))
 
 
 if __name__ == "__main__":

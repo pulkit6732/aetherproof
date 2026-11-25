@@ -123,3 +123,48 @@ def test_cap_holds_across_concurrent_processes(tmp_path):
     outs = [p.communicate(timeout=120) for p in procs]
     assert all(p.returncode == 0 for p in procs), [e for _, e in outs]
     assert sum(int(o.strip()) for o, _ in outs) == 8
+
+
+def test_crash_after_reserve_keeps_the_spend_and_the_replay_claim(tmp_path):
+    """A process killed right after a payout was allowed: on restart the spend still counts
+    and the same instruction cannot pay again (both stores write with synchronous=FULL)."""
+    script = textwrap.dedent(f"""
+        import os, sys
+        from aetherproof.core.instruction import PayoutRequest, ReplayStore, sign_instruction, token_beneficiary
+        from aetherproof.core.limits import LimitPolicy, LimitStore, verify_with_limits
+        from aetherproof.core.signer import Signer
+        s = Signer.generate()
+        open(sys.argv[3], "wb").write(s.export_private_pem())
+        ins = sign_instruction(s, originator="o", amount_minor=30_000, currency="INR", beneficiary=token_beneficiary("fa"),
+                               purpose="p", reference="r", approval_ref="a", approved_by="b", policy="c", not_before_ms={NOW} - 1000)
+        open(sys.argv[4], "w").write(ins.to_json())
+        d = verify_with_limits(ins, PayoutRequest(30_000, "INR", ins.instruction_id, "fa"), s.get_public_key(),
+                               ReplayStore(sys.argv[1]), LimitStore(sys.argv[2]), LimitPolicy(100_000, 250_000, 100, 250_000),
+                               account="acc", destination="fa", now_ms={NOW})
+        assert d.allowed
+        os._exit(0)   # no close, no clean shutdown
+    """)
+    paths = [str(tmp_path / n) for n in ("r.db", "l.db", "k.pem", "ins.json")]
+    assert subprocess.run([sys.executable, "-c", script, *paths], timeout=60).returncode == 0
+    from aetherproof.core.instruction import PaymentInstruction
+    s = Signer.from_private_pem(open(paths[2], "rb").read())
+    ins = PaymentInstruction.from_json(open(paths[3], encoding="utf-8").read())
+    replay, limits = ReplayStore(paths[0]), LimitStore(paths[1])
+    assert limits.spent("acc", NOW, LimitPolicy(100_000, 250_000, 100, 250_000)) == (30_000, 1)
+    d = verify_with_limits(ins, PayoutRequest(30_000, "INR", ins.instruction_id, "fa"), s.get_public_key(), replay, limits,
+                           LimitPolicy(100_000, 250_000, 100, 250_000), account="acc", destination="fa", now_ms=NOW)
+    assert not d.allowed and "already used" in d.reasons[0]
+    replay.close()
+    limits.close()
+
+
+def test_corrupt_limit_database_refuses_through_the_gate(tmp_path):
+    from aetherproof.core.gate import GatePolicy, decide
+    (tmp_path / "l.db").write_bytes(b"this is not a sqlite database" * 100)
+    s = Signer.generate()
+    ins = _ins(s, 1_000)
+    pol = GatePolicy("acc", POLICY, str(tmp_path / "l.db"), [], 0, str(tmp_path / "d.db"))
+    replay = ReplayStore(str(tmp_path / "r.db"))
+    d = decide(ins, PayoutRequest(1_000, "INR", ins.instruction_id, "fa_1"), s.get_public_key(), replay, pol, now_ms=NOW)
+    assert not d.allowed and "unavailable" in d.reasons[0]
+    replay.close()

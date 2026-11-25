@@ -1,81 +1,58 @@
 # AetherProof
 
-**Stop payouts nobody approved.**
+**Transaction assurance prototype: bind an approval to the exact payout, enforce policy before
+money moves, and produce evidence anyone can verify offline.**
 
-For NBFCs and lenders that disburse loans through payout APIs (RazorpayX, Cashfree, bank
-APIs). AetherProof checks every payout against a signed sanction before money leaves:
-right borrower, right account, right amount, paid once. Then it matches every payout to the
-bank statement, so nothing unapproved waits a week to be found.
-
-Status: **0.5.2, evaluation build.** Tested on synthetic data only. No production
-deployment, no live provider or bank connector yet, no independent security audit, no
-regulatory certification.
-
-**Website and early access:** https://aetherproof.vercel.app/
+Status: **0.6.0, prototype.** Tested on synthetic data only. No production deployment, no live
+provider, bank, exchange or wallet connection, no independent security audit, no regulatory
+certification. Website and early access: https://aetherproof.vercel.app/
 
 ## The problem
 
-Lenders in India are losing crores through their own payout integrations. An attacker gets
-into a lending server, calls the payout API with the lender's real keys from the lender's
-own allowed IP address, and swaps borrowers' accounts for mule accounts. API keys, IP allow
-lists and provider side approval all see a valid call. Weekly reconciliation finds the loss
-days later, after the money has moved on, while the first hours decide whether it can still
-be frozen.
+An API key proves who is calling, not that this exact transaction was approved. In 2026,
+lenders in India lost crores through their own payout integrations: attackers inside a lending
+server called the payout API with the real keys, from allowed addresses, and swapped borrowers'
+accounts for mule accounts. Typical gaps:
+
+* approved ₹50,000, executed ₹5,00,000;
+* approved beneficiary, substituted beneficiary;
+* an approval replayed, used after expiry, or used after the loan was cancelled;
+* a payout made around the gate, at the provider dashboard.
 
 ## How it works
 
-1. **Sanction.** The loan system signs loan, amount and account when the loan is approved.
-2. **Gate.** AetherProof checks signature, amount, account, validity window and first use.
-   Anything else is refused. If it cannot decide, nothing is paid.
-3. **Payout.** Only checked payouts reach the provider.
-4. **Bank.** Provider status and the bank statement are matched back to the sanction.
+```
+loan system ──signs──▶ approval (amount, currency, destination, validity window)
+                              │
+policy authority (k of n keys, not the approver) ──approves──▶ destination registry
+                              │
+executor ──▶ gate: signature ▸ fields match ▸ destination approved ▸ caps ▸ single use ──▶ provider
+                                                                                       │
+provider export + bank statement ──▶ reconciliation ──▶ signed evidence package ◀──────┘
+```
 
-A signature from a hacked loan server proves nothing on its own, so the gate is being
-extended to check facts that server cannot create (see the status table).
+## Feature status
 
-## What is built and what is not
-
-| Capability | Status |
-|---|---|
-| Signed payout approval (Ed25519): amount, currency, account, validity window | Built |
-| Fail closed gate; each approval pays at most once (replay store) | Built |
-| Refuses changed amount, changed account, unknown reference, repeat | Built |
-| Payout reconciliation: RazorpayX shaped and generic CSV / JSON exports | Built, from files |
-| Bank statement check: "processed" but never debited is a conflict | Built, from files |
-| Signed evidence packages an auditor verifies offline | Built |
-| Hash chained log, signed checkpoints, RFC 3161 time stamps | Built |
-| Local API `/api/v1` with roles, lockout, rate limit, audit log; desktop app | Built, local only |
-| Bank accounts stored as salted hashes, not raw numbers | Built |
-| Provider keys held only by the gate (live RazorpayX / Cashfree client) | In development |
-| Shadow mode: every reported payout matched to a gate decision, alert in minutes | In development |
-| Freeze request with UTRs and receiving account, for the 1930 helpline and the bank | In development |
-| Pay only to the account on the borrower's own repayment mandate | In development |
-| Second approver for account changes and large payouts | In development |
-| Per payout, daily, per destination and count caps, atomic across processes; revocation (`core/limits.py`) | Built as a library; not yet in the CLI or API |
-| Velocity alerts, emergency pause, safe float advice | In development |
-| Incident pack, early warning signal mapping | In development |
-| Cloud key store, two or more gate instances, self hosted deployment package | In development |
-
-## Benchmark
-
-AetherProof against an API key, a conventional caps and allowlist engine (two variants) and itself, on bank payouts, crypto withdrawals and stock orders, with 16 attack families modelled on real incidents: [BENCHMARK.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/BENCHMARK.md). Synthetic data; the conventional engines are models, not vendor products.
-
-## Requirements it is built around
-
-We do not claim certification or compliance. These are the requirements lenders are asked
-to meet and what AetherProof does about each today.
-
-| Requirement | Source | AetherProof today |
+| Feature | Status | Where |
 |---|---|---|
-| Validate every payout against approved records; refuse unknown references | National cyber agency advisory on payout APIs, Oct 2026 (as summarised in the press) | Built: gate refuses unknown, changed or repeated payouts |
-| Disburse only to the borrower's own account | RBI Digital Lending Directions, 2025 | Partly: account bound into the signed approval; mandate rule in development |
-| Per payout and per day limits at the API layer | Same advisory (as summarised) | In development |
-| Catch it while money can still be frozen | 1930 helpline practice | In development: shadow mode and freeze request |
-| Report cyber incidents within 6 hours; keep logs 180 days in India | CERT-In directions, April 2022 | Partly: tamper evident signed logs on your machines; incident pack in development |
-| Early warning signals and staff accountability | RBI fraud risk management directions for NBFCs | Partly: every approval names its signer |
-| Light vendor review under outsourcing rules | RBI IT outsourcing directions for NBFCs, Nov 2025 | Runs on your machines; no vendor access to data |
-| Instant loans stay instant | Your business | Gate decision about 1.2 ms median (see Tests) |
-| Keep personal data to a minimum | DPDP Act | Accounts stored as salted hashes |
+| Ed25519 signed approval: amount, currency, destination, validity window | Implemented and tested | `core/instruction.py` |
+| Fail closed gate; refuses changed amount, destination, unknown reference | Implemented and tested | `core/instruction.py` |
+| Single use (durable SQLite replay store) | Implemented and tested | `ReplayStore` |
+| Caps: per payout, per day, per destination per day, count per day; atomic across processes | Implemented and tested; CLI and API via gate policy | `core/limits.py`, `core/gate.py` |
+| Cancelling an approval before use | Implemented and tested (library; no CLI command yet) | `LimitStore.revoke` |
+| Destination approval by k of n policy keys, versioned, hash chained history | Implemented and tested; enforced in CLI and API; managed through the library (no CLI command yet) | `core/destinations.py` |
+| Domain rules: bank account (hashed), crypto network + asset + address, stock instrument + side | Implemented and tested | `core/destinations.py` |
+| Payout reconciliation: RazorpayX shaped and generic CSV / JSON exports | Implemented and tested, from files | `core/payouts.py` |
+| Bank statement check: "processed" but never debited; unexplained debits | Implemented and tested, from files | `core/settlement.py` |
+| Signed evidence packages, offline verification | Implemented and tested | `core/evidence.py` |
+| Hash chained log, signed checkpoints, RFC 3161 time stamps | Implemented and tested | `core/log.py`, `core/anchor.py` |
+| Local API `/api/v1` with roles, lockout, rate limit, audit log | Implemented and tested, local only | `server.py` |
+| Desktop app | Experimental: needs a separate Rune checkout | `app/` |
+| MarketLab simulated exchange | Simulated, research only, not in the package | `marketlab/` |
+| Live RazorpayX / Cashfree client; gate holding the only keys | Planned | [INTEGRATIONS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/INTEGRATIONS.md) |
+| Shadow mode (watch provider webhooks, alert in minutes), freeze request | Planned | |
+| Crypto testnet and broker paper trading adapters | Planned | [INTEGRATIONS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/INTEGRATIONS.md) |
+| Cloud KMS / HSM keys, multi instance deployment | Planned | |
 
 ## Install
 
@@ -85,8 +62,8 @@ cd aetherproof
 pip install -e ".[timestamp]"
 ```
 
-`pip install aetherproof` currently installs 0.5.1 from PyPI, which does not have the
-payout features.
+`pip install aetherproof==0.5.2` from PyPI has the gate and reconciliation but not caps,
+destinations or the gate policy; those arrive with 0.6.0.
 
 ## Quick start
 
@@ -106,92 +83,109 @@ aetherproof payouts reconcile payouts.json --instructions ~/.aetherproof/instruc
 # auditor: offline tamper check of a signed evidence package
 aetherproof evidence verify run.evidence.json --pubkey signing_key.pub
 
-# local API for the desktop app
+# local API
 aetherproof serve
 ```
 
-Real output for one approval and four payout attempts (synthetic loan, 23 Nov 2026):
+## Gate policy: caps and destination approval in the CLI and API
 
-```text
-same amount, same account, first use   ALLOW  authorised, unchanged, first use.        exit 0
-account swapped                        REJECT beneficiary differs from the authorised one  exit 1
-amount 84,500.00 instead of 48,500.00  REJECT amount differs from authorised           exit 1
-same payout sent again                 REJECT instruction already used (replay)        exit 1
+Put `gate_policy.json` in `~/.aetherproof/` (or pass `--gate-policy PATH` to
+`instruction verify`). The CLI, the API (`POST /api/v1/verify`) and the library
+(`aetherproof.core.gate.decide`) then apply the same rules. Without the file, behaviour is
+exactly 0.5.x.
+
+```json
+{
+  "account": "nbfc-main",
+  "limits": {"per_payout_max": "200000.00", "daily_max": "8000000.00", "daily_count_max": 500,
+             "per_destination_daily_max": "200000.00", "utc_offset_minutes": 330},
+  "destinations": {"policy_pubkeys": ["policy_a.pub", "policy_b.pub"], "required_signers": 2}
+}
 ```
 
-The [user guide](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md)
-covers the demo, the daily workflow, file formats and how an auditor checks evidence.
+An unusable policy is a refusal, never a quiet fall back: the CLI exits with an error and the
+API answers `503 gate_policy`. Destinations are approved with the library:
 
-## What it does not do
+```python
+from aetherproof.core.destinations import DestinationRegistry, make_record, sign_record
+rec = make_record(account="nbfc-main", destination="fa_borrower_1041", domain="bank", action="add",
+                  version=1, evidence="eNACH UMRN ...")
+reg = DestinationRegistry("~/.aetherproof/destinations.db", [policy_a.get_public_key(), policy_b.get_public_key()], 2)
+reg.apply(rec, [sign_record(rec, policy_a), sign_record(rec, policy_b)])
+```
 
-Full list: [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md).
+The policy keys must be held apart from the payout approver and the loan system. That is the
+point: a stolen approver key or a tricked approver cannot add a destination.
+
+## Benchmark
+
+Six systems, three simulated domains (bank payouts, crypto withdrawals, stock orders), 900
+legitimate transactions and 16 attack families modelled on real incidents. Full method, attack
+matrix and caveats: [BENCHMARK.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/BENCHMARK.md). Run of 25 Nov 2026:
+
+* Legitimate transactions wrongly blocked: 0 of 900, every system.
+* The full gate (S5) refused every one of the 14 pre-execution attack families; the strongest
+  conventional baseline modelled (a locked allowlist with caps) let 6 of them through (amount
+  inflated, two replays, expired, revoked, attacker inside the loan system).
+* After the fact: payouts that skipped the gate and forged provider status were detected; one
+  insider forging both the provider export and the bank statement was **not** detected.
+* Decision latency, legitimate payouts: 3.2 ms median, 5.1 ms p99 for the full gate (signature
+  checks and two durable writes; laptop).
+
+The conventional systems are models of publicly documented controls, not vendor products.
+
+## MarketLab
+
+A simulated exchange (price time priority, 265 agents, liquidity shock, rogue bot) used to test
+the permission gate on trading orders. Reproduced 26 Nov 2026: same seed gives the same event
+log fingerprint; the gate blocked all 713 rule breaking orders with 0 legitimate orders wrongly
+blocked; a liquidity shock widened spreads from 1.75 to 4.41 ticks. Its price dynamics are only
+partly realistic. Details and the two failed attempts to improve them:
+[marketlab/README.md](https://github.com/pulkit6732/aetherproof/blob/main/marketlab/README.md). Simulation only; never connected to an exchange.
+
+## Security model and limits
+
+Read [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md) before quoting anything.
 
 | Not covered | Why |
 |---|---|
-| Payouts that skip the gate | Until the gate holds the only provider keys and shadow mode watches every payout, a call from elsewhere is not checked |
-| A stolen signing key | Whoever holds it can sign; keep it in a separate key store, with limits and a second approver |
-| A fully fake borrower | If the attacker creates the borrower too, the name matches; the mandate rule and limits reduce this, they do not remove it |
-| Whether a loan was a good decision | A signature proves what was approved and by whom, not that it was right |
-| Authentic bank data | Statements are imported files today, not authenticated feeds |
-| One insider forging both the provider export and the statement | Two forged files that agree stay consistent |
+| Payouts that skip the gate | Until the gate holds the only provider keys, a call from elsewhere is not checked; reconciliation detects it afterwards |
+| Stolen policy keys | Whoever holds k policy keys can approve a destination |
+| Stolen approver key alone | Covered only with destination approval enabled; otherwise caps limit the damage |
+| A fully fake borrower | If the attacker creates the borrower and gets the destination approved, the gate cannot tell |
+| One insider forging both provider export and bank statement | Two consistent forged files stay consistent; needs an independent evidence source |
+| Authentic bank data | Statements are imported files, not authenticated feeds |
 | That every event was logged | The log proves integrity, not completeness |
 
-## Desktop app
+Report vulnerabilities as described in [SECURITY.md](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md).
 
-`app/` is a desktop client for the local API, built with
-[Rune](https://github.com/anomalyco/rune). Screens: Overview, Instructions, Payment gate,
-Payouts, Transaction investigation, Evidence, Integrations, Settings and security.
+## Python and Rust
 
-Rune is pre release, so the app builds against a local checkout placed next to this
-repository, at `../vendor/rune` from the repository root, pinned to rev `ba5e7c80`. Then
-run `aetherproof serve` and `cargo run --release` in `app/`. Every screen also renders
-headless: `aetherproof-app --scene payouts --snap payouts.png`.
+The Python package is self contained. The optional Rust core (`rust/`) adds ML-DSA-65 (FIPS
+204), secret wiping and constant time compares; the package does not import it, which CI
+enforces. Its 128 byte receipt is a legacy format with 64 bit FNV-1a fields; see CLAIMS.md.
 
-![Payouts screen](https://raw.githubusercontent.com/pulkit6732/aetherproof/main/app/snaps/payouts.png)
+## Tests and reproducibility
+
+Run on 26 Nov 2026, Windows, Python 3.14: `python -m pytest tests/` and the Rust suite in
+`rust/` (`cargo test --release --workspace`). Counts for this release are in
+[CHANGELOG.md](https://github.com/pulkit6732/aetherproof/blob/main/CHANGELOG.md). CI runs the Python suite on Linux, macOS and Windows with
+Python 3.9, 3.11 and 3.13. Benchmark: `python bench/financial_benchmark.py`. MarketLab:
+`python marketlab/run_tests.py`.
 
 ## Also in this repository
 
-* **Action reconciliation** against AWS CloudTrail, for automated actions that are not
-  payouts ([RECONCILIATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/RECONCILIATION.md)).
-* **Receipts**, the original SDK: signed records of a prompt and output pair, verified
-  offline with one dependency ([GETTING-STARTED.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/GETTING-STARTED.md),
-  [VERIFICATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/VERIFICATION.md)).
-* **A Rust core** in `rust/`: Ed25519, plus ML-DSA-65 (FIPS 204), secret wiping and
-  constant time compare. Optional; the Python package does not import it, which CI enforces.
-  Its 128 byte receipt is a legacy format whose hash fields are 64 bit FNV-1a checksums,
-  not cryptographic hashes; see CLAIMS.md.
-
-## Tests
-
-Local results on Windows, synthetic data only, not production accuracy. Rerun before
-quoting.
-
-* Python suite, 23 Nov 2026: 904 passed, 0 skipped, on a fresh clone of `main`
-  (`python -m pytest tests/`). CI runs it on Linux, macOS and Windows, Python 3.9, 3.11, 3.13.
-* Gate speed, 23 Nov 2026: 2,000 allowed payouts through `verify_instruction` with the
-  durable replay store: 1.18 ms median, 1.46 ms at the 99th percentile, one process on a
-  laptop.
-* Rust core, 18 Nov 2026: 62 passed (`cargo test --release --workspace` in `rust/`).
-* Attack lab, 12 Nov 2026, 100k payouts: 0 of 94,400 clean payouts flagged; forged
-  "processed" status caught 500 of 500 with the statement (`python bench/attack_lab.py 100000`).
-* Unknown attack fuzz, 12 Nov 2026: 0 fail open in 60,000 mutated cases
-  (`python bench/unknown_attacks.py 60000`).
+* **Receipts**, the original SDK: signed records of a prompt and output pair, verified offline
+  ([GETTING-STARTED.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/GETTING-STARTED.md)).
+* **Action reconciliation** against AWS CloudTrail ([RECONCILIATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/RECONCILIATION.md)).
 
 ## Documentation
 
-| | |
-|---|---|
-| [USER_GUIDE.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md) | install, demo, workflow, file formats |
-| [SIGNED-INSTRUCTION-SPEC.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/SIGNED-INSTRUCTION-SPEC.md) | approval format, gate, payout checks |
-| [API_CONTRACT.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/API_CONTRACT.md) | local API `/api/v1` |
-| [RECONCILIATION.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/RECONCILIATION.md) | CloudTrail, checkpoints, RFC 3161 time |
-| [CLAIMS.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md) | what this proves and what it does not |
-| [SECURITY.md](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md) | reporting a vulnerability, threat model |
-| [ROADMAP.md](https://github.com/pulkit6732/aetherproof/blob/main/docs/ROADMAP.md) | what is planned |
-| [CONTRIBUTING.md](https://github.com/pulkit6732/aetherproof/blob/main/CONTRIBUTING.md) | how to contribute |
+[USER_GUIDE](https://github.com/pulkit6732/aetherproof/blob/main/docs/USER_GUIDE.md) · [SIGNED-INSTRUCTION-SPEC](https://github.com/pulkit6732/aetherproof/blob/main/docs/SIGNED-INSTRUCTION-SPEC.md) ·
+[API_CONTRACT](https://github.com/pulkit6732/aetherproof/blob/main/docs/API_CONTRACT.md) · [BENCHMARK](https://github.com/pulkit6732/aetherproof/blob/main/docs/BENCHMARK.md) ·
+[INTEGRATIONS](https://github.com/pulkit6732/aetherproof/blob/main/docs/INTEGRATIONS.md) · [CLAIMS](https://github.com/pulkit6732/aetherproof/blob/main/docs/CLAIMS.md) · [ROADMAP](https://github.com/pulkit6732/aetherproof/blob/main/docs/ROADMAP.md) ·
+[CHANGELOG](https://github.com/pulkit6732/aetherproof/blob/main/CHANGELOG.md) · [SECURITY](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md) · [CONTRIBUTING](https://github.com/pulkit6732/aetherproof/blob/main/CONTRIBUTING.md)
 
 ## License
 
 Apache-2.0. Versions up to 0.2.2 were AGPL-3.0-or-later.
-
-Security issues: see [SECURITY.md](https://github.com/pulkit6732/aetherproof/blob/main/SECURITY.md). Please do not open a public issue.

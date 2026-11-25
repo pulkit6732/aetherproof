@@ -1442,28 +1442,40 @@
   },
   "latency": {
     "S1_api_key": {
+      "n": 900,
       "median_ms": 0.0,
+      "p95_ms": 0.0,
       "p99_ms": 0.0
     },
     "S2_policy_engine": {
+      "n": 900,
       "median_ms": 0.001,
+      "p95_ms": 0.001,
       "p99_ms": 0.002
     },
     "S2b_policy_locked_allowlist": {
+      "n": 900,
       "median_ms": 0.0,
-      "p99_ms": 0.001
+      "p95_ms": 0.001,
+      "p99_ms": 0.002
     },
     "S5_aetherproof_destinations": {
-      "median_ms": 3.165,
-      "p99_ms": 4.898
+      "n": 900,
+      "median_ms": 3.197,
+      "p95_ms": 3.972,
+      "p99_ms": 5.096
     },
     "S3_aetherproof_gate": {
-      "median_ms": 1.289,
-      "p99_ms": 1.704
+      "n": 900,
+      "median_ms": 1.285,
+      "p95_ms": 1.592,
+      "p99_ms": 1.791
     },
     "S4_aetherproof_full": {
-      "median_ms": 2.673,
-      "p99_ms": 3.797
+      "n": 900,
+      "median_ms": 2.617,
+      "p95_ms": 3.49,
+      "p99_ms": 3.9
     }
   }
 }

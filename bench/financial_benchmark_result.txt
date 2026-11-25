@@ -27,4 +27,4 @@ after the fact, detected:
   15_provider_status_forged                S4 True  approval: provider reports the payout processed, but the bank statement shows no matching 
   16_insider_forges_both_files             S4 False  (nothing flagged)
 
-decision latency on legitimate payouts: S1 0.0 ms median, 0.0 p99, S2 0.001 ms median, 0.002 p99, S2b 0.0 ms median, 0.001 p99, S5 3.165 ms median, 4.898 p99, S3 1.289 ms median, 1.704 p99, S4 2.673 ms median, 3.797 p99
+decision latency on legitimate payouts: S1 0.0 ms median, 0.0 p95, 0.0 p99 (n=900), S2 0.001 ms median, 0.001 p95, 0.002 p99 (n=900), S2b 0.0 ms median, 0.001 p95, 0.002 p99 (n=900), S5 3.197 ms median, 3.972 p95, 5.096 p99 (n=900), S3 1.285 ms median, 1.592 p95, 1.791 p99 (n=900), S4 2.617 ms median, 3.49 p95, 3.9 p99 (n=900)

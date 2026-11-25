@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "aetherproof-py"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "aetherproof-core",
  "pyo3",

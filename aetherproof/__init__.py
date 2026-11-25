@@ -1,6 +1,6 @@
 """AetherProof - proof of authority for payouts and consequential actions."""
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 __author__ = "Pulkit Srivastava"
 
 from aetherproof.core.receipt import Receipt

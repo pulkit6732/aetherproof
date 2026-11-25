@@ -182,10 +182,10 @@ class ReplayStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._sync = synchronous.upper()
         self._local = threading.local()
-        conn = self._conn()
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("CREATE TABLE IF NOT EXISTS consumed (instruction_id TEXT PRIMARY KEY, "
-                     "consumed_at_ms INTEGER NOT NULL, request_digest TEXT NOT NULL)")
+        from .dbutil import run_setup
+        run_setup(self._conn(), ["PRAGMA journal_mode=WAL",
+                                 "CREATE TABLE IF NOT EXISTS consumed (instruction_id TEXT PRIMARY KEY, "
+                                 "consumed_at_ms INTEGER NOT NULL, request_digest TEXT NOT NULL)"])
 
     def _conn(self) -> sqlite3.Connection:
         conn = getattr(self._local, "conn", None)

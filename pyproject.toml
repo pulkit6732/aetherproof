@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aetherproof"
-version = "0.5.2"
+version = "0.6.0"
 description = "Signed payout instructions, a fail-closed payment gate, payout and bank settlement reconciliation, and offline-verifiable evidence."
 readme = "README.md"
 license = {text = "Apache-2.0"}

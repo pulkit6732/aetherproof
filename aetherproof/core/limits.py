@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
+from .dbutil import open_db  # noqa: F401 - re-exported for older imports
 from .instruction import REJECT, Decision, PaymentInstruction, PayoutRequest, ReplayStore, verify_instruction, REVIEW
 
 
@@ -35,13 +36,13 @@ class LimitPolicy:
 class LimitStore:
     def __init__(self, path: str):
         self.path = path
-        self._db = sqlite3.connect(path, timeout=30, isolation_level=None, check_same_thread=False)
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.execute("PRAGMA synchronous=FULL")
-        self._db.execute("CREATE TABLE IF NOT EXISTS spend (account TEXT, day TEXT, total INTEGER, n INTEGER, PRIMARY KEY(account, day))")
-        self._db.execute("CREATE TABLE IF NOT EXISTS dest_spend (account TEXT, dest TEXT, day TEXT, total INTEGER, PRIMARY KEY(account, dest, day))")
-        self._db.execute("CREATE TABLE IF NOT EXISTS revoked (instruction_id TEXT PRIMARY KEY, at_ms INTEGER)")
-        self._db.execute("CREATE TABLE IF NOT EXISTS held (instruction_id TEXT PRIMARY KEY, account TEXT, dest TEXT, day TEXT, amount INTEGER)")
+        self._db = open_db(path, [
+            "PRAGMA journal_mode=WAL",
+            "PRAGMA synchronous=FULL",
+            "CREATE TABLE IF NOT EXISTS spend (account TEXT, day TEXT, total INTEGER, n INTEGER, PRIMARY KEY(account, day))",
+            "CREATE TABLE IF NOT EXISTS dest_spend (account TEXT, dest TEXT, day TEXT, total INTEGER, PRIMARY KEY(account, dest, day))",
+            "CREATE TABLE IF NOT EXISTS revoked (instruction_id TEXT PRIMARY KEY, at_ms INTEGER)",
+            "CREATE TABLE IF NOT EXISTS held (instruction_id TEXT PRIMARY KEY, account TEXT, dest TEXT, day TEXT, amount INTEGER)"])
 
     @staticmethod
     def day_of(now_ms: int, policy: LimitPolicy) -> str:

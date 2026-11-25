@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
 import time
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -73,12 +72,13 @@ class DestinationRegistry:
         if required_signers < 1 or required_signers > len(self.keys):
             raise ValueError("required_signers must be between 1 and the number of policy keys")
         self.k = required_signers
-        self._db = sqlite3.connect(path, timeout=30, isolation_level=None, check_same_thread=False)
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.execute("PRAGMA synchronous=FULL")
-        self._db.execute("CREATE TABLE IF NOT EXISTS entries (account TEXT, key TEXT, version INTEGER, active INTEGER, "
-                         "record TEXT, sigs TEXT, PRIMARY KEY(account, key))")
-        self._db.execute("CREATE TABLE IF NOT EXISTS history (seq INTEGER PRIMARY KEY AUTOINCREMENT, prev TEXT, hash TEXT, body TEXT)")
+        from .dbutil import open_db
+        self._db = open_db(path, [
+            "PRAGMA journal_mode=WAL",
+            "PRAGMA synchronous=FULL",
+            "CREATE TABLE IF NOT EXISTS entries (account TEXT, key TEXT, version INTEGER, active INTEGER, "
+            "record TEXT, sigs TEXT, PRIMARY KEY(account, key))",
+            "CREATE TABLE IF NOT EXISTS history (seq INTEGER PRIMARY KEY AUTOINCREMENT, prev TEXT, hash TEXT, body TEXT)"])
 
     def _signed_by_enough(self, record: Dict, sigs: List[Dict]) -> bool:
         msg, good = _canonical(record), set()
